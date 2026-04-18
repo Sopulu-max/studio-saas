@@ -1,0 +1,92 @@
+'use server'
+
+import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
+import { getStudioContext, ownsStaff } from '@/lib/studio'
+
+const addStaffSchema = z.object({
+  full_name: z.string().min(1, 'Name is required'),
+  email:     z.string().email('Invalid email address'),
+  role:      z.string().min(1, 'Role is required'),
+  hire_date: z.string().optional().default(''),
+})
+
+export async function addStaff(form: {
+  full_name: string
+  email: string
+  role: string
+  hire_date: string
+}) {
+  const result = addStaffSchema.safeParse(form)
+  if (!result.success) return { error: result.error.issues[0].message }
+
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  const { error } = await context.admin.from('staff').insert({
+    ...form,
+    studio_id: context.studioId,
+    hire_date: form.hire_date || null,
+  })
+  return { error: error?.message ?? null }
+}
+
+export async function updateStaff(staffId: string, form: {
+  full_name: string
+  email: string
+  role: string
+  hire_date: string
+}) {
+  const result = addStaffSchema.safeParse(form)
+  if (!result.success) return { error: result.error.issues[0].message }
+
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsStaff(context.admin, context.studioId, staffId))) {
+    return { error: 'Staff member not found' }
+  }
+
+  const { error } = await context.admin
+    .from('staff')
+    .update({ full_name: form.full_name, email: form.email, role: form.role, hire_date: form.hire_date || null })
+    .eq('staff_id', staffId)
+
+  if (!error) {
+    revalidatePath(`/dashboard/staff/${staffId}`)
+    revalidatePath('/dashboard/staff')
+  }
+  return { error: error?.message ?? null }
+}
+
+export async function deleteStaff(staffId: string) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsStaff(context.admin, context.studioId, staffId))) {
+    return { error: 'Staff member not found' }
+  }
+
+  const { error } = await context.admin
+    .from('staff')
+    .delete()
+    .eq('staff_id', staffId)
+  return { error: error?.message ?? null }
+}
+
+export async function updateStaffAvatar(staffId: string, avatarUrl: string) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsStaff(context.admin, context.studioId, staffId))) {
+    return { error: 'Staff member not found' }
+  }
+
+  const { error } = await context.admin
+    .from('staff')
+    .update({ avatar_url: avatarUrl })
+    .eq('staff_id', staffId)
+  revalidatePath(`/dashboard/staff/${staffId}`)
+  revalidatePath('/dashboard/staff')
+  return { error: error?.message ?? null }
+}

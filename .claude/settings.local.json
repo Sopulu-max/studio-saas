@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('sonner:', p.dependencies.sonner\\); console.log\\('zod:', p.dependencies.zod\\)\")",
+      "Bash(npm run:*)",
+      "Bash(rm -rf \"app/\\(dashboard\\)/dashboard/bookings\")",
+      "Bash(rm -f \"app/actions/bookings.ts\")",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(npx tsc:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(Start-Sleep -Milliseconds 500)",
+      "Bash(Start-Sleep -Seconds 8)",
+      "Bash(Get-Content \"C:\\\\Users\\\\GLAMOUR\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-GLAMOUR-photostudio-saas\\\\8daad46a-64c4-4c4e-8608-2e40c9d775a5\\\\tasks\\\\bsrbb4534.output\" -Tail 20)",
+      "Bash(node -e ':*)",
+      "Bash(node -e \"const d=require\\('C:/Users/GLAMOUR/photostudio-saas/node_modules/next/dist/compiled/@next/font/dist/google/font-data.json'\\); const f=d['DM Sans']; console.log\\(JSON.stringify\\(f,null,2\\)\\)\")",
+      "Bash(Remove-Item -Recurse -Force \"C:\\\\Users\\\\GLAMOUR\\\\photostudio-saas\\\\.next\")",
+      "Bash(dir /s /b \"C:\\\\Users\\\\GLAMOUR\\\\photostudio-saas\\\\app\\\\*layout*\")",
+      "Bash(cmd /c \"npx tsc --noEmit 2>&1\")",
+      "Bash(node_modules/.bin/tsc --noEmit)",
+      "Bash(node -e \"require\\('resend'\\); console.log\\('resend installed'\\)\")",
+      "Bash(xargs grep *)",
+      "Bash(grep -rh \"\\\\.select\\(\\\\`\" /c/Users/GLAMOUR/photostudio-saas/app --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(del \"C:\\\\Users\\\\GLAMOUR\\\\photostudio-saas\\\\app\\\\actions\\\\public-booking.ts\")"
+    ]
+  }
+}

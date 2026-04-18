@@ -1,0 +1,349 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* ─── Shadcn base tokens ────────────────────────────── */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  /* Ayu Mirage-inspired blue-tinted dark */
+  --background: oklch(0.18 0.02 250);
+  --foreground: oklch(0.83 0.005 90);
+  --card: oklch(0.21 0.022 250);
+  --card-foreground: oklch(0.83 0.005 90);
+  --popover: oklch(0.21 0.022 250);
+  --popover-foreground: oklch(0.83 0.005 90);
+  --primary: oklch(0.83 0.005 90);
+  --primary-foreground: oklch(0.18 0.02 250);
+  --secondary: oklch(0.26 0.025 250);
+  --secondary-foreground: oklch(0.83 0.005 90);
+  --muted: oklch(0.26 0.025 250);
+  --muted-foreground: oklch(0.58 0.015 240);
+  --accent: oklch(0.26 0.025 250);
+  --accent-foreground: oklch(0.83 0.005 90);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 8%);
+  --input: oklch(1 0 0 / 10%);
+  --ring: oklch(0.58 0.015 240);
+  --chart-1: oklch(0.78 0.12 200);
+  --chart-2: oklch(0.68 0.10 200);
+  --chart-3: oklch(0.55 0.08 220);
+  --chart-4: oklch(0.42 0.06 230);
+  --chart-5: oklch(0.30 0.04 240);
+  --sidebar: oklch(0.165 0.022 255);
+  --sidebar-foreground: oklch(0.83 0.005 90);
+  --sidebar-primary: oklch(0.72 0.12 200);
+  --sidebar-primary-foreground: oklch(0.18 0.02 250);
+  --sidebar-accent: oklch(0.26 0.025 250);
+  --sidebar-accent-foreground: oklch(0.83 0.005 90);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.58 0.015 240);
+}
+
+/* ─── Framely design tokens ─────────────────────────── */
+/*
+  Warm palette — not pure white/black.
+  Light: soft cream whites + warm charcoal text.
+  Dark:  deep warm black + off-white text.
+  Borders use rgba so they feel like light, not lines.
+*/
+:root {
+  /* Surfaces */
+  --bg:          #f7f6f4;   /* page background          */
+  --surface:     #ffffff;   /* card / panel             */
+  --surface-2:   #f3f2f0;   /* nested surface           */
+  --hover:       #f0efed;   /* hover state bg           */
+  --active:      #eae9e7;   /* active / selected bg     */
+
+  /* Lines */
+  --line:        rgba(0, 0, 0, 0.09);   /* primary border           */
+  --line-inner:  rgba(0, 0, 0, 0.05);   /* inner / subtle border    */
+
+  /* Text hierarchy */
+  --text:    #312c26;   /* primary   — warm charcoal, not black */
+  --text-2:  #5c5750;   /* secondary */
+  --text-3:  #8a8680;   /* muted     */
+  --text-4:  #b0aca5;   /* faint     */
+
+  /* Interactive */
+  --btn:      #3a342d;   /* primary button — dark warm brown, not black */
+  --btn-fg:   #faf8f5;   /* primary button text */
+  --link:     #2d6fad;   /* hyperlink           */
+
+  /* Shadows */
+  --shadow-sm:  0 1px  4px rgba(0, 0, 0, 0.06);
+  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.08);
+  --shadow-lg:  0 8px 28px rgba(0, 0, 0, 0.10);
+
+  /* Font */
+  --font-sans: var(--font-dm-sans), 'DM Sans', system-ui, -apple-system, sans-serif;
+}
+
+.dark {
+  /* Surfaces — Ayu Mirage blue-tinted dark */
+  --bg:        #1f2430;   /* Ayu Mirage editor background  */
+  --surface:   #242936;   /* cards / panels                */
+  --surface-2: #2d3347;   /* nested surfaces               */
+  --hover:     #303a50;   /* hover state                   */
+  --active:    #343d52;   /* selected / active             */
+
+  /* Lines */
+  --line:       rgba(255, 255, 255, 0.08);
+  --line-inner: rgba(255, 255, 255, 0.04);
+
+  /* Text hierarchy — Ayu Mirage palette */
+  --text:   #cbccc6;   /* primary — warm off-white       */
+  --text-2: #8a9099;   /* secondary — blue-grey muted    */
+  --text-3: #5c6470;   /* muted                          */
+  --text-4: #3d4554;   /* faint                          */
+
+  /* Interactive */
+  --btn:    #cbccc6;   /* light button                   */
+  --btn-fg: #1f2430;   /* dark text on button            */
+  --link:   #5ccfe6;   /* Ayu Mirage cyan                */
+
+  /* Shadows */
+  --shadow-sm:  0 1px  4px rgba(0, 0, 0, 0.40);
+  --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.50);
+  --shadow-lg:  0 8px 28px rgba(0, 0, 0, 0.60);
+}
+
+/* ─── Base element styles ────────────────────────────── */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* ── Inputs ── */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="datetime-local"],
+  input[type="search"],
+  input[type="url"],
+  textarea,
+  select {
+    background: var(--surface);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-4);
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: var(--text-3);
+    box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+  }
+
+  .dark input:focus,
+  .dark textarea:focus,
+  .dark select:focus {
+    box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+    padding-right: 30px;
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    width: 15px;
+    height: 15px;
+    accent-color: var(--btn);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  /* ── Buttons ── */
+  button {
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    padding: 9px 16px;
+    cursor: pointer;
+    transition: opacity 0.15s ease, background 0.15s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    /* Default = primary dark button */
+    background: var(--btn);
+    color: var(--btn-fg);
+  }
+
+  button:hover:not(:disabled) {
+    opacity: 0.82;
+  }
+
+  button:active:not(:disabled) {
+    opacity: 0.68;
+  }
+
+  button:disabled {
+    opacity: 0.38;
+    cursor: not-allowed;
+  }
+
+  button:focus-visible {
+    outline: 2px solid var(--text-3);
+    outline-offset: 2px;
+  }
+
+  a {
+    color: var(--link);
+    text-decoration: none;
+  }
+
+  a:hover {
+    text-decoration: underline;
+  }
+
+  /* ── Shadows ── */
+  /* Use these instead of hardcoded rgba() so dark mode gets a stronger shadow */
+
+  /* ── Dropdown option items (searchable-select, etc.) ── */
+  .dropdown-option {
+    background: var(--surface);
+    transition: background 80ms;
+    cursor: pointer;
+  }
+  .dropdown-option:hover {
+    background: var(--hover);
+  }
+  .dropdown-option[data-selected="true"] {
+    background: var(--active);
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar {
+    width: 5px;
+    height: 5px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--active);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--line);
+  }
+}
