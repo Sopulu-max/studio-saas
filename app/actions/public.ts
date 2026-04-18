@@ -67,7 +67,7 @@ export async function submitBookingRequest(form: {
     .select('client_id')
     .eq('studio_id', form.studio_id)
     .eq('phone', form.phone.trim())
-    .single()
+    .maybeSingle()
 
   if (existing) {
     clientId = existing.client_id

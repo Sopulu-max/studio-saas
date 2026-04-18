@@ -75,7 +75,7 @@ export async function addSession(form: {
   if (form.service_type) insertData.service_type = form.service_type
   if (form.location_address) insertData.location_address = form.location_address
   if (form.package_id) insertData.package_id = form.package_id
-  if (form.outfits_count) insertData.outfits_count = parseInt(form.outfits_count)
+  if (form.outfits_count) insertData.outfits_count = parseInt(form.outfits_count, 10)
   if (form.event_name) insertData.event_name = form.event_name
   if (form.event_date) insertData.event_date = form.event_date
 
@@ -293,7 +293,7 @@ export async function updateSession(sessionId: string, form: {
     service_type: form.service_type || 'photo',
     notes:        form.notes || null,
     package_id:   form.package_id   || null,
-    outfits_count: form.outfits_count ? parseInt(form.outfits_count) : null,
+    outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
     location_address: form.location_address || null,
     event_name:   form.event_name   || null,
     event_date:   form.event_date   || null,
