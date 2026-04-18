@@ -37,11 +37,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  // Authenticated users shouldn't see auth pages
-  if (isAuthPage && user) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
   return supabaseResponse
 }
 
