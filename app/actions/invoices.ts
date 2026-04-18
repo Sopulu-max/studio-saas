@@ -69,7 +69,7 @@ export async function addInvoice(form: {
 
   const discount = Math.max(0, parseFloat(form.discount) || 0)
   const tax      = Math.max(0, parseFloat(form.tax)      || 0)
-  const total    = Math.max(0, subtotal - discount + (subtotal * tax / 100))
+  const total    = Math.max(0, (subtotal - discount) * (1 + tax / 100))
 
   const { data: invoice, error } = await context.admin
     .from('invoices')
@@ -208,7 +208,7 @@ export async function addExtraCharge(invoiceId: string, extraAmount: number) {
   const newSubtotal = Number(invoice.subtotal) + extraAmount
   const discount = Number(invoice.discount)
   const tax = Number(invoice.tax)
-  const newTotal = Math.max(0, newSubtotal - discount + newSubtotal * tax / 100)
+  const newTotal = Math.max(0, (newSubtotal - discount) * (1 + tax / 100))
 
   const { error } = await context.admin
     .from('invoices')

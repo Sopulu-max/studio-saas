@@ -58,8 +58,9 @@ export async function inviteStaffMember(data: {
   if (existing) {
     if (existing.invite_accepted_at) return { error: 'This person has already joined your team.' }
     // Re-send invite — update token
-    await admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: inviteSentAt })
+    const { error: updateErr } = await admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: inviteSentAt })
       .eq('staff_id', existing.staff_id)
+    if (updateErr) return { error: updateErr.message }
   } else {
     const { error: insertErr } = await admin.from('staff').insert({
       studio_id:      context.studioId,
@@ -127,8 +128,9 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
     .single()
 
   const inviteToken = crypto.randomUUID()
-  await admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: new Date().toISOString() })
+  const { error: updateErr } = await admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: new Date().toISOString() })
     .eq('staff_id', staffId)
+  if (updateErr) return { error: updateErr.message }
 
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
   const inviteUrl = `${siteUrl}/invite/${inviteToken}`
