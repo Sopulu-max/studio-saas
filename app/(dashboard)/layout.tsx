@@ -8,9 +8,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const context = await getStudioContext()
-  if ('error' in context) {
-    redirect(context.error === 'Not authenticated' ? '/login' : '/onboarding')
-  }
+  if ('error' in context) redirect('/login')
 
   const { data: studio } = await context.admin
     .from('studios')

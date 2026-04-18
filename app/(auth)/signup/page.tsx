@@ -1,8 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
 import { signUpWithStudio } from '@/app/actions/auth'
 
 export default function SignupPage() {
@@ -11,7 +9,6 @@ export default function SignupPage() {
   const [studioName, setStudioName] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const router = useRouter()
 
   async function handleSignup() {
   setLoading(true)
@@ -24,8 +21,7 @@ export default function SignupPage() {
     return
   }
 
-  router.refresh()
-  router.push('/onboarding')
+  window.location.href = '/onboarding'
 }
 
   return (
