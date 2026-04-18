@@ -1,11 +1,12 @@
 import Link from 'next/link'
+import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
 
 export default async function LandingPage() {
-  const context = await getStudioContext()
-  if (!('error' in context)) redirect('/dashboard')
-  else if (context.error === 'Studio not found') redirect('/onboarding')
+  // If already logged in, go straight to the dashboard
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (user) redirect('/dashboard')
 
   return (
     <>
