@@ -3,6 +3,8 @@ import Sidebar from '@/components/sidebar'
 import { StudioConfigProvider } from '@/components/studio-config-provider'
 import { getStudioContext } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
+import { SpeedInsights } from "@vercel/speed-insights/next"
+
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const context = await getStudioContext()
