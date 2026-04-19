@@ -1,14 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
+import { useSearchParams } from 'next/navigation'
+import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 
-export default function LoginPage() {
-  const [email, setEmail] = useState('')
+const REDIRECT_MESSAGES: Record<string, string> = {
+  'not-authenticated': 'Your session expired. Please sign in again.',
+  'studio-not-found':  'No studio found for this account. Please sign up first.',
+  'auth-error':        'Authentication error. Please sign in again.',
+}
+
+function LoginForm() {
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  const supabase = createClient()
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
+  const searchParams            = useSearchParams()
+  const supabase                = createClient()
+
+  const redirectReason = searchParams.get('reason')
+  const redirectMsg    = redirectReason ? REDIRECT_MESSAGES[redirectReason] : null
 
   async function handleLogin() {
     setLoading(true)
@@ -16,6 +28,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) {
       setError(error.message)
+      toast.error(error.message)
       setLoading(false)
     } else {
       window.location.href = '/dashboard'
@@ -27,6 +40,12 @@ export default function LoginPage() {
       <div style={{ width: '100%', maxWidth: '400px', padding: '2rem', border: '1px solid var(--line)', borderRadius: '12px', background: 'var(--surface)' }}>
         <h1 style={{ fontSize: '20px', fontWeight: '500', marginBottom: '6px' }}>Sign in</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-3)', marginBottom: '24px' }}>Weave by Creative Renaissance</p>
+
+        {redirectMsg && (
+          <div style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px', color: '#856404' }}>
+            {redirectMsg}
+          </div>
+        )}
 
         <div style={{ marginBottom: '16px' }}>
           <label style={{ fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>Email</label>
@@ -51,7 +70,11 @@ export default function LoginPage() {
           />
         </div>
 
-        {error && <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '16px' }}>{error}</p>}
+        {error && (
+          <div style={{ background: '#fdecea', border: '1px solid #e24b4a', borderRadius: '8px', padding: '12px 14px', marginBottom: '16px', fontSize: '13px', color: '#c0392b', fontWeight: '500' }}>
+            {error}
+          </div>
+        )}
 
         <button onClick={handleLogin} disabled={loading} style={{ width: '100%', padding: '10px' }}>
           {loading ? 'Signing in...' : 'Sign in'}
@@ -62,5 +85,13 @@ export default function LoginPage() {
         </p>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginForm />
+    </Suspense>
   )
 }
