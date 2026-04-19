@@ -26,7 +26,6 @@ const bookingRequestSchema = z.object({
   location_address: z.string().optional(),
   event_name:       z.string().optional(),
   event_date:       z.string().optional(),
-  budget:           z.string().optional(),
   notes:            z.string().optional(),
 })
 
@@ -42,7 +41,6 @@ export async function submitBookingRequest(form: {
   location_address: string
   event_name: string
   event_date: string
-  budget: string
   notes: string
 }) {
   const result = bookingRequestSchema.safeParse({
@@ -89,7 +87,6 @@ export async function submitBookingRequest(form: {
 
   const noteParts = [
     form.notes?.trim(),
-    form.budget?.trim() ? `Budget: ${form.budget.trim()}` : null,
   ].filter(Boolean)
 
   const insertData: Record<string, string | number | null> = {

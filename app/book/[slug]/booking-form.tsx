@@ -29,7 +29,6 @@ export default function BookingForm({
     location_address: '',
     event_name:       '',
     event_date:       '',
-    budget:           '',
     notes:            '',
   })
 
@@ -236,24 +235,6 @@ export default function BookingForm({
           </div>
         </>
       )}
-
-      {/* Budget */}
-      <div style={row}>
-        <label style={label}>
-          Approximate budget{' '}
-          <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
-        </label>
-        <input
-          type="text"
-          value={form.budget}
-          onChange={e => set('budget', e.target.value)}
-          placeholder="e.g. around ₦80,000 or flexible"
-          style={input}
-        />
-        <p style={{ fontSize: '12px', color: '#aaa', margin: '5px 0 0' }}>
-          Helps us suggest the right package — no commitment yet.
-        </p>
-      </div>
 
       {/* Notes */}
       <div style={row}>
