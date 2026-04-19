@@ -12,7 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const { data: studio } = await context.admin
     .from('studios')
-    .select('name, session_types, service_types, booking_statuses, onboarding_completed_at')
+    .select('*')
     .eq('studio_id', context.studioId)
     .single()
 

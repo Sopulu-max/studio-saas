@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { completeOnboarding } from '@/app/actions/onboarding'
 import type { SessionTypeConfig } from '@/lib/studio-config'
@@ -31,7 +30,6 @@ export default function OnboardingWizard({
   initialSessionTypes: SessionTypeConfig[]
   siteUrl: string
 }) {
-  const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
 
@@ -70,7 +68,7 @@ export default function OnboardingWizard({
     setLoading(true)
     const { error } = await completeOnboarding({ name, slug, timezone, phone, sessionTypes: types })
     if (error) { toast.error(error); setLoading(false); return }
-    router.push('/dashboard')
+    window.location.href = '/dashboard'
   }
 
   const bookingUrl = `${siteUrl}/book/${slug}`
