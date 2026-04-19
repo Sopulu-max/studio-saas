@@ -175,6 +175,7 @@ export async function sendInvoiceToClient(invoiceId: string) {
     total: Number(invoice.total),
     dueDate: invoice.due_date ?? undefined,
     sessionDate: invoice.bookings?.session_date ?? undefined,
+    siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
   })
 
   if (emailError) return { error: emailError }

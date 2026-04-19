@@ -129,8 +129,46 @@ export default async function DashboardPage() {
 
   return (
     <div>
+      <style>{`
+        .dash-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-start;
+          margin-bottom: 1.5rem;
+        }
+        .dash-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 12px;
+          margin-bottom: 20px;
+        }
+        .dash-two-col {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 12px;
+          margin-bottom: 12px;
+        }
+        @media (max-width: 700px) {
+          .dash-stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+          }
+          .dash-two-col {
+            grid-template-columns: 1fr;
+          }
+        }
+        @media (max-width: 420px) {
+          .dash-stats-grid {
+            grid-template-columns: 1fr;
+          }
+          .dash-header {
+            flex-direction: column;
+            gap: 4px;
+          }
+        }
+      `}</style>
+
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+      <div className="dash-header">
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 2px' }}>Welcome back</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{studio?.name}</p>
@@ -195,7 +233,7 @@ export default async function DashboardPage() {
       )}
 
       {/* Stat cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '20px' }}>
+      <div className="dash-stats-grid">
         {[
           { label: 'Total sessions',     value: totalSessions ?? 0,  href: '/dashboard/sessions', sub: null },
           { label: 'Total clients',      value: totalClients  ?? 0,  href: '/dashboard/clients',  sub: null },
@@ -215,7 +253,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Main content — two columns */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+      <div className="dash-two-col">
 
         {/* Upcoming this week */}
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
@@ -300,7 +338,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* Quick actions + booking link */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+      <div className="dash-two-col" style={{ marginBottom: 0 }}>
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>QUICK ACTIONS</p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

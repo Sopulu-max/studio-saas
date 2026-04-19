@@ -11,6 +11,7 @@ export async function sendInvoiceEmail({
   total,
   dueDate,
   sessionDate,
+  siteUrl,
 }: {
   to: string
   clientName: string
@@ -19,16 +20,20 @@ export async function sendInvoiceEmail({
   total: number
   dueDate?: string
   sessionDate?: string
+  siteUrl?: string
 }) {
   const formatted = (n: number) =>
     '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 0 })
 
+  const base    = (siteUrl ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+  const viewUrl = `${base}/view/invoice/${invoiceId}`
+
   const dueLine = dueDate
-    ? `<p style="margin:0 0 8px;color:#555;font-size:14px;">Due by: <strong>${new Date(dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>`
+    ? `<p style="margin:0 0 6px;color:#555;font-size:14px;">Due by: <strong>${new Date(dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>`
     : ''
 
   const sessionLine = sessionDate
-    ? `<p style="margin:0 0 8px;color:#555;font-size:14px;">Session date: ${new Date(sessionDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p>`
+    ? `<p style="margin:0 0 6px;color:#555;font-size:14px;">Session: ${new Date(sessionDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</p>`
     : ''
 
   const html = `
@@ -41,17 +46,29 @@ export async function sendInvoiceEmail({
 
     <p style="margin:0 0 16px;font-size:15px;color:#111;">Hi ${clientName},</p>
     <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">
-      Please find your invoice from <strong>${studioName}</strong> below.
+      Please find your invoice from <strong>${studioName}</strong> attached below.
+      You can view the full invoice, save it as a PDF, or print it using the button below.
     </p>
 
     <div style="background:#f4f4f4;border-radius:8px;padding:20px;margin-bottom:24px;">
-      <p style="margin:0 0 12px;font-size:24px;font-weight:600;color:#111;">${formatted(total)}</p>
+      <p style="margin:0 0 10px;font-size:26px;font-weight:700;color:#111;">${formatted(total)}</p>
       ${sessionLine}
       ${dueLine}
     </div>
 
-    <p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">
-      If you have any questions about this invoice, please reply to this email.
+    <a href="${viewUrl}"
+      style="display:block;text-align:center;padding:13px 24px;background:#111;color:white;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin-bottom:24px;">
+      View &amp; Download Invoice →
+    </a>
+
+    <p style="margin:0 0 16px;font-size:13px;color:#aaa;line-height:1.6;">
+      If the button doesn't work, copy and paste this link into your browser:<br/>
+      <span style="color:#555;word-break:break-all;">${viewUrl}</span>
+    </p>
+
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0;" />
+    <p style="margin:0;font-size:12px;color:#bbb;">
+      Please reply to this email with any questions about this invoice.
     </p>
   </div>
 </body>

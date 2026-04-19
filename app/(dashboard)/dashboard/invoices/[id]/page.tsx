@@ -52,18 +52,30 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   }
   const s = STATUS_COLORS[invoice.status ?? ''] ?? STATUS_COLORS.draft
 
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+
   return (
     <div style={{ maxWidth: '640px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Invoice</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
             {invoice.bookings?.clients?.full_name} · {invoice.bookings?.packages?.name}
           </p>
         </div>
-        <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
-          {invoice.status}
-        </span>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <a
+            href={`/view/invoice/${id}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '4px 10px', border: '1px solid var(--line)', borderRadius: '8px', background: 'var(--surface)' }}
+          >
+            Client view ↗
+          </a>
+          <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
+            {invoice.status}
+          </span>
+        </div>
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
