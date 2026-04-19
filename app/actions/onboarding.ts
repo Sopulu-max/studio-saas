@@ -55,5 +55,19 @@ export async function completeOnboarding(data: {
     })
     .eq('studio_id', context.studioId)
 
+  // Retry without optional columns that may not exist in this deployment's schema
+  if (error?.code === '42703') {
+    const { error: error2 } = await admin
+      .from('studios')
+      .update({
+        name:                    data.name.trim(),
+        slug:                    data.slug.trim(),
+        session_types:           data.sessionTypes,
+        onboarding_completed_at: new Date().toISOString(),
+      })
+      .eq('studio_id', context.studioId)
+    return { error: error2?.message ?? null }
+  }
+
   return { error: error?.message ?? null }
 }
