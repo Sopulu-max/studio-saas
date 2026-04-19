@@ -55,14 +55,15 @@ export async function completeOnboarding(data: {
     })
     .eq('studio_id', context.studioId)
 
-  // Retry without optional columns that may not exist in this deployment's schema
-  if (error?.code === '42703') {
+  // PostgREST schema cache error (column doesn't exist in this deployment's DB)
+  // or Postgres undefined_column (42703) — retry with only the core columns we know exist
+  const isMissingColumn = error?.code === '42703' || error?.message?.includes('schema cache')
+  if (isMissingColumn) {
     const { error: error2 } = await admin
       .from('studios')
       .update({
         name:                    data.name.trim(),
         slug:                    data.slug.trim(),
-        session_types:           data.sessionTypes,
         onboarding_completed_at: new Date().toISOString(),
       })
       .eq('studio_id', context.studioId)
