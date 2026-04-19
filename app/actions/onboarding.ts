@@ -55,9 +55,15 @@ export async function completeOnboarding(data: {
     })
     .eq('studio_id', context.studioId)
 
-  // PostgREST schema cache error (column doesn't exist in this deployment's DB)
-  // or Postgres undefined_column (42703) — retry with only the core columns we know exist
-  const isMissingColumn = error?.code === '42703' || error?.message?.includes('schema cache')
+  // PostgREST schema cache error (PGRST204) or Postgres undefined_column (42703)
+  // Catch by code, message, or details — column doesn't exist in this deployment's DB
+  const errStr = `${error?.code ?? ''} ${error?.message ?? ''} ${error?.details ?? ''}`
+  const isMissingColumn = error && (
+    error.code === '42703' ||
+    error.code === 'PGRST204' ||
+    errStr.includes('schema cache') ||
+    errStr.includes('Could not find')
+  )
   if (isMissingColumn) {
     const { error: error2 } = await admin
       .from('studios')
