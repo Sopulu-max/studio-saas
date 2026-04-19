@@ -117,7 +117,7 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
     .select('full_name, email, role')
     .eq('staff_id', staffId)
     .eq('studio_id', context.studioId)
-    .single()
+    .maybeSingle()
 
   if (!staffMember) return { error: 'Staff member not found' }
 
@@ -125,7 +125,7 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
     .from('studios')
     .select('name')
     .eq('studio_id', context.studioId)
-    .single()
+    .maybeSingle()
 
   const inviteToken = crypto.randomUUID()
   const { error: updateErr } = await admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: new Date().toISOString() })
@@ -135,11 +135,12 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
   const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
   const inviteUrl = `${siteUrl}/invite/${inviteToken}`
 
-  return sendStaffInviteEmail({
+  const { error: emailErr } = await sendStaffInviteEmail({
     to:          staffMember.email,
     inviteeName: staffMember.full_name,
     studioName:  studio?.name ?? 'your studio',
     role:        ROLE_LABELS[staffMember.role] ?? staffMember.role,
     inviteUrl,
   })
+  return { error: emailErr ?? null }
 }

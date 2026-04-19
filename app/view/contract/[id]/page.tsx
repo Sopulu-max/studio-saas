@@ -17,7 +17,7 @@ export default async function PublicContractViewPage({ params }: { params: Promi
       )
     `)
     .eq('contract_id', id)
-    .single()
+    .maybeSingle()
 
   if (!contract) notFound()
 

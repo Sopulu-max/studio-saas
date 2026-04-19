@@ -203,10 +203,11 @@ export async function submitSelections(galleryId: string, phone: string, count: 
 
   if (bookingError) return { error: bookingError.message }
 
-  await admin
+  const { error: galleryError } = await admin
     .from('galleries')
     .update({ status: 'delivered' })
     .eq('gallery_id', galleryId)
 
+  if (galleryError) return { error: galleryError.message }
   return { error: null }
 }

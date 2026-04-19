@@ -13,7 +13,7 @@ export async function generateMetadata(
     .from('studios')
     .select('name')
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
   return { title: studio ? `Book a session — ${studio.name}` : 'Book a session' }
 }
 
@@ -29,7 +29,7 @@ export default async function PublicBookingPage({
     .from('studios')
     .select('studio_id, name, email, slug, session_types, service_types, logo_url')
     .eq('slug', slug)
-    .single()
+    .maybeSingle()
 
   if (!studio) notFound()
 
