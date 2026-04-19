@@ -11,7 +11,7 @@ export default async function OnboardingPage() {
   const admin = createAdminClient()
   const { data: studio } = await admin
     .from('studios')
-    .select('name, slug, timezone, phone, session_types, onboarding_completed_at')
+    .select('*')
     .eq('studio_id', context.studioId)
     .single()
 
