@@ -2,8 +2,6 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import { createAdminClient } from '@/lib/supabase/admin'
 
 const ROLE_LABELS: Record<string, string> = {
   photographer:   'Photographer',
@@ -34,7 +32,6 @@ export default function AcceptInviteForm({
   const [confirming, setConfirming] = useState(false)
   const [loading, setLoading]       = useState(false)
   const [error, setError]           = useState('')
-  const router = useRouter()
   const supabase = createClient()
 
   async function handleAccept() {
@@ -57,7 +54,7 @@ export default function AcceptInviteForm({
     const json = await res.json()
     if (json.error) { setError(json.error); setLoading(false); return }
 
-    router.push('/dashboard')
+    window.location.href = '/dashboard'
   }
 
   async function handleExistingLogin() {
@@ -79,7 +76,7 @@ export default function AcceptInviteForm({
     const json = await res.json()
     if (json.error) { setError(json.error); setLoading(false); return }
 
-    router.push('/dashboard')
+    window.location.href = '/dashboard'
   }
 
   return (

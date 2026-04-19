@@ -21,7 +21,7 @@ export default async function PublicGalleryPage({
       )
     `)
     .eq('shared_link', slug)
-    .single()
+    .maybeSingle()
 
   if (!gallery || gallery.status === 'expired') notFound()
 

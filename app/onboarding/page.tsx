@@ -6,7 +6,10 @@ import OnboardingWizard from './wizard'
 
 export default async function OnboardingPage() {
   const context = await getStudioContext()
-  if ('error' in context) redirect('/login')
+  if ('error' in context) {
+    const reason = context.error === 'Not authenticated' ? 'not-authenticated' : 'studio-not-found'
+    redirect(`/login?reason=${reason}`)
+  }
 
   const admin = createAdminClient()
   const { data: studio } = await admin

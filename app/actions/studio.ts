@@ -35,7 +35,7 @@ export async function updateStudio(form: {
     .select('studio_id')
     .eq('slug', form.slug)
     .neq('owner_id', context.userId)
-    .single()
+    .maybeSingle()
 
   if (conflict) return { error: 'That slug is already taken - try another one' }
 
