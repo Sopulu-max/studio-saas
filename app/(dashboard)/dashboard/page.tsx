@@ -4,6 +4,18 @@ import { getStudioContext } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import TodayActions from './today-actions'
 
+const LATE_HOUR   = 8
+const LATE_MINUTE = 30
+function isLate(iso: string) {
+  const d = new Date(iso)
+  return d.getHours() > LATE_HOUR || (d.getHours() === LATE_HOUR && d.getMinutes() > LATE_MINUTE)
+}
+function fmtTime(iso: string) {
+  return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
+}
+
+const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+
 type DashboardInvoiceRow = { invoice_id: string; total?: number | string | null }
 type DashboardPaymentRow = { amount?: number | string | null }
 type DashboardStat = { label: string; value: string | number; href: string; sub: string | null; money?: boolean }
@@ -50,6 +62,26 @@ export default async function DashboardPage() {
   todayDate.setHours(0, 0, 0, 0)
   const todayStr = todayDate.toISOString().split('T')[0]
   const in7Days  = new Date(todayDate.getTime() + 7 * 864e5).toISOString().split('T')[0]
+
+  // Today's staff attendance
+  const todayDay = DAY_NAMES[new Date().getDay()]
+  const { data: allStaff } = await context.admin
+    .from('staff')
+    .select('staff_id, full_name, role, roles, working_days')
+    .eq('studio_id', studioId)
+    .order('full_name')
+  const { data: todayCheckins } = await context.admin
+    .from('staff_checkins')
+    .select('staff_id, checked_in_at, checked_out_at')
+    .eq('studio_id', studioId)
+    .eq('date', todayStr)
+  const checkinByStaff: Record<string, { checked_in_at: string; checked_out_at: string | null }> = {}
+  for (const c of todayCheckins ?? []) {
+    checkinByStaff[c.staff_id] = { checked_in_at: c.checked_in_at, checked_out_at: c.checked_out_at }
+  }
+  const staffToday = (allStaff ?? [])
+    .filter(m => !m.working_days?.length || m.working_days.includes(todayDay))
+    .map(m => ({ ...m, checkin: checkinByStaff[m.staff_id] ?? null }))
 
   // Booking IDs for this studio (needed to scope invoice queries)
   const { data: allBookings } = await context.admin
@@ -225,6 +257,65 @@ export default async function DashboardPage() {
                       {statusCfg.label}
                     </span>
                     <TodayActions sessionId={s.booking_id} status={s.status} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Today's staff */}
+      {staffToday.length > 0 && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>TODAY'S STAFF</p>
+            <Link href="/dashboard/attendance" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>Attendance →</Link>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+            {staffToday.map((m, i) => {
+              const checkedIn  = !!m.checkin
+              const checkedOut = !!m.checkin?.checked_out_at
+              const late       = checkedIn && isLate(m.checkin!.checked_in_at)
+              const effectiveRoles: string[] =
+                m.roles && m.roles.length > 0 ? m.roles : m.role ? [m.role] : []
+
+              let dotColor = '#d4d4cc'   // not in
+              if (checkedOut)       dotColor = '#6abf69'
+              else if (checkedIn)   dotColor = '#4a90d9'
+
+              return (
+                <div key={m.staff_id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '9px 0',
+                  borderBottom: i < staffToday.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  gap: '8px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                    {/* Presence dot */}
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 1px' }}>{m.full_name}</p>
+                      {effectiveRoles.length > 0 && (
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
+                          {effectiveRoles.map(r => r.replace(/_/g, ' ')).join(', ')}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                    {checkedIn && (
+                      <span style={{ fontSize: '12px', color: late ? '#a32d2d' : 'var(--text-3)', fontWeight: late ? '600' : '400' }}>
+                        {fmtTime(m.checkin!.checked_in_at)}
+                        {late && ' · LATE'}
+                      </span>
+                    )}
+                    {!checkedIn && (
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#faeeda', color: '#854f0b' }}>Not in</span>
+                    )}
+                    {checkedOut && (
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#eaf3de', color: '#3b6d11' }}>Out {fmtTime(m.checkin!.checked_out_at!)}</span>
+                    )}
                   </div>
                 </div>
               )

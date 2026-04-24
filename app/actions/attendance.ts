@@ -8,7 +8,12 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
-export async function checkIn(staffId: string) {
+/**
+ * checkedInAt — optional ISO timestamp supplied by the client.
+ * If omitted the server falls back to now().
+ * Passing it lets the admin record the real arrival time (e.g. "08:45").
+ */
+export async function checkIn(staffId: string, checkedInAt?: string) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
@@ -18,7 +23,6 @@ export async function checkIn(staffId: string) {
 
   const today = todayISO()
 
-  // Check if already checked in today
   const { data: existing } = await context.admin
     .from('staff_checkins')
     .select('checkin_id, checked_out_at')
@@ -27,24 +31,27 @@ export async function checkIn(staffId: string) {
     .eq('date', today)
     .maybeSingle()
 
-  if (existing) {
-    return { error: 'Already checked in today' }
-  }
+  if (existing) return { error: 'Already checked in today' }
+
+  const ts = checkedInAt ?? new Date().toISOString()
 
   const { error } = await context.admin
     .from('staff_checkins')
     .insert({
-      staff_id:       staffId,
-      studio_id:      context.studioId,
-      date:           today,
-      checked_in_at:  new Date().toISOString(),
+      staff_id:      staffId,
+      studio_id:     context.studioId,
+      date:          today,
+      checked_in_at: ts,
     })
 
-  if (!error) revalidatePath('/dashboard/attendance')
+  if (!error) {
+    revalidatePath('/dashboard/attendance')
+    revalidatePath('/dashboard')
+  }
   return { error: error?.message ?? null }
 }
 
-export async function checkOut(staffId: string) {
+export async function checkOut(staffId: string, checkedOutAt?: string) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
@@ -65,12 +72,17 @@ export async function checkOut(staffId: string) {
   if (!existing) return { error: 'Not checked in today' }
   if (existing.checked_out_at) return { error: 'Already checked out today' }
 
+  const ts = checkedOutAt ?? new Date().toISOString()
+
   const { error } = await context.admin
     .from('staff_checkins')
-    .update({ checked_out_at: new Date().toISOString() })
+    .update({ checked_out_at: ts })
     .eq('checkin_id', existing.checkin_id)
 
-  if (!error) revalidatePath('/dashboard/attendance')
+  if (!error) {
+    revalidatePath('/dashboard/attendance')
+    revalidatePath('/dashboard')
+  }
   return { error: error?.message ?? null }
 }
 
