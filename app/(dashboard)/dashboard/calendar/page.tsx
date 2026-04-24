@@ -10,7 +10,7 @@ type CalendarSessionRow = {
   booking_id: string
   session_date?: string | null
   status: string
-  clients?: { full_name?: string | null } | null
+  clients?: { full_name?: string | null }[] | { full_name?: string | null } | null
 }
 
 function calUrl(year: number, month: number) {
@@ -174,7 +174,7 @@ export default async function CalendarPage({
                             <Link
                               key={s.booking_id}
                               href={`/dashboard/sessions/${s.booking_id}`}
-                              title={`${s.clients?.full_name ?? 'Unknown'} — ${sc.label}`}
+                              title={`${(Array.isArray(s.clients) ? s.clients[0]?.full_name : s.clients?.full_name) ?? 'Unknown'} — ${sc.label}`}
                               style={{
                                 display: 'flex', alignItems: 'center', gap: '5px',
                                 padding: '3px 6px', borderRadius: '5px',
@@ -184,7 +184,7 @@ export default async function CalendarPage({
                             >
                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.color_fg, flexShrink: 0, opacity: 0.75 }} />
                               <span style={{ fontSize: '11px', color: sc.color_fg, fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {s.clients?.full_name ?? '—'}
+                                {(Array.isArray(s.clients) ? s.clients[0]?.full_name : s.clients?.full_name) ?? '—'}
                               </span>
                             </Link>
                           )
