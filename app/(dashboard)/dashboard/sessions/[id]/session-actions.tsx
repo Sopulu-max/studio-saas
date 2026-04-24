@@ -125,35 +125,52 @@ function StaffRoleRow({ roleValue, roleLabel, assigned, availableStaff, onAssign
   )
 }
 
-function StaffPanel({ assigned, availableStaff, onAssign, onRemove, loading, isVideoSession }: {
+function StaffPanel({ assigned, availableStaff, onAssign, onRemove, loading, serviceType }: {
   assigned:       AssignedStaff[]
   availableStaff: StaffMember[]
   onAssign:       (staffId: string, role: string) => Promise<void>
   onRemove:       (staffId: string) => Promise<void>
   loading:        boolean
-  isVideoSession: boolean
+  serviceType:    string
 }) {
-  const shooterLabel = isVideoSession ? 'Videographer' : 'Photographer'
-  const editorLabel  = isVideoSession ? 'Video editor' : 'Editor / retoucher'
+  // Build role rows based on service type
+  type RoleRow = { roleValue: string; roleLabel: string }
+  let rows: RoleRow[]
+
+  if (serviceType === 'photo_video') {
+    rows = [
+      { roleValue: 'photographer', roleLabel: 'Photographer' },
+      { roleValue: 'videographer', roleLabel: 'Videographer' },
+      { roleValue: 'colour_grader', roleLabel: 'Colour grader' },
+      { roleValue: 'editor',       roleLabel: 'Photo editor' },
+      { roleValue: 'video_editor', roleLabel: 'Video editor' },
+    ]
+  } else if (serviceType === 'video') {
+    // Use photographer/editor slots for backward compat with existing assignments
+    rows = [
+      { roleValue: 'photographer', roleLabel: 'Videographer' },
+      { roleValue: 'colour_grader', roleLabel: 'Colour grader' },
+      { roleValue: 'editor',       roleLabel: 'Video editor' },
+    ]
+  } else {
+    rows = [
+      { roleValue: 'photographer', roleLabel: 'Photographer' },
+      { roleValue: 'colour_grader', roleLabel: 'Colour grader' },
+      { roleValue: 'editor',       roleLabel: 'Editor / retoucher' },
+    ]
+  }
 
   return (
     <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px', marginTop: '16px' }}>
       <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', margin: '0 0 12px' }}>Staff</p>
-      <StaffRoleRow
-        roleValue="photographer" roleLabel={shooterLabel}
-        assigned={assigned} availableStaff={availableStaff}
-        onAssign={onAssign} onRemove={onRemove} loading={loading}
-      />
-      <StaffRoleRow
-        roleValue="colour_grader" roleLabel="Colour grader"
-        assigned={assigned} availableStaff={availableStaff}
-        onAssign={onAssign} onRemove={onRemove} loading={loading}
-      />
-      <StaffRoleRow
-        roleValue="editor" roleLabel={editorLabel}
-        assigned={assigned} availableStaff={availableStaff}
-        onAssign={onAssign} onRemove={onRemove} loading={loading}
-      />
+      {rows.map(row => (
+        <StaffRoleRow
+          key={row.roleValue}
+          roleValue={row.roleValue} roleLabel={row.roleLabel}
+          assigned={assigned} availableStaff={availableStaff}
+          onAssign={onAssign} onRemove={onRemove} loading={loading}
+        />
+      ))}
     </div>
   )
 }
@@ -245,7 +262,7 @@ export default function SessionActions({
     onAssign: handleAssignStaff,
     onRemove: handleRemoveStaff,
     loading,
-    isVideoSession,
+    serviceType,
   }
 
   // ── Cancelled ─────────────────────────────────────────────────────────────
