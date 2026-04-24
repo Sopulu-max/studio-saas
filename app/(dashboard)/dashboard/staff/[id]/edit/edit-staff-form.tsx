@@ -5,7 +5,14 @@ import { useRouter } from 'next/navigation'
 import { updateStaff } from '@/app/actions/staff'
 
 const ROLES = [
-  'photographer', 'editor', 'colour_grader', 'second_shooter', 'assistant', 'manager', 'other',
+  { value: 'photographer',   label: 'Photographer' },
+  { value: 'second_shooter', label: 'Second shooter' },
+  { value: 'videographer',   label: 'Videographer' },
+  { value: 'editor',         label: 'Editor / retoucher' },
+  { value: 'colour_grader',  label: 'Colour grader' },
+  { value: 'assistant',      label: 'Assistant' },
+  { value: 'manager',        label: 'Studio manager' },
+  { value: 'other',          label: 'Other' },
 ]
 
 export default function EditStaffForm({
@@ -13,28 +20,51 @@ export default function EditStaffForm({
   member,
 }: {
   staffId: string
-  member: { full_name: string; email: string; role: string; phone: string | null; hire_date: string | null }
+  member: {
+    full_name: string
+    email:     string
+    roles:     string[] | null
+    role:      string | null       // legacy fallback
+    phone:     string | null
+    hire_date: string | null
+  }
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]     = useState('')
+
+  // Prefer `roles` array; fall back to single `role` value for old records
+  const initialRoles =
+    member.roles && member.roles.length > 0
+      ? member.roles
+      : member.role
+        ? [member.role]
+        : []
+
   const [form, setForm] = useState({
     full_name: member.full_name ?? '',
     email:     member.email     ?? '',
-    role:      member.role      ?? '',
     phone:     member.phone     ?? '',
     hire_date: member.hire_date ?? '',
+    roles:     initialRoles,
   })
 
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  function toggleRole(role: string) {
+    setForm(prev => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role],
+    }))
+  }
+
   async function handleSubmit() {
-    if (!form.full_name || !form.email || !form.role) {
-      setError('Name, email and role are required')
-      return
-    }
+    if (!form.full_name) { setError('Name is required'); return }
+    if (!form.roles.length) { setError('Select at least one role'); return }
     setLoading(true)
     setError('')
     const { error } = await updateStaff(staffId, form)
@@ -65,7 +95,7 @@ export default function EditStaffForm({
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Email address <span style={{ color: '#e24b4a' }}>*</span></label>
+          <label style={labelStyle}>Email address</label>
           <input type="email" value={form.email} onChange={e => update('email', e.target.value)}
             placeholder="chidi@example.com" style={inputStyle} />
         </div>
@@ -77,13 +107,30 @@ export default function EditStaffForm({
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Role <span style={{ color: '#e24b4a' }}>*</span></label>
-          <select value={form.role} onChange={e => update('role', e.target.value)} style={inputStyle}>
-            <option value="">Select role…</option>
-            {ROLES.map(r => (
-              <option key={r} value={r}>{r.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</option>
-            ))}
-          </select>
+          <label style={labelStyle}>Roles <span style={{ color: '#e24b4a' }}>*</span></label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {ROLES.map(r => {
+              const checked = form.roles.includes(r.value)
+              return (
+                <label key={r.value} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
+                  border: `1px solid ${checked ? 'var(--btn)' : 'var(--line)'}`,
+                  background: checked ? 'color-mix(in srgb, var(--btn) 10%, transparent)' : 'transparent',
+                  fontSize: '13px', color: checked ? 'var(--btn)' : 'var(--text-2)',
+                  userSelect: 'none' as const,
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleRole(r.value)}
+                    style={{ accentColor: 'var(--btn)', width: '14px', height: '14px', flexShrink: 0 }}
+                  />
+                  {r.label}
+                </label>
+              )
+            })}
+          </div>
         </div>
 
         <div style={{ marginBottom: '24px' }}>

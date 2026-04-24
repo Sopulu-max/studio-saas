@@ -83,7 +83,10 @@ export default async function StaffPage({
       ) : (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
           {staff.map((member, i) => {
-            const r = getRoleColor(member.role)
+            const effectiveRoles: string[] =
+              member.roles && member.roles.length > 0
+                ? member.roles
+                : member.role ? [member.role] : []
             return (
               <Link key={member.staff_id} href={`/dashboard/staff/${member.staff_id}`} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -104,15 +107,20 @@ export default async function StaffPage({
                     <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{member.email}</p>
                   </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' as const, justifyContent: 'flex-end', maxWidth: '55%' }}>
                   {member.hire_date && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
+                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, marginRight: '6px' }}>
                       Since {new Date(member.hire_date).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })}
                     </p>
                   )}
-                  <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: r.bg, color: r.color, fontWeight: '500' }}>
-                    {member.role}
-                  </span>
+                  {effectiveRoles.map(role => {
+                    const rc = getRoleColor(role)
+                    return (
+                      <span key={role} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: rc.bg, color: rc.color, fontWeight: '500', whiteSpace: 'nowrap' as const }}>
+                        {role.replace(/_/g, ' ')}
+                      </span>
+                    )
+                  })}
                 </div>
               </Link>
             )

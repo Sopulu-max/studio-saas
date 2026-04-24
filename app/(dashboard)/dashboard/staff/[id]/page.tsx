@@ -50,7 +50,10 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
     .eq('bookings.studio_id', context.studioId)
     .order('booking_id', { ascending: false })
 
-  const r = ROLE_COLORS[member.role] ?? ROLE_COLORS.other
+  const effectiveRoles: string[] =
+    member.roles && member.roles.length > 0
+      ? member.roles
+      : member.role ? [member.role] : []
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -68,10 +71,15 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
             <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{assignments?.length ?? 0} sessions assigned</p>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: r.bg, color: r.color, fontWeight: '500', width: 'fit-content' }}>
-            {member.role.replace(/_/g, ' ')}
-          </span>
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const, justifyContent: 'flex-end', maxWidth: '55%' }}>
+          {effectiveRoles.map(role => {
+            const rc = ROLE_COLORS[role] ?? ROLE_COLORS.other
+            return (
+              <span key={role} style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: rc.bg, color: rc.color, fontWeight: '500', whiteSpace: 'nowrap' as const }}>
+                {role.replace(/_/g, ' ')}
+              </span>
+            )
+          })}
           <Link
             href={`/dashboard/staff/${id}/edit`}
             style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}

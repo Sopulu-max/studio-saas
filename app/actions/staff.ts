@@ -4,22 +4,22 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext, ownsStaff } from '@/lib/studio'
 
-const addStaffSchema = z.object({
+const staffSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
   email:     z.string().email('Invalid email address'),
-  role:      z.string().min(1, 'Role is required'),
+  roles:     z.array(z.string()).min(1, 'At least one role is required'),
   phone:     z.string().optional().default(''),
   hire_date: z.string().optional().default(''),
 })
 
 export async function addStaff(form: {
   full_name: string
-  email: string
-  role: string
-  phone: string
+  email:     string
+  roles:     string[]
+  phone:     string
   hire_date: string
 }) {
-  const result = addStaffSchema.safeParse(form)
+  const result = staffSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
 
   const context = await getStudioContext()
@@ -28,7 +28,8 @@ export async function addStaff(form: {
   const { error } = await context.admin.from('staff').insert({
     full_name:  form.full_name,
     email:      form.email,
-    role:       form.role,
+    roles:      form.roles,
+    role:       form.roles[0] ?? null,   // keep primary role for backward compat
     phone:      form.phone || null,
     hire_date:  form.hire_date || null,
     studio_id:  context.studioId,
@@ -38,12 +39,12 @@ export async function addStaff(form: {
 
 export async function updateStaff(staffId: string, form: {
   full_name: string
-  email: string
-  role: string
-  phone: string
+  email:     string
+  roles:     string[]
+  phone:     string
   hire_date: string
 }) {
-  const result = addStaffSchema.safeParse(form)
+  const result = staffSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
 
   const context = await getStudioContext()
@@ -58,7 +59,8 @@ export async function updateStaff(staffId: string, form: {
     .update({
       full_name: form.full_name,
       email:     form.email,
-      role:      form.role,
+      roles:     form.roles,
+      role:      form.roles[0] ?? null,  // keep primary role for backward compat
       phone:     form.phone || null,
       hire_date: form.hire_date || null,
     })

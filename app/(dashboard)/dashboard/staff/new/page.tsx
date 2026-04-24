@@ -4,40 +4,41 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addStaff } from '@/app/actions/staff'
 
-const ROLE_SUGGESTIONS = [
-  'Lead photographer',
-  'Second shooter',
-  'Photo editor',
-  'Colour grader',
-  'Studio manager',
-  'Receptionist',
-  'Assistant',
-  'Videographer',
-  'Makeup artist',
-  'Lighting technician',
+const ROLES = [
+  { value: 'photographer',   label: 'Photographer' },
+  { value: 'second_shooter', label: 'Second shooter' },
+  { value: 'videographer',   label: 'Videographer' },
+  { value: 'editor',         label: 'Editor / retoucher' },
+  { value: 'colour_grader',  label: 'Colour grader' },
+  { value: 'assistant',      label: 'Assistant' },
+  { value: 'manager',        label: 'Studio manager' },
+  { value: 'other',          label: 'Other' },
 ]
 
 export default function NewStaffPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [form, setForm] = useState({
-    full_name: '', email: '', role: '', phone: '', hire_date: '',
+  const [error, setError]     = useState('')
+  const [form, setForm]       = useState({
+    full_name: '', email: '', phone: '', hire_date: '', roles: [] as string[],
   })
 
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  function toggleRole(role: string) {
+    setForm(prev => ({
+      ...prev,
+      roles: prev.roles.includes(role)
+        ? prev.roles.filter(r => r !== role)
+        : [...prev.roles, role],
+    }))
+  }
+
   async function handleSubmit() {
-    if (!form.full_name || !form.email) {
-      setError('Name and email are required')
-      return
-    }
-    if (!form.role) {
-      setError('Role is required')
-      return
-    }
+    if (!form.full_name) { setError('Name is required'); return }
+    if (!form.roles.length) { setError('Select at least one role'); return }
     setLoading(true)
     setError('')
     const { error } = await addStaff(form)
@@ -49,8 +50,8 @@ export default function NewStaffPage() {
     }
   }
 
-  const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
-  const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
+  const inputStyle  = { width: '100%', boxSizing: 'border-box' as const }
+  const labelStyle  = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
 
   return (
     <div style={{ maxWidth: '520px' }}>
@@ -67,7 +68,7 @@ export default function NewStaffPage() {
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Email <span style={{ color: '#e24b4a' }}>*</span></label>
+          <label style={labelStyle}>Email</label>
           <input type="email" value={form.email} onChange={e => update('email', e.target.value)}
             placeholder="chidi@glamourstudio.com" style={inputStyle} />
         </div>
@@ -79,21 +80,30 @@ export default function NewStaffPage() {
         </div>
 
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Role <span style={{ color: '#e24b4a' }}>*</span></label>
-          <input
-            type="text"
-            list="role-suggestions"
-            value={form.role}
-            onChange={e => update('role', e.target.value)}
-            placeholder="e.g. Lead photographer"
-            style={inputStyle}
-          />
-          <datalist id="role-suggestions">
-            {ROLE_SUGGESTIONS.map(r => <option key={r} value={r} />)}
-          </datalist>
-          <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '5px 0 0' }}>
-            Type your own or pick a suggestion
-          </p>
+          <label style={labelStyle}>Roles <span style={{ color: '#e24b4a' }}>*</span></label>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+            {ROLES.map(r => {
+              const checked = form.roles.includes(r.value)
+              return (
+                <label key={r.value} style={{
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '8px 12px', borderRadius: '8px', cursor: 'pointer',
+                  border: `1px solid ${checked ? 'var(--btn)' : 'var(--line)'}`,
+                  background: checked ? 'color-mix(in srgb, var(--btn) 10%, transparent)' : 'transparent',
+                  fontSize: '13px', color: checked ? 'var(--btn)' : 'var(--text-2)',
+                  userSelect: 'none' as const,
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleRole(r.value)}
+                    style={{ accentColor: 'var(--btn)', width: '14px', height: '14px', flexShrink: 0 }}
+                  />
+                  {r.label}
+                </label>
+              )
+            })}
+          </div>
         </div>
 
         <div style={{ marginBottom: '24px' }}>
