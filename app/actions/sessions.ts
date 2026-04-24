@@ -184,6 +184,23 @@ export async function removeSessionStaff(sessionId: string, staffId: string) {
   return { error: error?.message ?? null }
 }
 
+export async function deleteSession(sessionId: string) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  const { error } = await context.admin
+    .from('bookings')
+    .delete()
+    .eq('booking_id', sessionId)
+    .eq('studio_id', context.studioId)
+
+  if (!error) {
+    const { revalidatePath } = await import('next/cache')
+    revalidatePath('/dashboard/sessions')
+  }
+  return { error: error?.message ?? null }
+}
+
 export async function recordSelections(sessionId: string, count: number) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }

@@ -98,7 +98,10 @@ export default async function ClientsPage({
                 />
                 <div>
                   <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{client.full_name}</p>
-                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{client.email}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                    {client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${client.client_id.slice(0, 6).toUpperCase()}`}
+                    {client.email ? ` · ${client.email}` : ''}
+                  </p>
                 </div>
               </div>
               <div style={{ textAlign: 'right' as const }}>

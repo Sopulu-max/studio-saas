@@ -10,6 +10,7 @@ import { bulkUpdateSessionStatus } from '@/app/actions/sessions'
 
 type SessionRow = {
   booking_id:    string
+  booking_ref?:  number | null
   session_type?: string | null
   session_date?: string | null
   status:        string
@@ -79,7 +80,9 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
                 style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
               <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{s.clients?.full_name}</p>
-                <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{s.clients?.email}</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                  {s.booking_ref != null ? `#${String(s.booking_ref).padStart(4, '0')}` : `#${s.booking_id.slice(0, 6).toUpperCase()}`}
+                </p>
               </Link>
               <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500' }}>
                 {typeCfg.label}

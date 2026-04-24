@@ -48,6 +48,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             size={56}
           />
           <div>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px', fontFamily: 'monospace', letterSpacing: '0.05em' }}>
+              {client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${id.slice(0, 6).toUpperCase()}`}
+            </p>
             <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{client.full_name}</h1>
             <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{bookings?.length ?? 0} sessions</p>
           </div>
