@@ -3,16 +3,7 @@
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingConfirmationEmail, sendStudioBookingNotification } from '@/lib/email'
-
-type BookingClientRelation =
-  | { phone?: string | null }
-  | Array<{ phone?: string | null }>
-  | null
-
-function getClientPhone(clients: BookingClientRelation) {
-  if (Array.isArray(clients)) return clients[0]?.phone ?? ''
-  return clients?.phone ?? ''
-}
+import { isGallerySelectionOpen, isMatchingGalleryPhone } from '@/lib/gallery-public'
 
 const bookingRequestSchema = z.object({
   studio_id:        z.string().min(1),
@@ -150,16 +141,16 @@ export async function verifyGalleryPhone(galleryId: string, phone: string) {
     .eq('booking_id', gallery.booking_id)
     .single()
 
-  if (!booking || booking.status !== 'selecting' || Number(booking.selections_count ?? 0) > 0) {
+  if (!booking || !isGallerySelectionOpen({
+    galleryStatus: gallery.status,
+    bookingStatus: booking.status,
+    selectionsCount: booking.selections_count,
+  })) {
     return { verified: false }
   }
 
-  const clientPhone = getClientPhone(booking.clients as BookingClientRelation).replace(/[\s\-().+]/g, '')
-  const inputPhone = phone.replace(/[\s\-().+]/g, '')
-  const tail = (value: string) => value.slice(-10)
-
   return {
-    verified: tail(clientPhone) === tail(inputPhone) && inputPhone.length >= 7,
+    verified: isMatchingGalleryPhone(booking.clients, phone),
   }
 }
 
@@ -185,12 +176,12 @@ export async function submitSelections(galleryId: string, phone: string, count: 
     .eq('booking_id', gallery.booking_id)
     .single()
 
-  if (!booking || booking.status !== 'selecting') {
+  if (!booking || !isGallerySelectionOpen({
+    galleryStatus: gallery.status,
+    bookingStatus: booking.status,
+    selectionsCount: booking.selections_count,
+  })) {
     return { error: 'Selections are closed for this gallery' }
-  }
-
-  if (Number(booking.selections_count ?? 0) > 0) {
-    return { error: 'Selections have already been submitted' }
   }
 
   const { error: bookingError } = await admin

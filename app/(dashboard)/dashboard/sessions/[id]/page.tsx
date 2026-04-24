@@ -357,7 +357,6 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       <SessionActions
         sessionId={id}
         currentStatus={session.status}
-        sessionType={session.session_type ?? 'studio'}
         serviceType={session.service_type ?? 'photo'}
         outfitsCount={session.outfits_count ?? null}
         invoiceId={invoice?.invoice_id ?? null}

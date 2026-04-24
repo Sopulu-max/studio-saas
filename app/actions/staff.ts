@@ -8,6 +8,7 @@ const addStaffSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
   email:     z.string().email('Invalid email address'),
   role:      z.string().min(1, 'Role is required'),
+  phone:     z.string().optional().default(''),
   hire_date: z.string().optional().default(''),
 })
 
@@ -15,6 +16,7 @@ export async function addStaff(form: {
   full_name: string
   email: string
   role: string
+  phone: string
   hire_date: string
 }) {
   const result = addStaffSchema.safeParse(form)
@@ -24,9 +26,12 @@ export async function addStaff(form: {
   if ('error' in context) return { error: context.error }
 
   const { error } = await context.admin.from('staff').insert({
-    ...form,
-    studio_id: context.studioId,
-    hire_date: form.hire_date || null,
+    full_name:  form.full_name,
+    email:      form.email,
+    role:       form.role,
+    phone:      form.phone || null,
+    hire_date:  form.hire_date || null,
+    studio_id:  context.studioId,
   })
   return { error: error?.message ?? null }
 }
@@ -35,6 +40,7 @@ export async function updateStaff(staffId: string, form: {
   full_name: string
   email: string
   role: string
+  phone: string
   hire_date: string
 }) {
   const result = addStaffSchema.safeParse(form)
@@ -49,7 +55,13 @@ export async function updateStaff(staffId: string, form: {
 
   const { error } = await context.admin
     .from('staff')
-    .update({ full_name: form.full_name, email: form.email, role: form.role, hire_date: form.hire_date || null })
+    .update({
+      full_name: form.full_name,
+      email:     form.email,
+      role:      form.role,
+      phone:     form.phone || null,
+      hire_date: form.hire_date || null,
+    })
     .eq('staff_id', staffId)
 
   if (!error) {

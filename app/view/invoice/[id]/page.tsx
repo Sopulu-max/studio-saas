@@ -1,5 +1,7 @@
+import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
+import { verifySignedPublicLink } from '@/lib/public-links'
 import PublicInvoicePrintButton from './print-button'
 
 type AddonRow = {
@@ -7,8 +9,26 @@ type AddonRow = {
   package_addons?: { name?: string | null; price?: number | string | null } | null
 }
 
-export default async function PublicInvoiceViewPage({ params }: { params: Promise<{ id: string }> }) {
+type InvoiceBooking = {
+  booking_id: string
+  session_date?: string | null
+  location?: string | null
+  clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
+  packages?: { name?: string | null; base_price?: number | string | null } | null
+  studios?: { name?: string | null; email?: string | null; phone?: string | null; address?: string | null; logo_url?: string | null } | null
+}
+
+export default async function PublicInvoiceViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ sig?: string; exp?: string }>
+}) {
   const { id } = await params
+  const { sig, exp } = await searchParams
+  if (!verifySignedPublicLink('invoice', id, sig, exp)) notFound()
+
   const admin = createAdminClient()
 
   const { data: invoice } = await admin
@@ -33,23 +53,24 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
     .eq('invoice_id', id)
     .order('paid_at', { ascending: true })
 
+  const booking = invoice.bookings as InvoiceBooking | null
+
   const { data: addons } = await admin
     .from('booking_addons')
     .select('quantity, package_addons(name, price)')
-    .eq('booking_id', (invoice.bookings as any)?.booking_id ?? '')
+    .eq('booking_id', booking?.booking_id ?? '')
 
-  const studio      = (invoice.bookings as any)?.studios
-  const client      = (invoice.bookings as any)?.clients
-  const pkg         = (invoice.bookings as any)?.packages
-  const booking     = invoice.bookings as any
-  const amountPaid  = payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0
-  const balanceDue  = Math.max(0, Number(invoice.total) - amountPaid)
-  const shortId     = id.slice(-8).toUpperCase()
-  const fmt         = (n: number) => '₦' + Number(n).toLocaleString('en-NG')
+  const studio = booking?.studios ?? null
+  const client = booking?.clients ?? null
+  const pkg = booking?.packages ?? null
+  const amountPaid = payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0
+  const balanceDue = Math.max(0, Number(invoice.total) - amountPaid)
+  const shortId = id.slice(-8).toUpperCase()
+  const fmt = (n: number) => 'NGN ' + Number(n).toLocaleString('en-NG')
 
   const addonsList = (addons ?? []) as AddonRow[]
-  const addonsTotal = addonsList.reduce((s, a) => s + Number(a.package_addons?.price ?? 0) * a.quantity, 0)
-  const baseAmount  = Number(invoice.subtotal) - addonsTotal
+  const addonsTotal = addonsList.reduce((sum, addon) => sum + Number(addon.package_addons?.price ?? 0) * addon.quantity, 0)
+  const baseAmount = Number(invoice.subtotal) - addonsTotal
 
   return (
     <>
@@ -78,7 +99,6 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
       `}</style>
 
       <div className="page">
-        {/* Top bar — hidden on print */}
         <div className="no-print">
           <PublicInvoicePrintButton />
           <span style={{ fontSize: '13px', color: '#666' }}>
@@ -86,16 +106,22 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
           </span>
         </div>
 
-        {/* Invoice header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
           <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
             {studio?.logo_url && (
-              <img src={studio.logo_url} alt={studio.name} style={{ width: '52px', height: '52px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }} />
+              <Image
+                src={studio.logo_url}
+                alt={studio.name ?? 'Studio logo'}
+                width={52}
+                height={52}
+                unoptimized
+                style={{ width: '52px', height: '52px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
+              />
             )}
             <div>
               <p style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>{studio?.name}</p>
-              {studio?.email   && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.email}</p>}
-              {studio?.phone   && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.phone}</p>}
+              {studio?.email && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.email}</p>}
+              {studio?.phone && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.phone}</p>}
               {studio?.address && <p style={{ fontSize: '13px', color: '#666', whiteSpace: 'pre-line' }}>{studio.address}</p>}
             </div>
           </div>
@@ -115,7 +141,6 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
           </div>
         </div>
 
-        {/* Bill To + Session */}
         <div className="bill-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '36px' }}>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Bill To</p>
@@ -130,12 +155,11 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
                 {new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
-            {pkg?.name      && <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>{pkg.name}</p>}
+            {pkg?.name && <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>{pkg.name}</p>}
             {booking?.location && <p style={{ fontSize: '13px', color: '#666' }}>{booking.location}</p>}
           </div>
         </div>
 
-        {/* Line items */}
         <table style={{ marginBottom: '20px' }}>
           <thead>
             <tr>
@@ -150,19 +174,18 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
               <td style={{ textAlign: 'right' }}>1</td>
               <td style={{ textAlign: 'right' }}>{fmt(baseAmount)}</td>
             </tr>
-            {addonsList.map((a, i) => (
-              <tr key={i}>
-                <td style={{ color: '#555' }}>{a.package_addons?.name}</td>
-                <td style={{ textAlign: 'right', color: '#555' }}>{a.quantity}</td>
+            {addonsList.map((addon, index) => (
+              <tr key={index}>
+                <td style={{ color: '#555' }}>{addon.package_addons?.name}</td>
+                <td style={{ textAlign: 'right', color: '#555' }}>{addon.quantity}</td>
                 <td style={{ textAlign: 'right', color: '#555' }}>
-                  {fmt(Number(a.package_addons?.price ?? 0) * a.quantity)}
+                  {fmt(Number(addon.package_addons?.price ?? 0) * addon.quantity)}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
 
-        {/* Totals */}
         <div style={{ maxWidth: '280px', marginLeft: 'auto', marginBottom: '36px' }}>
           <div className="row"><span style={{ color: '#666' }}>Subtotal</span><span>{fmt(Number(invoice.subtotal))}</span></div>
           {Number(invoice.discount) > 0 && (
@@ -174,19 +197,18 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
           <div className="row total"><span>Total</span><span>{fmt(Number(invoice.total))}</span></div>
         </div>
 
-        {/* Payment history */}
         {payments && payments.length > 0 && (
           <>
             <hr className="divider" />
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '12px', fontWeight: '500' }}>Payment History</p>
-            {payments.map(p => (
-              <div key={p.payment_id} className="row" style={{ marginBottom: '8px' }}>
+            {payments.map((payment) => (
+              <div key={payment.payment_id} className="row" style={{ marginBottom: '8px' }}>
                 <span style={{ color: '#555' }}>
-                  {new Date(p.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  {' · '}{p.method.replace('_', ' ')}
-                  {p.reference ? ` · Ref: ${p.reference}` : ''}
+                  {new Date(payment.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {' | '}{payment.method.replace('_', ' ')}
+                  {payment.reference ? ` | Ref: ${payment.reference}` : ''}
                 </span>
-                <span>{fmt(Number(p.amount))}</span>
+                <span>{fmt(Number(payment.amount))}</span>
               </div>
             ))}
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '600', color: balanceDue > 0 ? '#a32d2d' : '#3b6d11', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e5e5e5' }}>
@@ -196,10 +218,9 @@ export default async function PublicInvoiceViewPage({ params }: { params: Promis
           </>
         )}
 
-        {/* Footer */}
         <hr className="divider" style={{ marginTop: '48px' }} />
         <p style={{ fontSize: '12px', color: '#aaa', textAlign: 'center', marginTop: '16px' }}>
-          Thank you for your business · {studio?.name}
+          Thank you for your business | {studio?.name}
         </p>
       </div>
     </>

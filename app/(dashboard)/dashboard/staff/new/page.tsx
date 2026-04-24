@@ -22,7 +22,7 @@ export default function NewStaffPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [form, setForm] = useState({
-    full_name: '', email: '', role: '', hire_date: '',
+    full_name: '', email: '', role: '', phone: '', hire_date: '',
   })
 
   function update(field: string, value: string) {
@@ -70,6 +70,12 @@ export default function NewStaffPage() {
           <label style={labelStyle}>Email <span style={{ color: '#e24b4a' }}>*</span></label>
           <input type="email" value={form.email} onChange={e => update('email', e.target.value)}
             placeholder="chidi@glamourstudio.com" style={inputStyle} />
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>Phone</label>
+          <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)}
+            placeholder="08012345678" style={inputStyle} />
         </div>
 
         <div style={{ marginBottom: '16px' }}>

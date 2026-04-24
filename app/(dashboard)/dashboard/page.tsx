@@ -6,6 +6,7 @@ import TodayActions from './today-actions'
 
 type DashboardInvoiceRow = { invoice_id: string; total?: number | string | null }
 type DashboardPaymentRow = { amount?: number | string | null }
+type DashboardStat = { label: string; value: string | number; href: string; sub: string | null; money?: boolean }
 type DashboardSessionRow = {
   booking_id: string
   session_date?: string | null
@@ -234,16 +235,16 @@ export default async function DashboardPage() {
 
       {/* Stat cards */}
       <div className="dash-stats-grid">
-        {[
+        {([
           { label: 'Total sessions',     value: totalSessions ?? 0,  href: '/dashboard/sessions', sub: null },
           { label: 'Total clients',      value: totalClients  ?? 0,  href: '/dashboard/clients',  sub: null },
           { label: 'Active in pipeline', value: activeSessions?.length ?? 0, href: '/dashboard/sessions', sub: activeSessions?.length ? 'in progress / editing' : 'none right now' },
           { label: 'Outstanding balance', value: fmt(outstanding), href: '/dashboard/invoices', sub: outstanding === 0 ? 'all clear' : `${unpaidInvoices?.length ?? 0} unpaid invoice${(unpaidInvoices?.length ?? 0) !== 1 ? 's' : ''}`, money: true },
-        ].map(stat => (
+        ] satisfies DashboardStat[]).map(stat => (
           <Link key={stat.label} href={stat.href} style={{ textDecoration: 'none' }}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', transition: 'border-color .15s' }}>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 8px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '.04em' }}>{stat.label}</p>
-              <p style={{ fontSize: (stat as any).money ? '22px' : '30px', fontWeight: '600', margin: '0 0 4px', color: 'var(--text)', letterSpacing: (stat as any).money ? '-.02em' : '-.01em' }}>
+              <p style={{ fontSize: stat.money ? '22px' : '30px', fontWeight: '600', margin: '0 0 4px', color: 'var(--text)', letterSpacing: stat.money ? '-.02em' : '-.01em' }}>
                 {stat.value}
               </p>
               {stat.sub && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{stat.sub}</p>}

@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { buildSignedPublicLink } from '@/lib/public-links'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 const FROM = process.env.RESEND_FROM_EMAIL ?? 'Studio <onboarding@resend.dev>'
@@ -25,8 +26,7 @@ export async function sendInvoiceEmail({
   const formatted = (n: number) =>
     '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 0 })
 
-  const base    = (siteUrl ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
-  const viewUrl = `${base}/view/invoice/${invoiceId}`
+  const viewUrl = buildSignedPublicLink('invoice', invoiceId, siteUrl)
 
   const dueLine = dueDate
     ? `<p style="margin:0 0 6px;color:#555;font-size:14px;">Due by: <strong>${new Date(dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>`
@@ -99,8 +99,7 @@ export async function sendContractEmail({
   sessionDate?: string
   siteUrl?: string
 }) {
-  const base = (siteUrl ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
-  const viewUrl = `${base}/view/contract/${contractId}`
+  const viewUrl = buildSignedPublicLink('contract', contractId, siteUrl)
 
   const sessionLine = sessionDate
     ? `<p style="margin:0 0 6px;font-size:14px;color:#555;">Session date: <strong>${new Date(sessionDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>`

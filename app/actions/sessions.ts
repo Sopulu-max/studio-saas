@@ -105,14 +105,12 @@ export async function updateSessionStatus(sessionId: string, status: string) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  if (!(await ownsBooking(context.admin, context.studioId, sessionId))) {
-    return { error: 'Session not found' }
-  }
-
+  // Ownership check folded into the update — one fewer round trip
   const { error } = await context.admin
     .from('bookings')
     .update({ status })
     .eq('booking_id', sessionId)
+    .eq('studio_id', context.studioId)
   return { error: error?.message ?? null }
 }
 
@@ -148,14 +146,11 @@ export async function updateSessionDriveLink(sessionId: string, driveLink: strin
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  if (!(await ownsBooking(context.admin, context.studioId, sessionId))) {
-    return { error: 'Session not found' }
-  }
-
   const { error } = await context.admin
     .from('bookings')
     .update({ drive_link: driveLink || null })
     .eq('booking_id', sessionId)
+    .eq('studio_id', context.studioId)
   return { error: error?.message ?? null }
 }
 
@@ -163,13 +158,13 @@ export async function assignSessionStaff(sessionId: string, staffId: string, rol
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  if (!(await ownsBooking(context.admin, context.studioId, sessionId))) {
-    return { error: 'Session not found' }
-  }
-
-  if (!(await ownsStaff(context.admin, context.studioId, staffId))) {
-    return { error: 'Staff member not found' }
-  }
+  // Run both ownership checks in parallel instead of sequentially
+  const [bookingOk, staffOk] = await Promise.all([
+    ownsBooking(context.admin, context.studioId, sessionId),
+    ownsStaff(context.admin, context.studioId, staffId),
+  ])
+  if (!bookingOk) return { error: 'Session not found' }
+  if (!staffOk)   return { error: 'Staff member not found' }
 
   const { error } = await context.admin
     .from('booking_staff')
@@ -177,18 +172,27 @@ export async function assignSessionStaff(sessionId: string, staffId: string, rol
   return { error: error?.message ?? null }
 }
 
-export async function recordSelections(sessionId: string, count: number) {
+export async function removeSessionStaff(sessionId: string, staffId: string) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  if (!(await ownsBooking(context.admin, context.studioId, sessionId))) {
-    return { error: 'Session not found' }
-  }
+  const { error } = await context.admin
+    .from('booking_staff')
+    .delete()
+    .eq('booking_id', sessionId)
+    .eq('staff_id', staffId)
+  return { error: error?.message ?? null }
+}
+
+export async function recordSelections(sessionId: string, count: number) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
 
   const { error } = await context.admin
     .from('bookings')
     .update({ selections_count: count, status: 'editing' })
     .eq('booking_id', sessionId)
+    .eq('studio_id', context.studioId)
   return { error: error?.message ?? null }
 }
 

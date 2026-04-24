@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStudioConfig } from '@/components/studio-config-provider'
@@ -9,6 +10,7 @@ import {
   updateSessionStatus,
   updateSessionDriveLink,
   assignSessionStaff,
+  removeSessionStaff,
   recordSelections,
 } from '@/app/actions/sessions'
 import { addExtraCharge } from '@/app/actions/invoices'
@@ -21,7 +23,6 @@ type AssignedStaff = { staff_id: string; full_name: string; role: string }
 interface SessionActionsProps {
   sessionId:      string
   currentStatus:  string
-  sessionType:    string
   serviceType:    string
   outfitsCount:   number | null
   invoiceId:      string | null
@@ -61,31 +62,98 @@ function DriveLinkForm({ value, onChange, onSave, loading }: {
   )
 }
 
-function StaffAssignForm({ availableStaff, onAssign, roleLabel, roleValue, loading }: {
+function StaffRoleRow({ roleValue, roleLabel, assigned, availableStaff, onAssign, onRemove, loading }: {
+  roleValue:      string
+  roleLabel:      string
+  assigned:       AssignedStaff[]
   availableStaff: StaffMember[]
-  onAssign: (staffId: string, role: string) => Promise<void>
-  roleLabel: string
-  roleValue: string
-  loading: boolean
+  onAssign:       (staffId: string, role: string) => Promise<void>
+  onRemove:       (staffId: string) => Promise<void>
+  loading:        boolean
 }) {
   const [selected, setSelected] = useState('')
-  if (!availableStaff.length) return (
-    <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '8px 0 0' }}>
-      No staff yet — <a href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add staff first</a>
-    </p>
-  )
+  const assignedForRole = assigned.filter(s => s.role === roleValue)
+
   return (
-    <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
-      <select value={selected} onChange={e => setSelected(e.target.value)}
-        style={{ flex: 1, boxSizing: 'border-box' as const }}>
-        <option value="">Select {roleLabel}…</option>
-        {availableStaff.map(s => <option key={s.staff_id} value={s.staff_id}>{s.full_name}</option>)}
-      </select>
-      <button onClick={() => { if (selected) onAssign(selected, roleValue) }}
-        disabled={!selected || loading}
-        style={{ padding: '8px 14px', fontSize: '13px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-        {loading ? '...' : 'Assign'}
-      </button>
+    <div style={{ marginBottom: '14px' }}>
+      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '600', textTransform: 'uppercase' as const, letterSpacing: '0.05em' }}>
+        {roleLabel}
+      </p>
+
+      {assignedForRole.length > 0 ? (
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '4px', marginBottom: '6px' }}>
+          {assignedForRole.map(s => (
+            <div key={s.staff_id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>✓ {s.full_name}</span>
+              <button
+                onClick={() => onRemove(s.staff_id)}
+                disabled={loading}
+                style={{ fontSize: '11px', color: '#e24b4a', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0', textDecoration: 'underline' }}
+              >
+                remove
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 6px', fontStyle: 'italic' }}>Not assigned</p>
+      )}
+
+      {availableStaff.length === 0 ? (
+        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
+          <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>Add staff first</Link>
+        </p>
+      ) : (
+        <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <select value={selected} onChange={e => setSelected(e.target.value)}
+            style={{ flex: 1, fontSize: '13px', boxSizing: 'border-box' as const }}>
+            <option value="">Assign {roleLabel}…</option>
+            {availableStaff.map(s => (
+              <option key={s.staff_id} value={s.staff_id}>{s.full_name}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => { if (selected) { onAssign(selected, roleValue); setSelected('') } }}
+            disabled={!selected || loading}
+            style={{ padding: '7px 12px', fontSize: '12px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '7px', cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+          >
+            {loading ? '…' : 'Assign'}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function StaffPanel({ assigned, availableStaff, onAssign, onRemove, loading, isVideoSession }: {
+  assigned:       AssignedStaff[]
+  availableStaff: StaffMember[]
+  onAssign:       (staffId: string, role: string) => Promise<void>
+  onRemove:       (staffId: string) => Promise<void>
+  loading:        boolean
+  isVideoSession: boolean
+}) {
+  const shooterLabel = isVideoSession ? 'Videographer' : 'Photographer'
+  const editorLabel  = isVideoSession ? 'Video editor' : 'Editor / retoucher'
+
+  return (
+    <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px', marginTop: '16px' }}>
+      <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', margin: '0 0 12px' }}>Staff</p>
+      <StaffRoleRow
+        roleValue="photographer" roleLabel={shooterLabel}
+        assigned={assigned} availableStaff={availableStaff}
+        onAssign={onAssign} onRemove={onRemove} loading={loading}
+      />
+      <StaffRoleRow
+        roleValue="colour_grader" roleLabel="Colour grader"
+        assigned={assigned} availableStaff={availableStaff}
+        onAssign={onAssign} onRemove={onRemove} loading={loading}
+      />
+      <StaffRoleRow
+        roleValue="editor" roleLabel={editorLabel}
+        assigned={assigned} availableStaff={availableStaff}
+        onAssign={onAssign} onRemove={onRemove} loading={loading}
+      />
     </div>
   )
 }
@@ -93,7 +161,7 @@ function StaffAssignForm({ availableStaff, onAssign, roleLabel, roleValue, loadi
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function SessionActions({
-  sessionId, currentStatus, sessionType, serviceType,
+  sessionId, currentStatus, serviceType,
   outfitsCount, invoiceId, assignedStaff, availableStaff, driveLink,
 }: SessionActionsProps) {
   const router  = useRouter()
@@ -112,15 +180,11 @@ export default function SessionActions({
   const isTerminal       = !!currentStatusCfg.is_terminal
   const isCancellation   = !!currentStatusCfg.is_cancellation
   const isSelectionStage = !!currentStatusCfg.requires_selection_count
-  const staffRole        = currentStatusCfg.staff_role
 
   const baseImages     = (outfitsCount ?? 0) * 2
   const selCount       = parseInt(selectionCount) || 0
   const extraImages    = Math.max(0, selCount - baseImages)
   const hasExtraImages = outfitsCount != null && baseImages > 0 && selCount > baseImages
-
-  const shooterLabel = isVideoSession ? 'videographer' : 'photographer'
-  const editorLabel  = isVideoSession ? 'video editor' : 'editor / retoucher'
 
   // Show drive link btn for any non-early stage
   const firstTwoStatuses = config.bookingStatuses.filter(s => !s.is_cancellation).slice(0, 2).map(s => s.value)
@@ -151,6 +215,14 @@ export default function SessionActions({
     setLoading(false)
   }
 
+  async function handleRemoveStaff(staffId: string) {
+    setLoading(true)
+    const { error } = await removeSessionStaff(sessionId, staffId)
+    if (error) toast.error(error)
+    else { toast.success('Staff removed'); router.refresh() }
+    setLoading(false)
+  }
+
   async function handleRecordSelections() {
     if (!selCount || selCount <= 0) { toast.error('Enter a valid selection count'); return }
     setLoading(true)
@@ -165,6 +237,15 @@ export default function SessionActions({
     if (error) toast.error(error)
     else { toast.success('Selections recorded'); router.refresh() }
     setLoading(false)
+  }
+
+  const staffPanelProps = {
+    assigned: assignedStaff,
+    availableStaff,
+    onAssign: handleAssignStaff,
+    onRemove: handleRemoveStaff,
+    loading,
+    isVideoSession,
   }
 
   // ── Cancelled ─────────────────────────────────────────────────────────────
@@ -188,6 +269,7 @@ export default function SessionActions({
         {showDriveForm && (
           <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
         )}
+        <StaffPanel {...staffPanelProps} />
       </div>
     )
   }
@@ -249,6 +331,7 @@ export default function SessionActions({
         {showDriveForm && (
           <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
         )}
+        <StaffPanel {...staffPanelProps} />
       </div>
     )
   }
@@ -258,7 +341,7 @@ export default function SessionActions({
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
       <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>ACTIONS</p>
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: staffRole ? '16px' : '0' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
         {nextStatusCfg && (
           <button onClick={() => handleStatus(nextStatusCfg.value)} disabled={loading} style={btnStyle(true)}>
             {loading ? '...' : `Move to ${nextStatusCfg.label}`}
@@ -277,42 +360,11 @@ export default function SessionActions({
         )}
       </div>
 
-      {staffRole === 'shooter' && (
-        <div style={{ borderTop: nextStatusCfg ? '1px solid var(--line-inner)' : 'none', paddingTop: nextStatusCfg ? '16px' : '0' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 4px', fontWeight: '500', textTransform: 'capitalize' as const }}>{shooterLabel}</p>
-          {assignedStaff.filter(s => s.role === 'photographer').map(s => (
-            <p key={s.staff_id} style={{ fontSize: '13px', color: '#3b6d11', margin: '0 0 6px' }}>✓ {s.full_name}</p>
-          ))}
-          <StaffAssignForm availableStaff={availableStaff} onAssign={handleAssignStaff}
-            roleLabel={shooterLabel} roleValue="photographer" loading={loading} />
-        </div>
-      )}
-
-      {staffRole === 'grader' && (
-        <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 4px', fontWeight: '500' }}>Colour grader</p>
-          {assignedStaff.filter(s => s.role === 'colour_grader').map(s => (
-            <p key={s.staff_id} style={{ fontSize: '13px', color: '#3b6d11', margin: '0 0 6px' }}>✓ {s.full_name}</p>
-          ))}
-          <StaffAssignForm availableStaff={availableStaff} onAssign={handleAssignStaff}
-            roleLabel="colour grader" roleValue="colour_grader" loading={loading} />
-        </div>
-      )}
-
-      {staffRole === 'editor' && (
-        <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 4px', fontWeight: '500', textTransform: 'capitalize' as const }}>{editorLabel}</p>
-          {assignedStaff.filter(s => s.role === 'editor').map(s => (
-            <p key={s.staff_id} style={{ fontSize: '13px', color: '#3b6d11', margin: '0 0 6px' }}>✓ {s.full_name}</p>
-          ))}
-          <StaffAssignForm availableStaff={availableStaff} onAssign={handleAssignStaff}
-            roleLabel={editorLabel} roleValue="editor" loading={loading} />
-        </div>
-      )}
-
       {showDriveForm && (
         <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
       )}
+
+      <StaffPanel {...staffPanelProps} />
     </div>
   )
 }

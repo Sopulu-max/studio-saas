@@ -13,7 +13,7 @@ export default function EditStaffForm({
   member,
 }: {
   staffId: string
-  member: { full_name: string; email: string; role: string; hire_date: string | null }
+  member: { full_name: string; email: string; role: string; phone: string | null; hire_date: string | null }
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -22,6 +22,7 @@ export default function EditStaffForm({
     full_name: member.full_name ?? '',
     email:     member.email     ?? '',
     role:      member.role      ?? '',
+    phone:     member.phone     ?? '',
     hire_date: member.hire_date ?? '',
   })
 
@@ -67,6 +68,12 @@ export default function EditStaffForm({
           <label style={labelStyle}>Email address <span style={{ color: '#e24b4a' }}>*</span></label>
           <input type="email" value={form.email} onChange={e => update('email', e.target.value)}
             placeholder="chidi@example.com" style={inputStyle} />
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>Phone</label>
+          <input type="tel" value={form.phone} onChange={e => update('phone', e.target.value)}
+            placeholder="08012345678" style={inputStyle} />
         </div>
 
         <div style={{ marginBottom: '16px' }}>

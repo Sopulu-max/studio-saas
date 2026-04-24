@@ -9,7 +9,7 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
 
   const { data: member } = await context.admin
     .from('staff')
-    .select('staff_id, full_name, email, role, hire_date')
+    .select('staff_id, full_name, email, role, phone, hire_date')
     .eq('staff_id', id)
     .eq('studio_id', context.studioId)
     .single()
