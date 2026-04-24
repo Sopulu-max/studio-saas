@@ -1,36 +1,10 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
-import TodayActions from './today-actions'
+import DashboardWidgets from './dashboard-widgets'
+import type { DashboardProps } from './dashboard-widgets'
 
-const LATE_HOUR   = 8
-const LATE_MINUTE = 30
-function isLate(iso: string) {
-  const d = new Date(iso)
-  return d.getHours() > LATE_HOUR || (d.getHours() === LATE_HOUR && d.getMinutes() > LATE_MINUTE)
-}
-function fmtTime(iso: string) {
-  return new Date(iso).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
-}
-
-const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
-
-type DashboardInvoiceRow = { invoice_id: string; total?: number | string | null }
-type DashboardPaymentRow = { amount?: number | string | null }
-type DashboardStat = { label: string; value: string | number; href: string; sub: string | null; money?: boolean }
-type DashboardSessionRow = {
-  booking_id: string
-  session_date?: string | null
-  session_type?: string | null
-  status: string
-  clients?: { full_name?: string | null } | null
-  packages?: { name?: string | null } | null
-}
-
-function fmt(n: number) {
-  return '₦' + n.toLocaleString('en-NG')
-}
+const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
 
 export default async function DashboardPage() {
   const context = await getStudioContext()
@@ -45,52 +19,33 @@ export default async function DashboardPage() {
   const studioId = studio?.studio_id
   const config   = buildStudioConfig(studio?.session_types, studio?.booking_statuses, studio?.service_types)
 
-  // Active pipeline = non-terminal, non-cancellation statuses after the first two (pending + confirmed)
-  const activePipelineStatuses = config.bookingStatuses
-    .filter(s => !s.is_terminal && !s.is_cancellation)
-    .sort((a, b) => a.order - b.order)
-    .slice(2)           // skip the first two (pending → confirmed)
-    .map(s => s.value)
+  // Date helpers
+  const todayDate = new Date()
+  todayDate.setHours(0, 0, 0, 0)
+  const todayStr  = todayDate.toISOString().split('T')[0]
+  const in7Days   = new Date(todayDate.getTime() + 7 * 864e5).toISOString().split('T')[0]
+  const todayDay  = DAY_NAMES[new Date().getDay()]
+  const todayLabel = new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
-  // Pending status value (first non-terminal, non-cancellation by order)
   const pendingStatus = config.bookingStatuses
     .filter(s => !s.is_terminal && !s.is_cancellation)
     .sort((a, b) => a.order - b.order)[0]?.value ?? 'pending_confirmation'
 
-  // Date helpers
-  const todayDate = new Date()
-  todayDate.setHours(0, 0, 0, 0)
-  const todayStr = todayDate.toISOString().split('T')[0]
-  const in7Days  = new Date(todayDate.getTime() + 7 * 864e5).toISOString().split('T')[0]
+  const activePipelineStatuses = config.bookingStatuses
+    .filter(s => !s.is_terminal && !s.is_cancellation)
+    .sort((a, b) => a.order - b.order)
+    .slice(2)
+    .map(s => s.value)
 
-  // Today's staff attendance
-  const todayDay = DAY_NAMES[new Date().getDay()]
-  const { data: allStaff } = await context.admin
-    .from('staff')
-    .select('staff_id, full_name, role, roles, working_days')
-    .eq('studio_id', studioId)
-    .order('full_name')
-  const { data: todayCheckins } = await context.admin
-    .from('staff_checkins')
-    .select('staff_id, checked_in_at, checked_out_at')
-    .eq('studio_id', studioId)
-    .eq('date', todayStr)
-  const checkinByStaff: Record<string, { checked_in_at: string; checked_out_at: string | null }> = {}
-  for (const c of todayCheckins ?? []) {
-    checkinByStaff[c.staff_id] = { checked_in_at: c.checked_in_at, checked_out_at: c.checked_out_at }
-  }
-  const staffToday = (allStaff ?? [])
-    .filter(m => !m.working_days?.length || m.working_days.includes(todayDay))
-    .map(m => ({ ...m, checkin: checkinByStaff[m.staff_id] ?? null }))
+  const cancellationIn = config.bookingStatuses
+    .filter(s => s.is_cancellation || s.is_terminal)
+    .map(s => `"${s.value}"`).join(',') || '"__none__"'
 
-  // Booking IDs for this studio (needed to scope invoice queries)
+  // Booking IDs for invoice scoping
   const { data: allBookings } = await context.admin
-    .from('bookings')
-    .select('booking_id')
-    .eq('studio_id', studioId)
+    .from('bookings').select('booking_id').eq('studio_id', studioId)
   const bookingIds = allBookings?.map(b => b.booking_id) ?? []
 
-  // Parallel data fetches
   const [
     { count: totalSessions },
     { count: totalClients },
@@ -98,25 +53,23 @@ export default async function DashboardPage() {
     { data: upcomingSessions },
     { data: activeSessions },
     { data: unpaidInvoices },
+    { data: allStaff },
+    { data: todayCheckins },
   ] = await Promise.all([
     context.admin.from('bookings').select('*', { count: 'exact', head: true }).eq('studio_id', studioId),
     context.admin.from('clients').select('*',  { count: 'exact', head: true }).eq('studio_id', studioId),
-
-    // Pending booking requests
     context.admin.from('bookings').select('*', { count: 'exact', head: true })
       .eq('studio_id', studioId).eq('status', pendingStatus),
 
-    // Upcoming sessions — next 7 days
     context.admin.from('bookings')
       .select('booking_id, session_date, session_type, status, clients(full_name), packages(name)')
       .eq('studio_id', studioId)
-      .gt('session_date', todayStr + 'T23:59:59')
+      .gt('session_date',  todayStr + 'T23:59:59')
       .lte('session_date', in7Days)
-      .not('status', 'in', `(${config.bookingStatuses.filter(s => s.is_cancellation).map(s => `"${s.value}"`).join(',') || '"__none__"'})`)
+      .not('status', 'in', `(${cancellationIn})`)
       .order('session_date', { ascending: true })
       .limit(8),
 
-    // Active pipeline sessions
     activePipelineStatuses.length
       ? context.admin.from('bookings')
           .select('booking_id, session_date, session_type, status, clients(full_name)')
@@ -126,354 +79,90 @@ export default async function DashboardPage() {
           .limit(6)
       : Promise.resolve({ data: [] }),
 
-    // Unpaid invoices for outstanding balance
     bookingIds.length
       ? context.admin.from('invoices').select('invoice_id, total')
           .in('booking_id', bookingIds).in('status', ['draft', 'sent', 'overdue'])
       : Promise.resolve({ data: [] }),
+
+    context.admin.from('staff')
+      .select('staff_id, full_name, role, roles, working_days')
+      .eq('studio_id', studioId)
+      .order('full_name'),
+
+    context.admin.from('staff_checkins')
+      .select('staff_id, checked_in_at, checked_out_at')
+      .eq('studio_id', studioId)
+      .eq('date', todayStr),
   ])
 
-  // Today's sessions — separate focused query
-  const cancellationValues = config.bookingStatuses.filter(s => s.is_cancellation || s.is_terminal).map(s => `"${s.value}"`).join(',') || '"__none__"'
+  // Today's sessions
   const { data: todaySessions } = await context.admin
     .from('bookings')
     .select('booking_id, session_date, session_type, status, clients(full_name), packages(name)')
     .eq('studio_id', studioId)
     .gte('session_date', todayStr)
     .lte('session_date', todayStr + 'T23:59:59')
-    .not('status', 'in', `(${cancellationValues})`)
+    .not('status', 'in', `(${cancellationIn})`)
     .order('session_date', { ascending: true })
 
   // Outstanding balance
-  const unpaidIds = ((unpaidInvoices ?? []) as DashboardInvoiceRow[]).map(i => i.invoice_id)
-  const { data: paymentsOnUnpaid } = unpaidIds.length
+  type InvRow = { invoice_id: string; total?: number | string | null }
+  type PayRow = { amount?: number | string | null }
+  const unpaidIds = ((unpaidInvoices ?? []) as InvRow[]).map(i => i.invoice_id)
+  const { data: paymentsData } = unpaidIds.length
     ? await context.admin.from('payments').select('amount').in('invoice_id', unpaidIds)
     : { data: [] }
+  const invoiceTotal = ((unpaidInvoices ?? []) as InvRow[]).reduce((s, i) => s + Number(i.total), 0)
+  const paidTotal    = ((paymentsData  ?? []) as PayRow[]).reduce((s, p) => s + Number(p.amount), 0)
+  const outstanding  = Math.max(0, invoiceTotal - paidTotal)
+  const fmt = (n: number) => '₦' + n.toLocaleString('en-NG')
 
-  const invoiceTotal    = ((unpaidInvoices    ?? []) as DashboardInvoiceRow[]).reduce((s, i) => s + Number(i.total),  0)
-  const paidAgainstThem = ((paymentsOnUnpaid  ?? []) as DashboardPaymentRow[]).reduce((s, p) => s + Number(p.amount), 0)
-  const outstanding     = Math.max(0, invoiceTotal - paidAgainstThem)
+  // Today's staff map
+  const checkinMap: Record<string, { checked_in_at: string; checked_out_at: string | null }> = {}
+  for (const c of todayCheckins ?? []) checkinMap[c.staff_id] = c
+  const staffToday = (allStaff ?? [])
+    .filter(m => !m.working_days?.length || m.working_days.includes(todayDay))
+    .map(m => ({ ...m, checkin: checkinMap[m.staff_id] ?? null }))
 
-  const todayLabel = new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-  const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  // Style lookup maps for client component
+  const statusStyles: Record<string, { label: string; color_bg: string; color_fg: string }> = {}
+  for (const s of config.bookingStatuses) {
+    statusStyles[s.value] = { label: s.label, color_bg: s.color_bg, color_fg: s.color_fg }
+  }
+  const sessionTypeStyles: Record<string, { label: string; color_bg: string; color_fg: string }> = {}
+  for (const t of config.sessionTypes) {
+    sessionTypeStyles[t.value] = { label: t.label, color_bg: t.color_bg, color_fg: t.color_fg }
+  }
 
-  // Pending status badge style for the banner
   const pendingCfg = getStatusConfig(config, pendingStatus)
 
-  return (
-    <div>
-      <style>{`
-        .dash-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: flex-start;
-          margin-bottom: 1.5rem;
-        }
-        .dash-stats-grid {
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 12px;
-          margin-bottom: 20px;
-        }
-        .dash-two-col {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 12px;
-          margin-bottom: 12px;
-        }
-        @media (max-width: 700px) {
-          .dash-stats-grid {
-            grid-template-columns: repeat(2, 1fr);
-          }
-          .dash-two-col {
-            grid-template-columns: 1fr;
-          }
-        }
-        @media (max-width: 420px) {
-          .dash-stats-grid {
-            grid-template-columns: 1fr;
-          }
-          .dash-header {
-            flex-direction: column;
-            gap: 4px;
-          }
-        }
-      `}</style>
+  const stats: DashboardProps['stats'] = [
+    { label: 'Total sessions',     value: totalSessions ?? 0,  href: '/dashboard/sessions', sub: null },
+    { label: 'Total clients',      value: totalClients  ?? 0,  href: '/dashboard/clients',  sub: null },
+    { label: 'Active in pipeline', value: activeSessions?.length ?? 0, href: '/dashboard/sessions',
+      sub: activeSessions?.length ? 'in progress / editing' : 'none right now' },
+    { label: 'Outstanding balance', value: fmt(outstanding), href: '/dashboard/invoices', money: true,
+      sub: outstanding === 0 ? 'all clear' : `${unpaidInvoices?.length ?? 0} unpaid invoice${(unpaidInvoices?.length ?? 0) !== 1 ? 's' : ''}` },
+  ]
 
-      {/* Header */}
-      <div className="dash-header">
-        <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 2px' }}>Welcome back</h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{studio?.name}</p>
-        </div>
-        <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, paddingTop: '4px' }}>{todayLabel}</p>
-      </div>
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
-      {/* Pending requests banner */}
-      {(pendingCount ?? 0) > 0 && (
-        <Link href={`/dashboard/sessions?status=${pendingStatus}`} style={{ textDecoration: 'none' }}>
-          <div style={{ background: pendingCfg.color_bg, border: `0.5px solid ${pendingCfg.color_fg}40`, borderRadius: '10px', padding: '12px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '14px', fontWeight: '500', color: pendingCfg.color_fg }}>
-              🔔 {pendingCount} pending booking request{pendingCount !== 1 ? 's' : ''} — needs your response
-            </span>
-            <span style={{ fontSize: '13px', color: pendingCfg.color_fg }}>Review →</span>
-          </div>
-        </Link>
-      )}
+  const props: DashboardProps = {
+    studioName:        studio?.name ?? 'My Studio',
+    studioSlug:        studio?.slug ?? null,
+    siteUrl,
+    todayLabel,
+    pendingCount:      pendingCount ?? 0,
+    pendingStatus,
+    pendingStyle:      { label: pendingCfg.label, color_bg: pendingCfg.color_bg, color_fg: pendingCfg.color_fg },
+    todaySessions:     (todaySessions ?? []) as DashboardProps['todaySessions'],
+    upcomingSessions:  (upcomingSessions ?? []) as DashboardProps['upcomingSessions'],
+    activeSessions:    (activeSessions  ?? []) as DashboardProps['activeSessions'],
+    staffToday:        staffToday as DashboardProps['staffToday'],
+    stats,
+    statusStyles,
+    sessionTypeStyles,
+  }
 
-      {/* Today's sessions */}
-      {(todaySessions?.length ?? 0) > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>TODAY</p>
-            <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          </div>
-          <div>
-            {(todaySessions as DashboardSessionRow[]).map((s, i) => {
-              const statusCfg = getStatusConfig(config, s.status)
-              const typeCfg   = getSessionTypeConfig(config, s.session_type)
-              return (
-                <div key={s.booking_id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '10px 0',
-                  borderBottom: i < (todaySessions?.length ?? 0) - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{s.clients?.full_name}</p>
-                        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
-                          {s.session_date ? new Date(s.session_date).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }) : ''}
-                          {s.packages?.name ? ` · ${s.packages.name}` : ''}
-                        </p>
-                      </div>
-                    </div>
-                  </Link>
-                  <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexShrink: 0, marginLeft: '12px' }}>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: typeCfg.color_bg, color: typeCfg.color_fg }}>
-                      {typeCfg.label}
-                    </span>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: statusCfg.color_bg, color: statusCfg.color_fg, fontWeight: '500' }}>
-                      {statusCfg.label}
-                    </span>
-                    <TodayActions sessionId={s.booking_id} status={s.status} />
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Today's staff */}
-      {staffToday.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', marginBottom: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>TODAY'S STAFF</p>
-            <Link href="/dashboard/attendance" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>Attendance →</Link>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
-            {staffToday.map((m, i) => {
-              const checkedIn  = !!m.checkin
-              const checkedOut = !!m.checkin?.checked_out_at
-              const late       = checkedIn && isLate(m.checkin!.checked_in_at)
-              const effectiveRoles: string[] =
-                m.roles && m.roles.length > 0 ? m.roles : m.role ? [m.role] : []
-
-              let dotColor = '#d4d4cc'   // not in
-              if (checkedOut)       dotColor = '#6abf69'
-              else if (checkedIn)   dotColor = '#4a90d9'
-
-              return (
-                <div key={m.staff_id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '9px 0',
-                  borderBottom: i < staffToday.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  gap: '8px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    {/* Presence dot */}
-                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 1px' }}>{m.full_name}</p>
-                      {effectiveRoles.length > 0 && (
-                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
-                          {effectiveRoles.map(r => r.replace(/_/g, ' ')).join(', ')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                    {checkedIn && (
-                      <span style={{ fontSize: '12px', color: late ? '#a32d2d' : 'var(--text-3)', fontWeight: late ? '600' : '400' }}>
-                        {fmtTime(m.checkin!.checked_in_at)}
-                        {late && ' · LATE'}
-                      </span>
-                    )}
-                    {!checkedIn && (
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#faeeda', color: '#854f0b' }}>Not in</span>
-                    )}
-                    {checkedOut && (
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#eaf3de', color: '#3b6d11' }}>Out {fmtTime(m.checkin!.checked_out_at!)}</span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Stat cards */}
-      <div className="dash-stats-grid">
-        {([
-          { label: 'Total sessions',     value: totalSessions ?? 0,  href: '/dashboard/sessions', sub: null },
-          { label: 'Total clients',      value: totalClients  ?? 0,  href: '/dashboard/clients',  sub: null },
-          { label: 'Active in pipeline', value: activeSessions?.length ?? 0, href: '/dashboard/sessions', sub: activeSessions?.length ? 'in progress / editing' : 'none right now' },
-          { label: 'Outstanding balance', value: fmt(outstanding), href: '/dashboard/invoices', sub: outstanding === 0 ? 'all clear' : `${unpaidInvoices?.length ?? 0} unpaid invoice${(unpaidInvoices?.length ?? 0) !== 1 ? 's' : ''}`, money: true },
-        ] satisfies DashboardStat[]).map(stat => (
-          <Link key={stat.label} href={stat.href} style={{ textDecoration: 'none' }}>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', transition: 'border-color .15s' }}>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 8px', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '.04em' }}>{stat.label}</p>
-              <p style={{ fontSize: stat.money ? '22px' : '30px', fontWeight: '600', margin: '0 0 4px', color: 'var(--text)', letterSpacing: stat.money ? '-.02em' : '-.01em' }}>
-                {stat.value}
-              </p>
-              {stat.sub && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{stat.sub}</p>}
-            </div>
-          </Link>
-        ))}
-      </div>
-
-      {/* Main content — two columns */}
-      <div className="dash-two-col">
-
-        {/* Upcoming this week */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>UPCOMING THIS WEEK</p>
-            <Link href="/dashboard/sessions" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>All →</Link>
-          </div>
-
-          {!upcomingSessions?.length ? (
-            <>
-              <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 12px' }}>No sessions in the next 7 days</p>
-              <Link href="/dashboard/sessions/new" style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>+ New session</Link>
-            </>
-          ) : (
-            <div>
-              {(upcomingSessions as DashboardSessionRow[]).map((s, i) => {
-                const statusCfg = getStatusConfig(config, s.status)
-                const typeCfg   = getSessionTypeConfig(config, s.session_type)
-                return (
-                  <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '9px 0',
-                      borderBottom: i < upcomingSessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                    }}>
-                      <div style={{ minWidth: 0 }}>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {s.clients?.full_name}
-                        </p>
-                        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
-                          {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
-                          {s.packages?.name ? ` · ${s.packages.name}` : ''}
-                        </p>
-                      </div>
-                      <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexShrink: 0, marginLeft: '8px' }}>
-                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500' }}>
-                          {typeCfg.label}
-                        </span>
-                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: statusCfg.color_bg, color: statusCfg.color_fg, fontWeight: '500' }}>
-                          {statusCfg.label}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Active pipeline */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>ACTIVE PIPELINE</p>
-            <Link href="/dashboard/sessions" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>All →</Link>
-          </div>
-
-          {!activeSessions?.length ? (
-            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>Nothing in progress right now</p>
-          ) : (
-            <div>
-              {(activeSessions as DashboardSessionRow[]).map((s, i) => {
-                const statusCfg = getStatusConfig(config, s.status)
-                return (
-                  <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <div style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      padding: '8px 0',
-                      borderBottom: i < activeSessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                    }}>
-                      <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{s.clients?.full_name}</p>
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: statusCfg.color_bg, color: statusCfg.color_fg, fontWeight: '500' }}>
-                        {statusCfg.label}
-                      </span>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Quick actions + booking link */}
-      <div className="dash-two-col" style={{ marginBottom: 0 }}>
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
-          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>QUICK ACTIONS</p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {[
-              { label: 'New session', href: '/dashboard/sessions/new' },
-              { label: 'New invoice', href: '/dashboard/invoices/new' },
-              { label: 'Add client',  href: '/dashboard/clients/new' },
-              { label: 'Print order', href: '/dashboard/print-orders/new' },
-            ].map(a => (
-              <Link key={a.href} href={a.href} style={{ padding: '7px 14px', borderRadius: '8px', fontSize: '13px', border: '1px solid var(--line)', color: 'var(--text)', textDecoration: 'none', background: 'var(--surface)' }}>
-                {a.label}
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
-          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 4px' }}>YOUR BOOKING LINK</p>
-          {!studio?.slug ? (
-            <div>
-              <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 10px', lineHeight: '1.5' }}>
-                Set a URL slug in Settings to get your public booking link.
-              </p>
-              <Link href="/dashboard/settings" style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none', fontWeight: '500' }}>
-                Go to Settings →
-              </Link>
-            </div>
-          ) : (
-            <>
-              <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 10px' }}>Share with clients to receive booking requests.</p>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <code style={{ fontSize: '12px', background: 'var(--surface-2)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--line)', flex: 1, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {siteUrl}/book/{studio.slug}
-                </code>
-                <Link href={`/book/${studio.slug}`} target="_blank" rel="noreferrer"
-                  style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--btn)', color: 'var(--btn-fg)', borderRadius: '8px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                  Open ↗
-                </Link>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
+  return <DashboardWidgets {...props} />
 }
