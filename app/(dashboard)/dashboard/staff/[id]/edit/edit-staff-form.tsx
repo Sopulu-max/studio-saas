@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateStaff } from '@/app/actions/staff'
 
-const ROLES = [
+const PRESET_ROLES = [
   { value: 'photographer',   label: 'Photographer' },
   { value: 'second_shooter', label: 'Second shooter' },
   { value: 'videographer',   label: 'Videographer' },
@@ -15,6 +15,8 @@ const ROLES = [
   { value: 'other',          label: 'Other' },
 ]
 
+const PRESET_VALUES = new Set(PRESET_ROLES.map(r => r.value))
+
 export default function EditStaffForm({
   staffId,
   member,
@@ -24,22 +26,20 @@ export default function EditStaffForm({
     full_name: string
     email:     string
     roles:     string[] | null
-    role:      string | null       // legacy fallback
+    role:      string | null
     phone:     string | null
     hire_date: string | null
   }
 }) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
+  const [customInput, setCustomInput] = useState('')
 
-  // Prefer `roles` array; fall back to single `role` value for old records
   const initialRoles =
     member.roles && member.roles.length > 0
       ? member.roles
-      : member.role
-        ? [member.role]
-        : []
+      : member.role ? [member.role] : []
 
   const [form, setForm] = useState({
     full_name: member.full_name ?? '',
@@ -62,6 +62,15 @@ export default function EditStaffForm({
     }))
   }
 
+  function addCustomRole() {
+    const val = customInput.trim()
+    if (!val) return
+    if (!form.roles.includes(val)) {
+      setForm(prev => ({ ...prev, roles: [...prev.roles, val] }))
+    }
+    setCustomInput('')
+  }
+
   async function handleSubmit() {
     if (!form.full_name) { setError('Name is required'); return }
     if (!form.roles.length) { setError('Select at least one role'); return }
@@ -79,6 +88,7 @@ export default function EditStaffForm({
 
   const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
   const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
+  const customRoles = form.roles.filter(r => !PRESET_VALUES.has(r))
 
   return (
     <div style={{ maxWidth: '520px' }}>
@@ -108,8 +118,10 @@ export default function EditStaffForm({
 
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Roles <span style={{ color: '#e24b4a' }}>*</span></label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-            {ROLES.map(r => {
+
+          {/* Preset checkboxes */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
+            {PRESET_ROLES.map(r => {
               const checked = form.roles.includes(r.value)
               return (
                 <label key={r.value} style={{
@@ -120,16 +132,48 @@ export default function EditStaffForm({
                   fontSize: '13px', color: checked ? 'var(--btn)' : 'var(--text-2)',
                   userSelect: 'none' as const,
                 }}>
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => toggleRole(r.value)}
-                    style={{ accentColor: 'var(--btn)', width: '14px', height: '14px', flexShrink: 0 }}
-                  />
+                  <input type="checkbox" checked={checked} onChange={() => toggleRole(r.value)}
+                    style={{ accentColor: 'var(--btn)', width: '14px', height: '14px', flexShrink: 0 }} />
                   {r.label}
                 </label>
               )
             })}
+          </div>
+
+          {/* Custom roles already added */}
+          {customRoles.length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '6px', marginBottom: '10px' }}>
+              {customRoles.map(role => (
+                <span key={role} style={{
+                  display: 'inline-flex', alignItems: 'center', gap: '5px',
+                  fontSize: '12px', padding: '4px 10px', borderRadius: '20px',
+                  background: 'color-mix(in srgb, var(--btn) 10%, transparent)',
+                  border: '1px solid var(--btn)', color: 'var(--btn)',
+                }}>
+                  {role}
+                  <button type="button" onClick={() => toggleRole(role)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: '14px', lineHeight: 1 }}>
+                    ×
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Add custom role */}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            <input
+              type="text"
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomRole() } }}
+              placeholder="Add custom role…"
+              style={{ flex: 1, boxSizing: 'border-box' as const }}
+            />
+            <button type="button" onClick={addCustomRole}
+              style={{ padding: '8px 14px', fontSize: '13px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-2)', whiteSpace: 'nowrap' as const }}>
+              Add
+            </button>
           </div>
         </div>
 
@@ -144,11 +188,8 @@ export default function EditStaffForm({
           <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>
             {loading ? 'Saving…' : 'Save changes'}
           </button>
-          <button
-            type="button"
-            onClick={() => router.push(`/dashboard/staff/${staffId}`)}
-            style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}
-          >
+          <button type="button" onClick={() => router.push(`/dashboard/staff/${staffId}`)}
+            style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
             Cancel
           </button>
         </div>
