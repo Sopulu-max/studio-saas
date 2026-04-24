@@ -4,6 +4,16 @@ import StaffActions from './staff-actions'
 import AvatarUpload from '@/components/avatar-upload'
 import { getStudioContext } from '@/lib/studio'
 
+const WEEKDAYS = [
+  { value: 'monday',    label: 'Mon' },
+  { value: 'tuesday',   label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday',  label: 'Thu' },
+  { value: 'friday',    label: 'Fri' },
+  { value: 'saturday',  label: 'Sat' },
+  { value: 'sunday',    label: 'Sun' },
+]
+
 type AssignedBooking = {
   booking_id?: string | null
   session_date?: string | null
@@ -49,6 +59,14 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
     .eq('staff_id', id)
     .eq('bookings.studio_id', context.studioId)
     .order('booking_id', { ascending: false })
+
+  const { data: recentCheckins } = await context.admin
+    .from('staff_checkins')
+    .select('checkin_id, date, checked_in_at, checked_out_at')
+    .eq('staff_id', id)
+    .eq('studio_id', context.studioId)
+    .order('date', { ascending: false })
+    .limit(14)
 
   const effectiveRoles: string[] =
     member.roles && member.roles.length > 0
@@ -106,6 +124,63 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
           </div>
         </div>
       </div>
+
+      {/* Working days */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>WORKING DAYS</p>
+        {member.working_days && member.working_days.length > 0 ? (
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
+            {WEEKDAYS.map(d => {
+              const active = (member.working_days as string[]).includes(d.value)
+              return (
+                <span key={d.value} style={{
+                  fontSize: '12px', fontWeight: '500', padding: '5px 12px', borderRadius: '8px',
+                  background: active ? 'var(--active)' : 'transparent',
+                  border: `1px solid ${active ? 'var(--btn)' : 'var(--line)'}`,
+                  color: active ? 'var(--btn)' : 'var(--text-4)',
+                }}>
+                  {d.label}
+                </span>
+              )
+            })}
+          </div>
+        ) : (
+          <p style={{ fontSize: '14px', color: 'var(--text-4)', margin: 0 }}>Not set — varies each week</p>
+        )}
+      </div>
+
+      {/* Recent check-ins */}
+      {recentCheckins && recentCheckins.length > 0 && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>RECENT CHECK-INS</p>
+            <Link href="/dashboard/attendance" style={{ fontSize: '12px', color: 'var(--text-4)', textDecoration: 'none' }}>
+              Attendance board →
+            </Link>
+          </div>
+          {recentCheckins.map((c, i) => {
+            const inTime  = new Date(c.checked_in_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
+            const outTime = c.checked_out_at
+              ? new Date(c.checked_out_at).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
+              : null
+            const dateLabel = new Date(c.date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })
+            return (
+              <div key={c.checkin_id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.75rem 1.25rem',
+                borderBottom: i < recentCheckins.length - 1 ? '1px solid var(--line-inner)' : 'none',
+              }}>
+                <p style={{ fontSize: '13px', fontWeight: '500', margin: 0 }}>{dateLabel}</p>
+                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
+                  In: <strong style={{ color: 'var(--text-2)' }}>{inTime}</strong>
+                  {outTime && <> &nbsp;·&nbsp; Out: <strong style={{ color: 'var(--text-2)' }}>{outTime}</strong></>}
+                  {!outTime && <span style={{ marginLeft: '6px', fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: '#e6f1fb', color: '#185fa5' }}>active</span>}
+                </p>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {(() => {
         if (!assignments?.length) {

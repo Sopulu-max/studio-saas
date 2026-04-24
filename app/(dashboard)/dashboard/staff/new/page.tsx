@@ -17,13 +17,24 @@ const PRESET_ROLES = [
 
 const PRESET_VALUES = new Set(PRESET_ROLES.map(r => r.value))
 
+const WEEKDAYS = [
+  { value: 'monday',    label: 'Mon' },
+  { value: 'tuesday',   label: 'Tue' },
+  { value: 'wednesday', label: 'Wed' },
+  { value: 'thursday',  label: 'Thu' },
+  { value: 'friday',    label: 'Fri' },
+  { value: 'saturday',  label: 'Sat' },
+  { value: 'sunday',    label: 'Sun' },
+]
+
 export default function NewStaffPage() {
   const router = useRouter()
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
   const [customInput, setCustomInput] = useState('')
   const [form, setForm] = useState({
-    full_name: '', email: '', phone: '', hire_date: '', roles: [] as string[],
+    full_name: '', email: '', phone: '', hire_date: '',
+    roles: [] as string[], working_days: [] as string[],
   })
 
   function update(field: string, value: string) {
@@ -36,6 +47,15 @@ export default function NewStaffPage() {
       roles: prev.roles.includes(role)
         ? prev.roles.filter(r => r !== role)
         : [...prev.roles, role],
+    }))
+  }
+
+  function toggleDay(day: string) {
+    setForm(prev => ({
+      ...prev,
+      working_days: prev.working_days.includes(day)
+        ? prev.working_days.filter(d => d !== day)
+        : [...prev.working_days, day],
     }))
   }
 
@@ -150,6 +170,31 @@ export default function NewStaffPage() {
               style={{ padding: '8px 14px', fontSize: '13px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-2)', whiteSpace: 'nowrap' as const }}>
               Add
             </button>
+          </div>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>Working days</label>
+          <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 8px' }}>Leave all unchecked if schedule varies</p>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
+            {WEEKDAYS.map(d => {
+              const checked = form.working_days.includes(d.value)
+              return (
+                <label key={d.value} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '46px', height: '36px', borderRadius: '8px', cursor: 'pointer',
+                  border: `1px solid ${checked ? 'var(--btn)' : 'var(--line)'}`,
+                  background: checked ? 'color-mix(in srgb, var(--btn) 12%, transparent)' : 'transparent',
+                  fontSize: '12px', fontWeight: '500',
+                  color: checked ? 'var(--btn)' : 'var(--text-3)',
+                  userSelect: 'none' as const,
+                }}>
+                  <input type="checkbox" checked={checked} onChange={() => toggleDay(d.value)}
+                    style={{ display: 'none' }} />
+                  {d.label}
+                </label>
+              )
+            })}
           </div>
         </div>
 

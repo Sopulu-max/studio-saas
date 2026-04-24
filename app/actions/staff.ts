@@ -5,19 +5,21 @@ import { revalidatePath } from 'next/cache'
 import { getStudioContext, ownsStaff } from '@/lib/studio'
 
 const staffSchema = z.object({
-  full_name: z.string().min(1, 'Name is required'),
-  email:     z.string().email('Invalid email address'),
-  roles:     z.array(z.string()).min(1, 'At least one role is required'),
-  phone:     z.string().optional().default(''),
-  hire_date: z.string().optional().default(''),
+  full_name:    z.string().min(1, 'Name is required'),
+  email:        z.string().email('Invalid email address'),
+  roles:        z.array(z.string()).min(1, 'At least one role is required'),
+  phone:        z.string().optional().default(''),
+  hire_date:    z.string().optional().default(''),
+  working_days: z.array(z.string()).optional().default([]),
 })
 
 export async function addStaff(form: {
-  full_name: string
-  email:     string
-  roles:     string[]
-  phone:     string
-  hire_date: string
+  full_name:    string
+  email:        string
+  roles:        string[]
+  phone:        string
+  hire_date:    string
+  working_days?: string[]
 }) {
   const result = staffSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -26,23 +28,25 @@ export async function addStaff(form: {
   if ('error' in context) return { error: context.error }
 
   const { error } = await context.admin.from('staff').insert({
-    full_name:  form.full_name,
-    email:      form.email,
-    roles:      form.roles,
-    role:       form.roles[0] ?? null,   // keep primary role for backward compat
-    phone:      form.phone || null,
-    hire_date:  form.hire_date || null,
-    studio_id:  context.studioId,
+    full_name:    form.full_name,
+    email:        form.email,
+    roles:        form.roles,
+    role:         form.roles[0] ?? null,   // keep primary role for backward compat
+    phone:        form.phone || null,
+    hire_date:    form.hire_date || null,
+    working_days: form.working_days ?? [],
+    studio_id:    context.studioId,
   })
   return { error: error?.message ?? null }
 }
 
 export async function updateStaff(staffId: string, form: {
-  full_name: string
-  email:     string
-  roles:     string[]
-  phone:     string
-  hire_date: string
+  full_name:    string
+  email:        string
+  roles:        string[]
+  phone:        string
+  hire_date:    string
+  working_days?: string[]
 }) {
   const result = staffSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -57,12 +61,13 @@ export async function updateStaff(staffId: string, form: {
   const { error } = await context.admin
     .from('staff')
     .update({
-      full_name: form.full_name,
-      email:     form.email,
-      roles:     form.roles,
-      role:      form.roles[0] ?? null,  // keep primary role for backward compat
-      phone:     form.phone || null,
-      hire_date: form.hire_date || null,
+      full_name:    form.full_name,
+      email:        form.email,
+      roles:        form.roles,
+      role:         form.roles[0] ?? null,  // keep primary role for backward compat
+      phone:        form.phone || null,
+      hire_date:    form.hire_date || null,
+      working_days: form.working_days ?? [],
     })
     .eq('staff_id', staffId)
 

@@ -15,6 +15,7 @@ const OWNER_NAV = [
   { label: 'Clients',      href: '/dashboard/clients' },
   { label: 'Packages',     href: '/dashboard/packages' },
   { label: 'Staff',        href: '/dashboard/staff' },
+  { label: 'Attendance',   href: '/dashboard/attendance' },
   { label: 'Galleries',    href: '/dashboard/galleries' },
   { label: 'Invoices',     href: '/dashboard/invoices' },
   { label: 'Contracts',    href: '/dashboard/contracts' },
