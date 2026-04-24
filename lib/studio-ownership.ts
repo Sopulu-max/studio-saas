@@ -78,8 +78,9 @@ export async function ownsGallery(admin: AdminLike, studioId: string, galleryId:
     .eq('gallery_id', galleryId)
     .maybeSingle()
 
-  if (!data?.booking_id) return false
-  return ownsBooking(admin, studioId, data.booking_id)
+  const row = data as { booking_id?: string } | null
+  if (!row?.booking_id) return false
+  return ownsBooking(admin, studioId, row.booking_id)
 }
 
 export async function ownsGalleryPhoto(admin: AdminLike, studioId: string, photoId: string) {
@@ -89,6 +90,7 @@ export async function ownsGalleryPhoto(admin: AdminLike, studioId: string, photo
     .eq('photo_id', photoId)
     .maybeSingle()
 
-  if (!data?.gallery_id) return false
-  return ownsGallery(admin, studioId, data.gallery_id)
+  const row = data as { gallery_id?: string } | null
+  if (!row?.gallery_id) return false
+  return ownsGallery(admin, studioId, row.gallery_id)
 }
