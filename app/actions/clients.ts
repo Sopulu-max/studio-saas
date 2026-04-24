@@ -6,7 +6,7 @@ import { getStudioContext, ownsClient } from '@/lib/studio'
 
 const addClientSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   phone: z.string().optional().default(''),
   address: z.string().optional().default(''),
 })
@@ -24,7 +24,10 @@ export async function addClient(form: {
   if ('error' in context) return { error: context.error }
 
   const { error } = await context.admin.from('clients').insert({
-    ...form,
+    full_name: form.full_name,
+    email:     form.email || null,
+    phone:     form.phone || null,
+    address:   form.address || null,
     studio_id: context.studioId,
   })
 
@@ -67,7 +70,7 @@ export async function updateClient(clientId: string, form: {
 
   const { error } = await context.admin
     .from('clients')
-    .update({ full_name: form.full_name, email: form.email, phone: form.phone || null, address: form.address || null })
+    .update({ full_name: form.full_name, email: form.email || null, phone: form.phone || null, address: form.address || null })
     .eq('client_id', clientId)
 
   if (!error) {

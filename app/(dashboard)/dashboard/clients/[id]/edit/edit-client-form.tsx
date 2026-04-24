@@ -26,8 +26,8 @@ export default function EditClientForm({
   }
 
   async function handleSubmit() {
-    if (!form.full_name || !form.email) {
-      setError('Name and email are required')
+    if (!form.full_name) {
+      setError('Name is required')
       return
     }
     setLoading(true)
@@ -44,7 +44,7 @@ export default function EditClientForm({
 
   const fields = [
     { key: 'full_name', label: 'Full name',     type: 'text',  placeholder: 'Ada Okafor',               required: true },
-    { key: 'email',     label: 'Email address', type: 'email', placeholder: 'ada@example.com',           required: true },
+    { key: 'email',     label: 'Email address', type: 'email', placeholder: 'ada@example.com',           required: false },
     { key: 'phone',     label: 'Phone number',  type: 'tel',   placeholder: '+234 800 000 0000',         required: false },
     { key: 'address',   label: 'Address',       type: 'text',  placeholder: '123 Lekki Phase 1, Lagos',  required: false },
   ]
