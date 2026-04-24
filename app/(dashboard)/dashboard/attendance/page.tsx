@@ -47,12 +47,20 @@ export default async function AttendancePage() {
             {todayLabel}
           </p>
         </div>
-        <Link
-          href="/dashboard/staff"
-          style={{ fontSize: '13px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
-        >
-          Manage staff
-        </Link>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Link
+            href="/dashboard/attendance/records"
+            style={{ fontSize: '13px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+          >
+            View records
+          </Link>
+          <Link
+            href="/dashboard/staff"
+            style={{ fontSize: '13px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+          >
+            Manage staff
+          </Link>
+        </div>
       </div>
 
       <AttendanceBoard staff={staff} todayLabel={todayLabel} todayDay={todayDay} />

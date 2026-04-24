@@ -100,3 +100,117 @@ export async function getStaffCheckins(staffId: string, limit = 30) {
 
   return { data, error: error?.message ?? null }
 }
+
+/** Fetch attendance records for the studio across a date range, optionally for one staff member. */
+export async function getAttendanceRecords({
+  from,
+  to,
+  staffId,
+}: {
+  from:     string          // YYYY-MM-DD
+  to:       string          // YYYY-MM-DD
+  staffId?: string | null
+}) {
+  const context = await getStudioContext()
+  if ('error' in context) return { data: null, error: context.error }
+
+  let q = context.admin
+    .from('staff_checkins')
+    .select('checkin_id, staff_id, date, checked_in_at, checked_out_at, staff(full_name, roles, role)')
+    .eq('studio_id', context.studioId)
+    .gte('date', from)
+    .lte('date', to)
+    .order('date', { ascending: false })
+    .order('checked_in_at', { ascending: true })
+
+  if (staffId) q = q.eq('staff_id', staffId)
+
+  const { data, error } = await q
+  return { data, error: error?.message ?? null }
+}
+
+/** Manually add or overwrite a check-in record for any staff member and date. */
+export async function saveCheckin(form: {
+  staffId:       string
+  date:          string   // YYYY-MM-DD
+  checkedInAt:   string   // HH:MM  local time string from client
+  checkedOutAt?: string   // HH:MM  optional
+}) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsStaff(context.admin, context.studioId, form.staffId))) {
+    return { error: 'Staff member not found' }
+  }
+
+  function toISO(date: string, hhmm: string) {
+    // Build a local-midnight Date then add the hours/minutes offset
+    const [y, mo, d] = date.split('-').map(Number)
+    const [h, m]     = hhmm.split(':').map(Number)
+    return new Date(y, mo - 1, d, h, m, 0, 0).toISOString()
+  }
+
+  const checkedInAt  = toISO(form.date, form.checkedInAt)
+  const checkedOutAt = form.checkedOutAt ? toISO(form.date, form.checkedOutAt) : null
+
+  // Upsert based on (staff_id, date) unique constraint
+  const { data: existing } = await context.admin
+    .from('staff_checkins')
+    .select('checkin_id')
+    .eq('staff_id', form.staffId)
+    .eq('studio_id', context.studioId)
+    .eq('date', form.date)
+    .maybeSingle()
+
+  let error
+  if (existing) {
+    ;({ error } = await context.admin
+      .from('staff_checkins')
+      .update({ checked_in_at: checkedInAt, checked_out_at: checkedOutAt })
+      .eq('checkin_id', existing.checkin_id))
+  } else {
+    ;({ error } = await context.admin
+      .from('staff_checkins')
+      .insert({
+        staff_id:       form.staffId,
+        studio_id:      context.studioId,
+        date:           form.date,
+        checked_in_at:  checkedInAt,
+        checked_out_at: checkedOutAt,
+      }))
+  }
+
+  if (!error) {
+    revalidatePath('/dashboard/attendance')
+    revalidatePath('/dashboard/attendance/records')
+    revalidatePath('/dashboard')
+  }
+  return { error: error?.message ?? null }
+}
+
+/** Delete a single check-in record. */
+export async function deleteCheckin(checkinId: string) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  // Verify the record belongs to this studio
+  const { data: row } = await context.admin
+    .from('staff_checkins')
+    .select('checkin_id')
+    .eq('checkin_id', checkinId)
+    .eq('studio_id', context.studioId)
+    .maybeSingle()
+
+  if (!row) return { error: 'Record not found' }
+
+  const { error } = await context.admin
+    .from('staff_checkins')
+    .delete()
+    .eq('checkin_id', checkinId)
+
+  if (!error) {
+    revalidatePath('/dashboard/attendance')
+    revalidatePath('/dashboard/attendance/records')
+  }
+  return { error: error?.message ?? null }
+}
