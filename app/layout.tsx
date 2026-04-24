@@ -20,6 +20,9 @@ export const metadata: Metadata = {
   title: 'Weave by Creative Renaissance — Studio management for photographers',
   description:
     'Sessions, invoicing, payments, staff, and client management in one clean workspace. Built for photography studios by Creative Renaissance.',
+  icons: {
+    icon: [{ url: '/icon.svg', type: 'image/svg+xml' }],
+  },
 }
 
 // Runs synchronously before paint — prevents flash of wrong theme

@@ -14,7 +14,26 @@ export async function generateMetadata(
     .select('name')
     .eq('slug', slug)
     .maybeSingle()
-  return { title: studio ? `Book a session — ${studio.name}` : 'Book a session' }
+
+  const name = studio?.name ?? 'Studio'
+  const title = `Book a session — ${name}`
+  const description = `Request a photography session with ${name}. Pick your session type and preferred date.`
+
+  return {
+    title,
+    description,
+    icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }] },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+    },
+    twitter: {
+      card: 'summary',
+      title,
+      description,
+    },
+  }
 }
 
 export default async function PublicBookingPage({
