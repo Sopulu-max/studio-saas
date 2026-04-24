@@ -188,11 +188,60 @@ export async function deleteSession(sessionId: string) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  const { error } = await context.admin
+  // Verify ownership before touching anything
+  const { data: booking } = await context.admin
+    .from('bookings')
+    .select('booking_id')
+    .eq('booking_id', sessionId)
+    .eq('studio_id', context.studioId)
+    .single()
+  if (!booking) return { error: 'Session not found' }
+
+  const db = context.admin
+
+  // 1. payments → invoices → booking
+  const { data: invoices } = await db
+    .from('invoices')
+    .select('invoice_id')
+    .eq('booking_id', sessionId)
+  const invoiceIds = (invoices ?? []).map((i: { invoice_id: string }) => i.invoice_id)
+  if (invoiceIds.length) {
+    await db.from('payments').delete().in('invoice_id', invoiceIds)
+    await db.from('invoices').delete().in('invoice_id', invoiceIds)
+  }
+
+  // 2. gallery_photos → galleries → booking
+  const { data: galleries } = await db
+    .from('galleries')
+    .select('gallery_id')
+    .eq('booking_id', sessionId)
+  const galleryIds = (galleries ?? []).map((g: { gallery_id: string }) => g.gallery_id)
+  if (galleryIds.length) {
+    await db.from('gallery_photos').delete().in('gallery_id', galleryIds)
+    await db.from('galleries').delete().in('gallery_id', galleryIds)
+  }
+
+  // 3. print_order_items → print_orders → booking
+  const { data: printOrders } = await db
+    .from('print_orders')
+    .select('order_id')
+    .eq('booking_id', sessionId)
+  const orderIds = (printOrders ?? []).map((o: { order_id: string }) => o.order_id)
+  if (orderIds.length) {
+    await db.from('print_order_items').delete().in('order_id', orderIds)
+    await db.from('print_orders').delete().in('order_id', orderIds)
+  }
+
+  // 4. Direct booking children
+  await db.from('contracts').delete().eq('booking_id', sessionId)
+  await db.from('booking_staff').delete().eq('booking_id', sessionId)
+  await db.from('booking_addons').delete().eq('booking_id', sessionId)
+
+  // 5. Finally delete the booking itself
+  const { error } = await db
     .from('bookings')
     .delete()
     .eq('booking_id', sessionId)
-    .eq('studio_id', context.studioId)
 
   if (!error) {
     const { revalidatePath } = await import('next/cache')
