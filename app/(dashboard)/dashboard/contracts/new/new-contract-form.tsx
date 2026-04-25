@@ -10,7 +10,7 @@ import { sessionTitle } from '@/lib/session-title'
 type Booking = {
   booking_id: string
   session_date?: string | null
-  status: string
+  status: string | null
   session_type?: string | null
   clients?: { full_name?: string | null; phone?: string | null } | null
   packages?: { package_id: string; contract_template?: string | null } | null
