@@ -43,7 +43,7 @@ export default async function NewContractPage({
 
   return (
     <NewContractForm
-      bookings={(bookings ?? []) as BookingOption[]}
+      bookings={(bookings ?? []) as unknown as BookingOption[]}
       preselectedSessionId={session ?? ''}
       templates={templates}
     />
