@@ -230,12 +230,23 @@ export async function addExtraCharge(invoiceId: string, extraAmount: number) {
   return { error: error?.message ?? null }
 }
 
+type InvoiceBooking = {
+  booking_id: string
+  session_date: string | null
+  status: string | null
+  session_type: string | null
+  package_id: string | null
+  outfits_count: number | null
+  clients: { full_name: string | null; phone: string | null } | null
+  packages: { name: string | null; base_price: number | null } | null
+}
+
 export async function getInvoiceFormData(bookingId?: string) {
   const context = await getStudioContext()
-  if ('error' in context) return { bookings: [], packages: [] }
+  if ('error' in context) return { bookings: [] as InvoiceBooking[], packages: [] }
 
   if (bookingId && !(await ownsBooking(context.admin, context.studioId, bookingId))) {
-    return { bookings: [], packages: [] }
+    return { bookings: [] as InvoiceBooking[], packages: [] }
   }
 
   const { data: studioBookings } = await context.admin
@@ -251,5 +262,8 @@ export async function getInvoiceFormData(bookingId?: string) {
     .eq('studio_id', context.studioId)
     .order('base_price', { ascending: true })
 
-  return { bookings: studioBookings ?? [], packages: studioPackages ?? [] }
+  return {
+    bookings: (studioBookings ?? []) as unknown as InvoiceBooking[],
+    packages: studioPackages ?? [],
+  }
 }

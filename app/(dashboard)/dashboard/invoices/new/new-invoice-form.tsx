@@ -27,7 +27,7 @@ type Booking = {
   booking_id: string
   package_id?: string | null
   session_type?: string | null
-  session_date: string
+  session_date?: string | null
   outfits_count?: number | null
   clients?: BookingClientSummary | null
   packages?: BookingPackageSummary | null
