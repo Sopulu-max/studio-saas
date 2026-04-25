@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addGallery } from '@/app/actions/galleries'
 import SearchableSelect from '@/components/searchable-select'
-import { sessionTitle } from '@/lib/session-title'
+import { sessionName } from '@/lib/session-title'
 
 type GalleryBooking = {
   booking_id: string
