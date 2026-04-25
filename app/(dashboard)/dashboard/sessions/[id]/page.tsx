@@ -7,6 +7,7 @@ import DeleteSessionButton from './delete-session-button'
 import Link from 'next/link'
 import { getStudioContext } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig, getStatusConfig } from '@/lib/studio-config'
+import { sessionTitle } from '@/lib/session-title'
 
 type SessionStaffRelation = {
   role?: string | null
@@ -107,12 +108,10 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         <div>
           <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{refCode}</p>
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>
-            {session.clients?.full_name}
+            {sessionTitle(session.clients?.full_name, session.session_type, session.session_date)}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {session.session_date
-              ? new Date(session.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
-              : '—'}
+            {session.clients?.full_name}
             {session.packages?.name ? ` · ${session.packages.name}` : ''}
           </p>
         </div>
@@ -212,20 +211,63 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           )}
 
           {(() => {
-            const staffList = (session.booking_staff as SessionStaffRelation[]) ?? []
-            const photographer = staffList.find(s => s.role === 'photographer')
-            const editor       = staffList.find(s => s.role === 'editor')
-            const colourGrader = staffList.find(s => s.role === 'colour_grader')
+            const staffList    = (session.booking_staff as SessionStaffRelation[]) ?? []
+            const photographer  = staffList.find(s => s.role === 'photographer')
+            const editor        = staffList.find(s => s.role === 'editor')
+            const videographer  = staffList.find(s => s.role === 'videographer')
+            const videoEditor   = staffList.find(s => s.role === 'video_editor')
+            const colourGrader  = staffList.find(s => s.role === 'colour_grader')
+
+            const isPhotoVideo = session.service_type === 'photo_video'
+            const isPureVideo  = session.service_type === 'video'
+
+            if (isPhotoVideo) {
+              return (
+                <>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Photographer</p>
+                    <p style={{ fontSize: '14px', margin: 0, color: photographer ? 'var(--text)' : 'var(--text-4)' }}>
+                      {photographer?.staff?.full_name ?? 'None assigned'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Photo editor</p>
+                    <p style={{ fontSize: '14px', margin: 0, color: editor ? 'var(--text)' : 'var(--text-4)' }}>
+                      {editor?.staff?.full_name ?? 'None assigned'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Videographer</p>
+                    <p style={{ fontSize: '14px', margin: 0, color: videographer ? 'var(--text)' : 'var(--text-4)' }}>
+                      {videographer?.staff?.full_name ?? 'None assigned'}
+                    </p>
+                  </div>
+                  <div>
+                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Video editor</p>
+                    <p style={{ fontSize: '14px', margin: 0, color: videoEditor ? 'var(--text)' : 'var(--text-4)' }}>
+                      {videoEditor?.staff?.full_name ?? 'None assigned'}
+                    </p>
+                  </div>
+                  {colourGrader && (
+                    <div>
+                      <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Colour grader</p>
+                      <p style={{ fontSize: '14px', margin: 0 }}>{colourGrader.staff?.full_name}</p>
+                    </div>
+                  )}
+                </>
+              )
+            }
+
             return (
               <>
                 <div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{isVideoSession ? 'Videographer' : 'Photographer'}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{isPureVideo ? 'Videographer' : 'Photographer'}</p>
                   <p style={{ fontSize: '14px', margin: 0, color: photographer ? 'var(--text)' : 'var(--text-4)' }}>
                     {photographer?.staff?.full_name ?? 'None assigned'}
                   </p>
                 </div>
                 <div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{isVideoSession ? 'Video editor' : 'Editor'}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{isPureVideo ? 'Video editor' : 'Editor'}</p>
                   <p style={{ fontSize: '14px', margin: 0, color: editor ? 'var(--text)' : 'var(--text-4)' }}>
                     {editor?.staff?.full_name ?? 'None assigned'}
                   </p>

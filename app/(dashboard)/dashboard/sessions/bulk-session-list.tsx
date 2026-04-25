@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { useStudioConfig } from '@/components/studio-config-provider'
 import { getSessionTypeConfig, getStatusConfig } from '@/lib/studio-config'
 import { bulkUpdateSessionStatus } from '@/app/actions/sessions'
+import { sessionTitle } from '@/lib/session-title'
 
 type SessionRow = {
   booking_id:    string
@@ -79,7 +80,9 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               <input type="checkbox" checked={isSelected} onChange={() => toggle(s.booking_id)}
                 style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
               <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{s.clients?.full_name}</p>
+                <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>
+                  {sessionTitle(s.clients?.full_name, s.session_type, s.session_date)}
+                </p>
                 <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
                   {s.booking_ref != null ? `#${String(s.booking_ref).padStart(4, '0')}` : `#${s.booking_id.slice(0, 6).toUpperCase()}`}
                 </p>

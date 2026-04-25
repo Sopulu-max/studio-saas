@@ -22,10 +22,12 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
 
   const { clients, packages, staff } = await getSessionFormData()
 
-  // Pull photographer and editor from existing assignments
+  // Pull all crew roles from existing assignments
   const staffRelations = (session.booking_staff ?? []) as { role?: string | null; staff_id?: string | null }[]
-  const photographerId = staffRelations.find(s => s.role === 'photographer')?.staff_id ?? ''
-  const editorId       = staffRelations.find(s => s.role === 'editor')?.staff_id ?? ''
+  const photographerId  = staffRelations.find(s => s.role === 'photographer')?.staff_id ?? ''
+  const editorId        = staffRelations.find(s => s.role === 'editor')?.staff_id ?? ''
+  const videographerId  = staffRelations.find(s => s.role === 'videographer')?.staff_id ?? ''
+  const videoEditorId   = staffRelations.find(s => s.role === 'video_editor')?.staff_id ?? ''
 
   return (
     <EditSessionForm
@@ -36,6 +38,8 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
       staff={staff}
       photographerId={photographerId}
       editorId={editorId}
+      videographerId={videographerId}
+      videoEditorId={videoEditorId}
     />
   )
 }

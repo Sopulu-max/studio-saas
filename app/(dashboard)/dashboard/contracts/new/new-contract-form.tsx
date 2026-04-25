@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { addContract } from '@/app/actions/contracts'
 import SearchableSelect from '@/components/searchable-select'
+import { sessionTitle } from '@/lib/session-title'
 
 type Booking = {
   booking_id: string
@@ -97,10 +98,9 @@ export default function NewContractForm({
             <SearchableSelect
               options={bookings.map((b) => ({
                 value: b.booking_id,
-                label: b.clients?.full_name ?? 'Unknown',
+                label: sessionTitle(b.clients?.full_name, b.session_type, b.session_date),
                 sublabel: [
                   b.clients?.phone,
-                  b.session_date ? new Date(b.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : null,
                   b.status,
                 ].filter(Boolean).join(' · '),
               }))}

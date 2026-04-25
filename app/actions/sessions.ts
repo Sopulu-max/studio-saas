@@ -361,6 +361,8 @@ export async function updateSession(sessionId: string, form: {
   notes: string
   photographer_id: string
   editor_id: string
+  videographer_id?: string
+  video_editor_id?: string
 }) {
   if (!form.client_id || !form.session_date) return { error: 'Client and session date are required' }
 
@@ -393,18 +395,40 @@ export async function updateSession(sessionId: string, form: {
 
   if (updateError) return { error: updateError.message }
 
-  // Replace photographer + editor assignments — delete existing, re-insert
+  // Replace crew assignments — delete all then re-insert
+  const isPhotoVideo = form.service_type === 'photo_video'
+  const rolesToDelete = isPhotoVideo
+    ? ['photographer', 'editor', 'videographer', 'video_editor']
+    : ['photographer', 'editor']
+
   await context.admin
     .from('booking_staff')
     .delete()
     .eq('booking_id', sessionId)
-    .in('role', ['photographer', 'editor'])
+    .in('role', rolesToDelete)
 
   const assignments: { booking_id: string; staff_id: string; role: string }[] = []
-  if (form.photographer_id) assignments.push({ booking_id: sessionId, staff_id: form.photographer_id, role: 'photographer' })
-  if (form.editor_id && form.editor_id !== form.photographer_id) {
-    assignments.push({ booking_id: sessionId, staff_id: form.editor_id, role: 'editor' })
+  const usedStaffIds = new Set<string>()
+
+  function addStaff(staffId: string | undefined, role: string) {
+    if (!staffId) return
+    assignments.push({ booking_id: sessionId, staff_id: staffId, role })
+    usedStaffIds.add(staffId)
   }
+
+  if (isPhotoVideo) {
+    addStaff(form.photographer_id, 'photographer')
+    addStaff(form.editor_id, 'editor')
+    addStaff(form.videographer_id, 'videographer')
+    addStaff(form.video_editor_id, 'video_editor')
+  } else {
+    addStaff(form.photographer_id, 'photographer')
+    // editor can't be the same person as photographer
+    if (form.editor_id && form.editor_id !== form.photographer_id) {
+      addStaff(form.editor_id, 'editor')
+    }
+  }
+
   if (assignments.length > 0) {
     const { error: staffError } = await context.admin.from('booking_staff').insert(assignments)
     if (staffError) return { error: staffError.message }

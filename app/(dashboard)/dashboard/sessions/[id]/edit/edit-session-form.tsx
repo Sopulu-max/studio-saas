@@ -59,6 +59,8 @@ export default function EditSessionForm({
   staff,
   photographerId,
   editorId,
+  videographerId,
+  videoEditorId,
 }: {
   sessionId: string
   session: SessionRecord
@@ -67,6 +69,8 @@ export default function EditSessionForm({
   staff: StaffMember[]
   photographerId: string
   editorId: string
+  videographerId?: string
+  videoEditorId?: string
 }) {
   const router = useRouter()
   const config = useStudioConfig()
@@ -86,6 +90,8 @@ export default function EditSessionForm({
     notes:            session.notes            ?? '',
     photographer_id:  photographerId,
     editor_id:        editorId,
+    videographer_id:  videographerId ?? '',
+    video_editor_id:  videoEditorId  ?? '',
   })
 
   function update(field: string, value: string) {
@@ -146,7 +152,11 @@ export default function EditSessionForm({
     }
     setLoading(true)
     setError('')
-    const { error } = await updateSession(sessionId, form)
+    const { error } = await updateSession(sessionId, {
+      ...form,
+      videographer_id: form.videographer_id,
+      video_editor_id: form.video_editor_id,
+    })
     if (error) {
       setError(error)
       setLoading(false)
@@ -162,7 +172,11 @@ export default function EditSessionForm({
 
   const isOutdoor      = isOutdoorType(form.session_type)
   const isEvent        = isEventType(form.session_type)
-  const isVideoSession = form.service_type === 'video' || form.service_type === 'photo_video'
+  const isPhotoVideo   = form.service_type === 'photo_video'
+  const isPureVideo    = form.service_type === 'video'
+  const isVideoSession = isPureVideo || isPhotoVideo
+  // photo_video has a photo component — show outfits; pure video does not
+  const hasPhotoComponent = !isPureVideo
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -268,15 +282,16 @@ export default function EditSessionForm({
       {/* Pricing specs + package */}
       <div style={sectionStyle}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>
-          {isVideoSession ? 'PROJECT DETAILS' : 'PRICING SPECS'}
+          {isPhotoVideo ? 'PROJECT DETAILS' : isVideoSession ? 'PROJECT DETAILS' : 'PRICING SPECS'}
         </p>
 
-        {!isVideoSession && !isEvent && (
-          <div style={{ marginBottom: sessionFiltered.length > 0 ? '16px' : 0 }}>
-            <label style={labelStyle}>Outfits</label>
+        {/* Outfits — shown for photo and photo+video, hidden for pure video */}
+        {hasPhotoComponent && !isEvent && (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>Outfits {isPhotoVideo && <span style={{ fontWeight: 400, color: 'var(--text-4)', fontSize: '12px' }}>(photo)</span>}</label>
             <input type="number" min="1" value={form.outfits_count}
               onChange={e => update('outfits_count', e.target.value)}
-              placeholder="e.g. 3" style={inputStyle} />
+              placeholder="e.g. 3" style={{ ...inputStyle, maxWidth: '200px' }} />
           </div>
         )}
 
@@ -329,28 +344,74 @@ export default function EditSessionForm({
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
             No staff yet — <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</Link>
           </p>
+        ) : isPhotoVideo ? (
+          // Photo + Video: show all 4 crew slots in 2×2 grid
+          <>
+            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 10px' }}>
+              Photo team and video crew can be different people or the same person.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <div>
+                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>📷 Photographer</label>
+                <SearchableSelect
+                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
+                  value={form.photographer_id}
+                  onChange={v => update('photographer_id', v)}
+                  placeholder="Select photographer…"
+                  emptyMessage="No staff match"
+                />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>🎨 Photo editor</label>
+                <SearchableSelect
+                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
+                  value={form.editor_id}
+                  onChange={v => update('editor_id', v)}
+                  placeholder="Select photo editor…"
+                  emptyMessage="No staff match"
+                />
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div>
+                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>🎬 Videographer</label>
+                <SearchableSelect
+                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
+                  value={form.videographer_id}
+                  onChange={v => update('videographer_id', v)}
+                  placeholder="Select videographer…"
+                  emptyMessage="No staff match"
+                />
+              </div>
+              <div>
+                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>✂️ Video editor</label>
+                <SearchableSelect
+                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
+                  value={form.video_editor_id}
+                  onChange={v => update('video_editor_id', v)}
+                  placeholder="Select video editor…"
+                  emptyMessage="No staff match"
+                />
+              </div>
+            </div>
+          </>
         ) : (
+          // Photo or Video only: 2 slots
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={labelStyle}>{isVideoSession ? 'Videographer' : 'Photographer'}</label>
+              <label style={labelStyle}>{isPureVideo ? 'Videographer' : 'Photographer'}</label>
               <SearchableSelect
-                options={[
-                  { value: '', label: 'None', sublabel: undefined },
-                  ...staff.map((s) => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))
-                ]}
+                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
                 value={form.photographer_id}
                 onChange={v => update('photographer_id', v)}
-                placeholder="Select photographer…"
+                placeholder={isPureVideo ? 'Select videographer…' : 'Select photographer…'}
                 emptyMessage="No staff match"
               />
             </div>
             <div>
-              <label style={labelStyle}>{isVideoSession ? 'Video editor' : 'Editor / Retoucher'}</label>
+              <label style={labelStyle}>{isPureVideo ? 'Video editor' : 'Editor / Retoucher'}</label>
               <SearchableSelect
-                options={[
-                  { value: '', label: 'None', sublabel: undefined },
-                  ...staff.map((s) => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))
-                ]}
+                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
                 value={form.editor_id}
                 onChange={v => update('editor_id', v)}
                 placeholder="Select editor…"
