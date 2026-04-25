@@ -25,5 +25,5 @@ export default async function NewGalleryPage({
     .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })
 
-  return <NewGalleryForm bookings={(bookings ?? []) as BookingOption[]} preselectedSessionId={session ?? ''} />
+  return <NewGalleryForm bookings={(bookings ?? []) as unknown as BookingOption[]} preselectedSessionId={session ?? ''} />
 }
