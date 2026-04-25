@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { addStaff } from '@/app/actions/staff'
 
@@ -31,6 +32,7 @@ export default function NewStaffPage() {
   const router = useRouter()
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
+  const [existingId, setExistingId] = useState('')
   const [customInput, setCustomInput] = useState('')
   const [form, setForm] = useState({
     full_name: '', email: '', phone: '', hire_date: '',
@@ -73,9 +75,11 @@ export default function NewStaffPage() {
     if (!form.roles.length) { setError('Select at least one role'); return }
     setLoading(true)
     setError('')
-    const { error } = await addStaff(form)
+    setExistingId('')
+    const { error, existingStaffId } = await addStaff(form)
     if (error) {
       setError(error)
+      if (existingStaffId) setExistingId(existingStaffId)
       setLoading(false)
     } else {
       router.push('/dashboard/staff')
@@ -203,7 +207,17 @@ export default function NewStaffPage() {
           <input type="date" value={form.hire_date} onChange={e => update('hire_date', e.target.value)} style={inputStyle} />
         </div>
 
-        {error && <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '16px' }}>{error}</p>}
+        {error && (
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: '#e24b4a', margin: '0 0 6px' }}>{error}</p>
+            {existingId && (
+              <Link href={`/dashboard/staff/${existingId}`}
+                style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+                View their profile →
+              </Link>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>

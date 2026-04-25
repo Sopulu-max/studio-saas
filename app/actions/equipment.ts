@@ -29,6 +29,16 @@ export async function addEquipment(form: {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
+  if (form.serial_number) {
+    const { data: bySerial } = await context.admin
+      .from('equipment')
+      .select('equipment_id, name')
+      .eq('studio_id', context.studioId)
+      .eq('serial_number', form.serial_number.trim())
+      .maybeSingle()
+    if (bySerial) return { error: `"${bySerial.name}" is already registered with this serial number.`, existingEquipmentId: bySerial.equipment_id }
+  }
+
   const { data: item, error } = await context.admin.from('equipment').insert({
     name:           form.name,
     category:       form.category,
@@ -61,6 +71,17 @@ export async function updateEquipment(equipmentId: string, form: {
 
   if (!(await ownsEquipment(context.admin, context.studioId, equipmentId))) {
     return { error: 'Equipment not found' }
+  }
+
+  if (form.serial_number) {
+    const { data: bySerial } = await context.admin
+      .from('equipment')
+      .select('equipment_id, name')
+      .eq('studio_id', context.studioId)
+      .eq('serial_number', form.serial_number.trim())
+      .neq('equipment_id', equipmentId)
+      .maybeSingle()
+    if (bySerial) return { error: `"${bySerial.name}" is already registered with this serial number.`, existingEquipmentId: bySerial.equipment_id }
   }
 
   const { error } = await context.admin

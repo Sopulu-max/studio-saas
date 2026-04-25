@@ -1,16 +1,45 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateSession } from '@/app/actions/sessions'
 import SearchableSelect from '@/components/searchable-select'
 import { useStudioConfig } from '@/components/studio-config-provider'
 
-const CATEGORY_SUGGESTIONS = [
-  'Portrait', 'Wedding', 'Maternity', 'Corporate', 'Fashion',
-  'Birthday', 'Graduation', 'Engagement', 'Newborn', 'Event',
-  'Boudoir', 'Product', 'Lifestyle', 'Family', 'Other',
-]
+type Client = {
+  client_id: string
+  full_name: string
+  phone?: string | null
+}
+
+type SessionPackage = {
+  package_id: string
+  name: string
+  base_price: number | string
+  session_type?: string | null
+  outfits_count?: number | null
+  edited_photos?: number | null
+}
+
+type StaffMember = {
+  staff_id: string
+  full_name: string
+  role?: string | null
+}
+
+type SessionRecord = {
+  client_id?: string | null
+  session_type?: string | null
+  service_type?: string | null
+  session_date?: string | null
+  package_id?: string | null
+  outfits_count?: number | null
+  location_address?: string | null
+  event_name?: string | null
+  event_date?: string | null
+  notes?: string | null
+}
 
 function isEventType(t: string)   { return t === 'event' }
 function isOutdoorType(t: string) { return t === 'outdoor' }
@@ -32,10 +61,10 @@ export default function EditSessionForm({
   editorId,
 }: {
   sessionId: string
-  session: any
-  clients: any[]
-  packages: any[]
-  staff: any[]
+  session: SessionRecord
+  clients: Client[]
+  packages: SessionPackage[]
+  staff: StaffMember[]
   photographerId: string
   editorId: string
 }) {
@@ -65,17 +94,17 @@ export default function EditSessionForm({
 
   // Package matching
   const outfitsNum = form.outfits_count ? parseInt(form.outfits_count) : null
-  const sessionFiltered = packages.filter((p: any) =>
+  const sessionFiltered = packages.filter((p) =>
     !p.session_type || p.session_type === form.session_type
   )
   const exactMatches = outfitsNum != null
-    ? sessionFiltered.filter((p: any) => p.outfits_count === outfitsNum)
+    ? sessionFiltered.filter((p) => p.outfits_count === outfitsNum)
     : []
   const otherPackages = outfitsNum != null
-    ? sessionFiltered.filter((p: any) => p.outfits_count !== outfitsNum)
+    ? sessionFiltered.filter((p) => p.outfits_count !== outfitsNum)
     : sessionFiltered
 
-  function pkgCard(p: any) {
+  function pkgCard(p: SessionPackage) {
     const selected = form.package_id === p.package_id
     const specs: string[] = []
     if (p.outfits_count != null) specs.push(`${p.outfits_count} outfit${p.outfits_count !== 1 ? 's' : ''}`)
@@ -191,7 +220,7 @@ export default function EditSessionForm({
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Client</label>
           <SearchableSelect
-            options={clients.map((c: any) => ({
+            options={clients.map((c) => ({
               value: c.client_id,
               label: c.full_name,
               sublabel: c.phone ?? undefined,
@@ -298,7 +327,7 @@ export default function EditSessionForm({
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>{isVideoSession ? 'CREW' : 'TEAM'}</p>
         {staff.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
-            No staff yet — <a href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</a>
+            No staff yet — <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</Link>
           </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -307,7 +336,7 @@ export default function EditSessionForm({
               <SearchableSelect
                 options={[
                   { value: '', label: 'None', sublabel: undefined },
-                  ...staff.map((s: any) => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))
+                  ...staff.map((s) => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))
                 ]}
                 value={form.photographer_id}
                 onChange={v => update('photographer_id', v)}
@@ -320,7 +349,7 @@ export default function EditSessionForm({
               <SearchableSelect
                 options={[
                   { value: '', label: 'None', sublabel: undefined },
-                  ...staff.map((s: any) => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))
+                  ...staff.map((s) => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))
                 ]}
                 value={form.editor_id}
                 onChange={v => update('editor_id', v)}

@@ -1,30 +1,48 @@
-import { createAdminClient } from '@/lib/supabase/admin'
-import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getStudioContext } from '@/lib/studio'
 import GalleryUploader from './gallery-uploader'
 
 export default async function GalleryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const admin = createAdminClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const context = await getStudioContext()
+  if ('error' in context) redirect('/login')
 
-  const { data: gallery } = await admin
+  type GalleryBooking = {
+    booking_id: string
+    session_date: string | null
+    status: string | null
+    outfits_count: number | null
+    selections_count: number | null
+    clients: { full_name: string | null } | null
+  }
+
+  const { data: gallery } = await context.admin
     .from('galleries')
-    .select(`*, bookings(booking_id, session_date, status, outfits_count, selections_count, clients(full_name))`)
+    .select(`
+      *,
+      bookings!inner(
+        booking_id,
+        studio_id,
+        session_date,
+        status,
+        outfits_count,
+        selections_count,
+        clients(full_name)
+      )
+    `)
     .eq('gallery_id', id)
+    .eq('bookings.studio_id', context.studioId)
     .single()
 
   if (!gallery) redirect('/dashboard/galleries')
 
-  const { data: photos } = await admin
+  const { data: photos } = await context.admin
     .from('gallery_photos')
     .select('*')
     .eq('gallery_id', id)
     .order('uploaded_at', { ascending: false })
 
-  const booking = gallery.bookings as any
+  const booking = gallery.bookings as GalleryBooking | null
 
   const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
     processing: { bg: '#faeeda', color: '#854f0b' },

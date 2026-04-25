@@ -1,8 +1,27 @@
+import Image from 'next/image'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
+import { verifySignedPublicLink } from '@/lib/public-links'
 
-export default async function PublicContractViewPage({ params }: { params: Promise<{ id: string }> }) {
+type ContractBooking = {
+  session_date?: string | null
+  location_address?: string | null
+  clients?: { full_name?: string | null; email?: string | null } | null
+  packages?: { name?: string | null } | null
+  studios?: { name?: string | null; email?: string | null; phone?: string | null; address?: string | null; logo_url?: string | null } | null
+}
+
+export default async function PublicContractViewPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>
+  searchParams: Promise<{ sig?: string; exp?: string }>
+}) {
   const { id } = await params
+  const { sig, exp } = await searchParams
+  if (!verifySignedPublicLink('contract', id, sig, exp)) notFound()
+
   const admin = createAdminClient()
 
   const { data: contract } = await admin
@@ -21,9 +40,10 @@ export default async function PublicContractViewPage({ params }: { params: Promi
 
   if (!contract) notFound()
 
-  const studio = (contract.bookings as any)?.studios
-  const client = (contract.bookings as any)?.clients
-  const pkg    = (contract.bookings as any)?.packages
+  const booking = contract.bookings as ContractBooking | null
+  const studio = booking?.studios ?? null
+  const client = booking?.clients ?? null
+  const pkg = booking?.packages ?? null
 
   return (
     <>
@@ -52,13 +72,12 @@ export default async function PublicContractViewPage({ params }: { params: Promi
       `}</style>
 
       <div className="page">
-        {/* Toolbar */}
         <div className="toolbar">
           <button className="save-btn" onClick={() => {}} id="print-btn">
-            ⬇ Save as PDF
+            Save as PDF
           </button>
           <span style={{ fontSize: '13px', color: '#888' }}>
-            Use your browser's "Save as PDF" option when the print dialog opens.
+            Use your browser&apos;s Save as PDF option when the print dialog opens.
           </span>
         </div>
         <script dangerouslySetInnerHTML={{ __html: `
@@ -67,11 +86,17 @@ export default async function PublicContractViewPage({ params }: { params: Promi
           });
         `}} />
 
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
             {studio?.logo_url && (
-              <img src={studio.logo_url} alt={studio?.name} style={{ height: '44px', width: '44px', objectFit: 'cover', borderRadius: '8px' }} />
+              <Image
+                src={studio.logo_url}
+                alt={studio?.name ?? 'Studio logo'}
+                width={44}
+                height={44}
+                unoptimized
+                style={{ height: '44px', width: '44px', objectFit: 'cover', borderRadius: '8px' }}
+              />
             )}
             <div>
               <p style={{ fontSize: '20px', fontWeight: '700', marginBottom: '2px' }}>{studio?.name}</p>
@@ -82,22 +107,21 @@ export default async function PublicContractViewPage({ params }: { params: Promi
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '22px', fontWeight: '300', letterSpacing: '-.02em', color: '#111' }}>CONTRACT</p>
             <p style={{ fontSize: '12px', color: '#888', marginTop: '6px' }}>
-              {contract.bookings?.session_date
-                ? new Date((contract.bookings as any).session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+              {booking?.session_date
+                ? new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
                 : ''}
             </p>
             <span style={{
               display: 'inline-block', marginTop: '8px', fontSize: '11px', fontWeight: '600',
               padding: '3px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '.04em',
               background: contract.status === 'signed' ? '#eaf3de' : contract.status === 'sent' ? '#e6f1fb' : '#f1efe8',
-              color:      contract.status === 'signed' ? '#3b6d11' : contract.status === 'sent' ? '#185fa5' : '#5f5e5a',
+              color: contract.status === 'signed' ? '#3b6d11' : contract.status === 'sent' ? '#185fa5' : '#5f5e5a',
             }}>
               {contract.status}
             </span>
           </div>
         </div>
 
-        {/* Parties */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '36px' }}>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '600' }}>Client</p>
@@ -107,18 +131,17 @@ export default async function PublicContractViewPage({ params }: { params: Promi
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '600' }}>Session</p>
             {pkg?.name && <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>{pkg.name}</p>}
-            {(contract.bookings as any)?.location_address && (
-              <p style={{ fontSize: '13px', color: '#666' }}>{(contract.bookings as any).location_address}</p>
+            {booking?.location_address && (
+              <p style={{ fontSize: '13px', color: '#666' }}>{booking.location_address}</p>
             )}
           </div>
         </div>
 
         <hr className="divider" />
 
-        {/* Contract body */}
         <div style={{ marginBottom: '48px' }}>
-          {contract.content.split('\n').map((line: string, i: number) => (
-            <p key={i} style={{ fontSize: '13px', lineHeight: '1.8', color: '#333', marginBottom: line ? '0' : '12px' }}>
+          {contract.content.split('\n').map((line: string, index: number) => (
+            <p key={index} style={{ fontSize: '13px', lineHeight: '1.8', color: '#333', marginBottom: line ? '0' : '12px' }}>
               {line || <>&nbsp;</>}
             </p>
           ))}
@@ -126,7 +149,6 @@ export default async function PublicContractViewPage({ params }: { params: Promi
 
         <hr className="divider" />
 
-        {/* Signatures */}
         <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '16px', fontWeight: '600' }}>Signatures</p>
         <div className="sig-row">
           <div className="sig-block">

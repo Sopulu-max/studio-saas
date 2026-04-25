@@ -13,6 +13,7 @@ const addContractSchema = z.object({
 export async function addContract(form: {
   booking_id: string
   content: string
+  force_duplicate?: boolean
 }) {
   const result = addContractSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -22,6 +23,15 @@ export async function addContract(form: {
 
   if (!(await ownsBooking(context.admin, context.studioId, form.booking_id))) {
     return { error: 'Session not found' }
+  }
+
+  if (!form.force_duplicate) {
+    const { data: existing } = await context.admin
+      .from('contracts')
+      .select('contract_id')
+      .eq('booking_id', form.booking_id)
+      .maybeSingle()
+    if (existing) return { error: '__DUPLICATE__', existingContractId: existing.contract_id }
   }
 
   const { data: contract, error } = await context.admin

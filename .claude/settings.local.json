@@ -21,7 +21,15 @@
       "Bash(node -e \"require\\('resend'\\); console.log\\('resend installed'\\)\")",
       "Bash(xargs grep *)",
       "Bash(grep -rh \"\\\\.select\\(\\\\`\" /c/Users/GLAMOUR/photostudio-saas/app --include=\"*.ts\" --include=\"*.tsx\")",
-      "Bash(del \"C:\\\\Users\\\\GLAMOUR\\\\photostudio-saas\\\\app\\\\actions\\\\public-booking.ts\")"
+      "Bash(del \"C:\\\\Users\\\\GLAMOUR\\\\photostudio-saas\\\\app\\\\actions\\\\public-booking.ts\")",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git pull *)",
+      "Bash(git stash *)",
+      "mcp__Claude_in_Chrome__tabs_context_mcp",
+      "WebFetch(domain:studio-saas-r9vphyxd9-creative-renaissance.vercel.app)",
+      "WebFetch(domain:studio-saas-chi.vercel.app)"
     ]
   }
 }

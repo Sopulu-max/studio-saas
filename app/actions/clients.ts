@@ -117,6 +117,28 @@ export async function updateClient(clientId: string, form: {
     return { error: 'Client not found' }
   }
 
+  if (form.email) {
+    const { data: byEmail } = await context.admin
+      .from('clients')
+      .select('client_id, full_name')
+      .eq('studio_id', context.studioId)
+      .eq('email', form.email.trim().toLowerCase())
+      .neq('client_id', clientId)
+      .maybeSingle()
+    if (byEmail) return { error: `"${byEmail.full_name}" is already registered with this email.`, existingClientId: byEmail.client_id }
+  }
+
+  if (form.phone) {
+    const { data: byPhone } = await context.admin
+      .from('clients')
+      .select('client_id, full_name')
+      .eq('studio_id', context.studioId)
+      .eq('phone', form.phone.trim())
+      .neq('client_id', clientId)
+      .maybeSingle()
+    if (byPhone) return { error: `"${byPhone.full_name}" is already registered with this phone number.`, existingClientId: byPhone.client_id }
+  }
+
   const { error } = await context.admin
     .from('clients')
     .update({ full_name: form.full_name, email: form.email || null, phone: form.phone || null, address: form.address || null })

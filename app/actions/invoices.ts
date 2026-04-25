@@ -31,6 +31,7 @@ export async function addInvoice(form: {
   due_date: string
   addon_ids: string[]
   package_id?: string
+  force_duplicate?: boolean
 }) {
   const result = addInvoiceSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -44,6 +45,16 @@ export async function addInvoice(form: {
 
   if (form.package_id && !(await ownsPackage(context.admin, context.studioId, form.package_id))) {
     return { error: 'Package not found' }
+  }
+
+  if (!form.force_duplicate) {
+    const { data: existing } = await context.admin
+      .from('invoices')
+      .select('invoice_id')
+      .eq('booking_id', form.booking_id)
+      .neq('status', 'cancelled')
+      .maybeSingle()
+    if (existing) return { error: '__DUPLICATE__', existingInvoiceId: existing.invoice_id }
   }
 
   if (form.package_id) {

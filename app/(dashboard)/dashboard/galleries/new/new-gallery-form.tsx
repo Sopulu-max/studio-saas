@@ -5,7 +5,13 @@ import { useRouter } from 'next/navigation'
 import { addGallery } from '@/app/actions/galleries'
 import SearchableSelect from '@/components/searchable-select'
 
-export default function NewGalleryForm({ bookings, preselectedSessionId = '' }: { bookings: any[], preselectedSessionId?: string }) {
+type GalleryBooking = {
+  booking_id: string
+  session_date: string
+  clients?: { full_name?: string | null; phone?: string | null } | null
+}
+
+export default function NewGalleryForm({ bookings, preselectedSessionId = '' }: { bookings: GalleryBooking[]; preselectedSessionId?: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -48,7 +54,7 @@ export default function NewGalleryForm({ bookings, preselectedSessionId = '' }: 
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No bookings yet.</p>
           ) : (
             <SearchableSelect
-              options={bookings.map((b: any) => ({
+              options={bookings.map((b) => ({
                 value: b.booking_id,
                 label: b.clients?.full_name ?? 'Unknown',
                 sublabel: [

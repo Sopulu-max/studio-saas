@@ -1,7 +1,6 @@
 'use server'
 
 import { z } from 'zod'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getStudioContext } from '@/lib/studio'
 import { sendStaffInviteEmail } from '@/lib/email'
 
@@ -33,10 +32,8 @@ export async function inviteStaffMember(data: {
   const parsed = inviteSchema.safeParse(data)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const admin = createAdminClient()
-
   // Fetch studio details for the email
-  const { data: studio } = await admin
+  const { data: studio } = await context.admin
     .from('studios')
     .select('name')
     .eq('studio_id', context.studioId)
@@ -45,7 +42,7 @@ export async function inviteStaffMember(data: {
   if (!studio) return { error: 'Studio not found' }
 
   // Check if staff with this email already exists
-  const { data: existing } = await admin
+  const { data: existing } = await context.admin
     .from('staff')
     .select('staff_id, invite_accepted_at')
     .eq('studio_id', context.studioId)
@@ -58,11 +55,11 @@ export async function inviteStaffMember(data: {
   if (existing) {
     if (existing.invite_accepted_at) return { error: 'This person has already joined your team.' }
     // Re-send invite — update token
-    const { error: updateErr } = await admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: inviteSentAt })
+    const { error: updateErr } = await context.admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: inviteSentAt })
       .eq('staff_id', existing.staff_id)
     if (updateErr) return { error: updateErr.message }
   } else {
-    const { error: insertErr } = await admin.from('staff').insert({
+    const { error: insertErr } = await context.admin.from('staff').insert({
       studio_id:      context.studioId,
       full_name:      data.fullName.trim(),
       email:          data.email.toLowerCase(),
@@ -95,8 +92,7 @@ export async function revokeStaffInvite(staffId: string): Promise<{ error: strin
   if ('error' in context) return { error: 'Not authenticated' }
   if (context.role !== 'owner') return { error: 'Only the studio owner can remove staff' }
 
-  const admin = createAdminClient()
-  const { error } = await admin
+  const { error } = await context.admin
     .from('staff')
     .delete()
     .eq('staff_id', staffId)
@@ -110,9 +106,7 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
   if ('error' in context) return { error: 'Not authenticated' }
   if (context.role !== 'owner') return { error: 'Only the studio owner can resend invites' }
 
-  const admin = createAdminClient()
-
-  const { data: staffMember } = await admin
+  const { data: staffMember } = await context.admin
     .from('staff')
     .select('full_name, email, role')
     .eq('staff_id', staffId)
@@ -121,14 +115,14 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
 
   if (!staffMember) return { error: 'Staff member not found' }
 
-  const { data: studio } = await admin
+  const { data: studio } = await context.admin
     .from('studios')
     .select('name')
     .eq('studio_id', context.studioId)
     .maybeSingle()
 
   const inviteToken = crypto.randomUUID()
-  const { error: updateErr } = await admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: new Date().toISOString() })
+  const { error: updateErr } = await context.admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: new Date().toISOString() })
     .eq('staff_id', staffId)
   if (updateErr) return { error: updateErr.message }
 

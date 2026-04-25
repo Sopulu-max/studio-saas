@@ -37,12 +37,23 @@ export async function addPackage(form: {
   contract_template?: string
   pricing_type?: string
   addons: { name: string; description: string; price: string }[]
+  force_duplicate?: boolean
 }) {
   const result = packageSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
 
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
+
+  if (!form.force_duplicate) {
+    const { data: byName } = await context.admin
+      .from('packages')
+      .select('package_id, name')
+      .eq('studio_id', context.studioId)
+      .ilike('name', form.name.trim())
+      .maybeSingle()
+    if (byName) return { error: '__DUPLICATE__', existingPackageId: byName.package_id }
+  }
 
   const { data: pkg, error } = await context.admin
     .from('packages')
@@ -97,6 +108,7 @@ export async function updatePackage(packageId: string, form: {
   contract_template?: string
   pricing_type?: string
   addons: { name: string; description: string; price: string }[]
+  force_duplicate?: boolean
 }) {
   const result = packageSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -106,6 +118,17 @@ export async function updatePackage(packageId: string, form: {
 
   if (!(await ownsPackage(context.admin, context.studioId, packageId))) {
     return { error: 'Package not found' }
+  }
+
+  if (!form.force_duplicate) {
+    const { data: byName } = await context.admin
+      .from('packages')
+      .select('package_id, name')
+      .eq('studio_id', context.studioId)
+      .ilike('name', form.name.trim())
+      .neq('package_id', packageId)
+      .maybeSingle()
+    if (byName) return { error: '__DUPLICATE__', existingPackageId: byName.package_id }
   }
 
   const { error: updateError } = await context.admin

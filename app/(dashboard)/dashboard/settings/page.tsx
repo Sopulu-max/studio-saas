@@ -1,19 +1,16 @@
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { redirect } from 'next/navigation'
 import SettingsTabs from './settings-tabs'
 import { buildStudioConfig } from '@/lib/studio-config'
+import { getStudioContext } from '@/lib/studio'
 
 export default async function SettingsPage() {
-  const supabase = await createClient()
-  const admin    = createAdminClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const context = await getStudioContext()
+  if ('error' in context) redirect('/login')
 
-  const { data: studio } = await admin
+  const { data: studio } = await context.admin
     .from('studios')
     .select('*')
-    .eq('owner_id', user.id)
+    .eq('studio_id', context.studioId)
     .single()
 
   if (!studio) redirect('/dashboard')
@@ -30,10 +27,10 @@ export default async function SettingsPage() {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
-  const { data: teamMembers } = await admin
+  const { data: teamMembers } = await context.admin
     .from('staff')
     .select('staff_id, full_name, email, role, invite_sent_at, invite_accepted_at, user_id')
-    .eq('studio_id', studio.studio_id)
+    .eq('studio_id', context.studioId)
     .order('created_at', { ascending: true })
 
   return (

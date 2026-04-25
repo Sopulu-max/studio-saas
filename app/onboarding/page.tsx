@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { buildStudioConfig } from '@/lib/studio-config'
 import OnboardingWizard from './wizard'
 
@@ -11,8 +10,7 @@ export default async function OnboardingPage() {
     redirect(`/login?reason=${reason}`)
   }
 
-  const admin = createAdminClient()
-  const { data: studio } = await admin
+  const { data: studio } = await context.admin
     .from('studios')
     .select('*')
     .eq('studio_id', context.studioId)

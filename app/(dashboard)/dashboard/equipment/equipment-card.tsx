@@ -8,8 +8,16 @@ import { updateEquipmentStatus, deleteEquipment } from '@/app/actions/equipment'
 
 const STATUSES = ['available', 'in_use', 'maintenance', 'retired']
 
+type EquipmentItem = {
+  equipment_id: string
+  name: string
+  category: string
+  serial_number?: string | null
+  status: string
+}
+
 export default function EquipmentCard({ item, catStyle, statusStyle, isLast }: {
-  item: any
+  item: EquipmentItem
   catStyle: { bg: string; color: string }
   statusStyle: { bg: string; color: string }
   isLast: boolean

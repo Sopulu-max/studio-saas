@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { signUpWithStudio } from '@/app/actions/auth'
 
 export default function SignupPage() {
@@ -71,7 +72,7 @@ export default function SignupPage() {
         </button>
 
         <p style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', marginTop: '16px' }}>
-          Already have an account? <a href="/login" style={{ color: 'var(--link)' }}>Sign in</a>
+          Already have an account? <Link href="/login" style={{ color: 'var(--link)' }}>Sign in</Link>
         </p>
       </div>
     </div>

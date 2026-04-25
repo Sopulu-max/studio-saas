@@ -338,7 +338,7 @@ export default async function LandingPage() {
 
       {/* Nav */}
       <nav className="lp-nav">
-        <a href="/" className="lp-logo">Weave<span> studio</span></a>
+        <Link href="/" className="lp-logo">Weave<span> studio</span></Link>
         <div className="lp-nav-links">
           <a href="#features" className="btn-ghost">Features</a>
           <Link href="/login" className="btn-ghost">Sign in</Link>

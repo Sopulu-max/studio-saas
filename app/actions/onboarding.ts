@@ -1,7 +1,6 @@
 'use server'
 
 import { z } from 'zod'
-import { createAdminClient } from '@/lib/supabase/admin'
 import { getStudioContext } from '@/lib/studio'
 import type { SessionTypeConfig } from '@/lib/studio-config'
 
@@ -31,10 +30,8 @@ export async function completeOnboarding(data: {
   const parsed = schema.safeParse(data)
   if (!parsed.success) return { error: parsed.error.issues[0].message }
 
-  const admin = createAdminClient()
-
   // Check slug uniqueness
-  const { data: existing } = await admin
+  const { data: existing } = await context.admin
     .from('studios')
     .select('studio_id')
     .eq('slug', data.slug)
@@ -43,7 +40,7 @@ export async function completeOnboarding(data: {
 
   if (existing) return { error: 'That booking URL is already taken. Please choose a different one.' }
 
-  const { error } = await admin
+  const { error } = await context.admin
     .from('studios')
     .update({
       name:                    data.name.trim(),
@@ -65,7 +62,7 @@ export async function completeOnboarding(data: {
     errStr.includes('Could not find')
   )
   if (isMissingColumn) {
-    const { error: error2 } = await admin
+    const { error: error2 } = await context.admin
       .from('studios')
       .update({
         name:                    data.name.trim(),

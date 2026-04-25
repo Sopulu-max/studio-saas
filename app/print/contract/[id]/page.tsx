@@ -1,32 +1,32 @@
-import { createClient } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { getStudioContext } from '@/lib/studio'
 import PrintButton from './print-button'
 
 export default async function ContractPrintPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const supabase = await createClient()
-  const admin = createAdminClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect('/login')
+  const context = await getStudioContext()
+  if ('error' in context) redirect('/login')
 
-  const { data: studio } = await admin
+  const { data: studio } = await context.admin
     .from('studios')
     .select('name, email')
-    .eq('owner_id', user.id)
+    .eq('studio_id', context.studioId)
     .single()
 
-  const { data: contract } = await admin
+  const { data: contract } = await context.admin
     .from('contracts')
     .select(`
       *,
-      bookings (
+      bookings!inner (
+        studio_id,
         session_date, location,
         clients ( full_name, email ),
         packages ( name )
       )
     `)
     .eq('contract_id', id)
+    .eq('bookings.studio_id', context.studioId)
     .single()
 
   if (!contract) redirect('/dashboard/contracts')
@@ -54,10 +54,11 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
       <div className="page">
         <div className="no-print">
           <PrintButton />
-          <a href={`/dashboard/contracts/${id}`} style={{ fontSize: '13px', color: '#888', textDecoration: 'none' }}>← Back to contract</a>
+          <Link href={`/dashboard/contracts/${id}`} style={{ fontSize: '13px', color: '#888', textDecoration: 'none' }}>
+            Back to contract
+          </Link>
         </div>
 
-        {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px' }}>
           <div>
             <p style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>{studio?.name}</p>
@@ -73,7 +74,6 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
           </div>
         </div>
 
-        {/* Parties */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '36px' }}>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Client</p>
@@ -93,7 +93,6 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
 
         <hr className="divider" />
 
-        {/* Contract body */}
         <div style={{ marginBottom: '48px' }}>
           {contract.content.split('\n').map((line: string, i: number) => (
             <p key={i} style={{ fontSize: '13px', lineHeight: '1.8', color: '#333', marginBottom: line ? '0' : '12px' }}>
@@ -104,7 +103,6 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
 
         <hr className="divider" />
 
-        {/* Signatures */}
         <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '16px', fontWeight: '500' }}>Signatures</p>
         <div className="sig-row">
           <div className="sig-block">

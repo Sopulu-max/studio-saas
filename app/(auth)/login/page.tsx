@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, Suspense } from 'react'
+import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
@@ -81,7 +82,7 @@ function LoginForm() {
         </button>
 
         <p style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'center', marginTop: '16px' }}>
-          No account? <a href="/signup" style={{ color: 'var(--link)' }}>Create one</a>
+          No account? <Link href="/signup" style={{ color: 'var(--link)' }}>Create one</Link>
         </p>
       </div>
     </div>

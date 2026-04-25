@@ -15,14 +15,12 @@ const ROLE_LABELS: Record<string, string> = {
 
 export default function AcceptInviteForm({
   token,
-  staffId,
   fullName,
   email,
   studioName,
   role,
 }: {
   token: string
-  staffId: string
   fullName: string
   email: string
   studioName: string
@@ -49,7 +47,7 @@ export default function AcceptInviteForm({
     const res = await fetch('/api/invite/accept', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, userId }),
+      body: JSON.stringify({ token }),
     })
     const json = await res.json()
     if (json.error) { setError(json.error); setLoading(false); return }
@@ -71,7 +69,7 @@ export default function AcceptInviteForm({
     const res = await fetch('/api/invite/accept', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token, userId }),
+      body: JSON.stringify({ token }),
     })
     const json = await res.json()
     if (json.error) { setError(json.error); setLoading(false); return }
@@ -85,7 +83,7 @@ export default function AcceptInviteForm({
         <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 8px' }}>Invitation</p>
         <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 6px' }}>Join {studioName}</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: '0 0 28px' }}>
-          You've been invited as <strong>{ROLE_LABELS[role] ?? role}</strong>.
+          You&apos;ve been invited as <strong>{ROLE_LABELS[role] ?? role}</strong>.
         </p>
 
         <div style={{ background: 'var(--hover)', borderRadius: '8px', padding: '12px 16px', marginBottom: '24px' }}>

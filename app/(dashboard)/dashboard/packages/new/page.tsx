@@ -30,8 +30,9 @@ export default function NewPackagePage() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const config       = useStudioConfig()
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState('')
+  const [dupPackageId, setDupPackageId] = useState('')
   const [form, setForm] = useState({
     name: '', description: '', base_price: '', duration_mins: '',
     shoot_type: '', outfits_count: '', edited_photos: '', coverage_hours: '',
@@ -91,16 +92,24 @@ export default function NewPackagePage() {
     setAddons(prev => prev.filter((_, idx) => idx !== i))
   }
 
-  async function handleSubmit() {
+  async function handleSubmit(forceDuplicate = false) {
     if (!form.name)       { setError('Package name is required'); return }
     if (!form.base_price) { setError('Price is required'); return }
     if (!form.duration_mins) { setError('Duration is required'); return }
     if (!form.shoot_type) { setError('Category is required'); return }
     setLoading(true)
     setError('')
-    const { error } = await addPackage({ ...form, session_type: sessionType, service_type: serviceType, inclusions, addons, contract_template: form.contract_template, pricing_type: pricingType })
-    if (error) { setError(error); setLoading(false) }
-    else router.push('/dashboard/packages')
+    setDupPackageId('')
+    const { error, existingPackageId } = await addPackage({ ...form, session_type: sessionType, service_type: serviceType, inclusions, addons, contract_template: form.contract_template, pricing_type: pricingType, force_duplicate: forceDuplicate })
+    if (error === '__DUPLICATE__') {
+      setDupPackageId(existingPackageId ?? '')
+      setLoading(false)
+    } else if (error) {
+      setError(error)
+      setLoading(false)
+    } else {
+      router.push('/dashboard/packages')
+    }
   }
 
   const isEvent        = sessionType === 'event'
@@ -364,8 +373,27 @@ export default function NewPackagePage() {
 
       {error && <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '12px' }}>{error}</p>}
 
+      {dupPackageId && (
+        <div style={{ marginBottom: '12px', padding: '12px 14px', background: '#fffbea', border: '1px solid #f5e07a', borderRadius: '10px' }}>
+          <p style={{ fontSize: '13px', color: '#7a5800', margin: '0 0 8px', fontWeight: '500' }}>
+            A package with this name already exists.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+            <a href={`/dashboard/packages/${dupPackageId}`}
+              style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+              View existing package →
+            </a>
+            <span style={{ color: '#ccc' }}>|</span>
+            <button type="button" onClick={() => handleSubmit(true)}
+              style={{ fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#7a5800', padding: 0, textDecoration: 'underline' }}>
+              Save anyway
+            </button>
+          </div>
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: '8px' }}>
-        <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>
+        <button onClick={() => handleSubmit(false)} disabled={loading} style={{ flex: 1, padding: '10px' }}>
           {loading ? 'Saving...' : 'Save package'}
         </button>
         <button onClick={() => router.back()} type="button"

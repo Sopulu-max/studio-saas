@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStudioContext } from '@/lib/studio'
 
+type SearchInvoiceRow = {
+  invoice_id: string
+  total?: number | string | null
+  status?: string | null
+  bookings?: { clients?: { full_name?: string | null } | null } | null
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   if (q.length < 2) return NextResponse.json({ clients: [], sessions: [], invoices: [] })
@@ -48,7 +55,7 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     clients:  clients  ?? [],
     sessions: sessions ?? [],
-    invoices: (invoices ?? []).filter((inv: any) => {
+    invoices: ((invoices ?? []) as SearchInvoiceRow[]).filter((inv) => {
       const name: string = inv.bookings?.clients?.full_name ?? ''
       return name.toLowerCase().includes(q.toLowerCase())
     }),

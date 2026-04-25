@@ -2,6 +2,16 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import GalleryViewer from './gallery-viewer'
 
+type PublicGalleryBooking = {
+  booking_id: string
+  session_date?: string | null
+  outfits_count?: number | null
+  selections_count?: number | null
+  status?: string | null
+  clients?: { full_name?: string | null; phone?: string | null } | null
+  packages?: { name?: string | null } | null
+}
+
 export default async function PublicGalleryPage({
   params,
 }: {
@@ -32,7 +42,7 @@ export default async function PublicGalleryPage({
     .order('is_favourite', { ascending: false })
     .order('uploaded_at', { ascending: true })
 
-  const booking        = gallery.bookings as any
+  const booking        = gallery.bookings as PublicGalleryBooking | null
   const allPhotos      = photos ?? []
   const selectionMode  = booking?.status === 'selecting'
   const outfitsCount   = booking?.outfits_count ?? null

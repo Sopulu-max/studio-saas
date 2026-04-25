@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateClient } from '@/app/actions/clients'
 
@@ -14,6 +15,7 @@ export default function EditClientForm({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [existingId, setExistingId] = useState('')
   const [form, setForm] = useState({
     full_name: client.full_name ?? '',
     email:     client.email     ?? '',
@@ -32,9 +34,11 @@ export default function EditClientForm({
     }
     setLoading(true)
     setError('')
-    const { error } = await updateClient(clientId, form)
+    setExistingId('')
+    const { error, existingClientId } = await updateClient(clientId, form)
     if (error) {
       setError(error)
+      if (existingClientId) setExistingId(existingClientId)
       setLoading(false)
     } else {
       router.push(`/dashboard/clients/${clientId}`)
@@ -72,7 +76,17 @@ export default function EditClientForm({
           </div>
         ))}
 
-        {error && <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '16px' }}>{error}</p>}
+        {error && (
+          <div style={{ marginBottom: '16px' }}>
+            <p style={{ fontSize: '13px', color: '#e24b4a', margin: '0 0 6px' }}>{error}</p>
+            {existingId && existingId !== clientId && (
+              <Link href={`/dashboard/clients/${existingId}`}
+                style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+                View that client's profile →
+              </Link>
+            )}
+          </div>
+        )}
 
         <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
           <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>
