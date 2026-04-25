@@ -7,7 +7,7 @@ import DeleteSessionButton from './delete-session-button'
 import Link from 'next/link'
 import { getStudioContext } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig, getStatusConfig } from '@/lib/studio-config'
-import { sessionTitle } from '@/lib/session-title'
+import { sessionName } from '@/lib/session-title'
 
 type SessionStaffRelation = {
   role?: string | null
@@ -106,13 +106,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     <div style={{ maxWidth: '640px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{refCode}</p>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>
-            {sessionTitle(session.clients?.full_name, session.session_type, session.session_date)}
+          <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 4px', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.02em' }}>
+            {sessionName(session.clients?.full_name, session.booking_ref, id, session.session_date)}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {session.clients?.full_name}
+            {session.clients?.full_name ?? '—'}
             {session.packages?.name ? ` · ${session.packages.name}` : ''}
+            <span style={{ fontSize: '12px', color: 'var(--text-4)', marginLeft: '6px', fontFamily: 'monospace' }}>{refCode}</span>
           </p>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const, justifyContent: 'flex-end' }}>
