@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addGallery } from '@/app/actions/galleries'
 import SearchableSelect from '@/components/searchable-select'
+import { sessionTitle } from '@/lib/session-title'
 
 type GalleryBooking = {
   booking_id: string
-  session_date: string
+  session_date?: string | null
+  session_type?: string | null
   clients?: { full_name?: string | null; phone?: string | null } | null
 }
 
@@ -56,11 +58,8 @@ export default function NewGalleryForm({ bookings, preselectedSessionId = '' }: 
             <SearchableSelect
               options={bookings.map((b) => ({
                 value: b.booking_id,
-                label: b.clients?.full_name ?? 'Unknown',
-                sublabel: [
-                  b.clients?.phone,
-                  new Date(b.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }),
-                ].filter(Boolean).join(' · '),
+                label: sessionTitle(b.clients?.full_name, b.session_type, b.session_date),
+                sublabel: b.clients?.phone ?? '',
               }))}
               value={form.booking_id}
               onChange={v => update('booking_id', v)}

@@ -14,13 +14,13 @@ export default async function NewGalleryPage({
   type BookingOption = {
     booking_id: string
     session_date: string | null
+    session_type: string | null
     clients: { full_name: string | null; phone: string | null } | null
-    packages: { name: string | null } | null
   }
 
   const { data: bookings } = await context.admin
     .from('bookings')
-    .select('booking_id, session_date, clients(full_name, phone), packages(name)')
+    .select('booking_id, session_date, session_type, clients(full_name, phone)')
     .eq('studio_id', context.studioId)
     .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })

@@ -4,9 +4,10 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addPrintOrder } from '@/app/actions/print-orders'
 import SearchableSelect from '@/components/searchable-select'
+import { sessionTitle } from '@/lib/session-title'
 
 type Item = { product_name: string; size: string; quantity: string; unit_price: string }
-type Session = { booking_id: string; session_date: string; clients: any; packages: any }
+type Session = { booking_id: string; session_date?: string | null; session_type?: string | null; clients: any; packages: any }
 
 const PRODUCT_SUGGESTIONS = [
   '4×6 Print', '5×7 Print', '8×10 Print', '10×12 Print', '11×14 Print', '16×20 Print', '20×24 Print',
@@ -86,14 +87,10 @@ export default function NewOrderForm({
           <SearchableSelect
             options={[
               { value: '', label: 'No session — standalone order' },
-              ...sessions.map((s: any) => ({
+              ...sessions.map((s: Session) => ({
                 value: s.booking_id,
-                label: s.clients?.full_name ?? 'Unknown',
-                sublabel: [
-                  s.clients?.phone,
-                  s.packages?.name,
-                  new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }),
-                ].filter(Boolean).join(' · '),
+                label: sessionTitle(s.clients?.full_name, s.session_type, s.session_date),
+                sublabel: [s.clients?.phone, s.packages?.name].filter(Boolean).join(' · '),
               })),
             ]}
             value={bookingId}
