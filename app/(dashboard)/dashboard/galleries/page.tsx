@@ -130,10 +130,12 @@ function renderPage(galleries: GalleryListRow[], total: number, page: number, q:
                           {gallery.status}
                         </span>
                       </div>
-                      <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace', color: 'var(--text-2)' }}>
+                      <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 2px', color: 'var(--text-2)' }}>
+                        {gallery.bookings?.clients?.full_name ?? '—'}
+                      </p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '0 0 8px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
                         {sessionName(gallery.bookings?.clients?.full_name, gallery.bookings?.booking_ref, gallery.bookings?.booking_id, gallery.bookings?.session_date)}
                       </p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 8px' }}>{gallery.bookings?.clients?.full_name ?? '—'}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-4)' }}>
                         <span>{photoCount} photo{photoCount !== 1 ? 's' : ''}</span>
                         <span>

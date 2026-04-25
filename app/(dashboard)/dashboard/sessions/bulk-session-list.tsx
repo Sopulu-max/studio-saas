@@ -58,10 +58,10 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
     <div style={{ position: 'relative' }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '36px 1.2fr 1.5fr 1fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '36px 1.5fr 1.2fr 1fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
           <input type="checkbox" checked={allChecked} onChange={toggleAll}
             style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
-          <span>Name</span><span>Client</span><span>Type</span><span>Date</span><span>Package</span><span>Status</span>
+          <span>Client</span><span>Session</span><span>Type</span><span>Date</span><span>Package</span><span>Status</span>
         </div>
 
         {/* Rows */}
@@ -72,7 +72,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
           const name = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
           return (
             <div key={s.booking_id} style={{
-              display: 'grid', gridTemplateColumns: '36px 1.2fr 1.5fr 1fr 1fr 1fr 1fr',
+              display: 'grid', gridTemplateColumns: '36px 1.5fr 1.2fr 1fr 1fr 1fr 1fr',
               padding: '1rem 1.25rem', alignItems: 'center',
               borderBottom: i < sessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
               background: isSelected ? 'var(--active)' : 'transparent',
@@ -81,16 +81,16 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               <input type="checkbox" checked={isSelected} onChange={() => toggle(s.booking_id)}
                 style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
 
-              {/* Name column — links to session */}
+              {/* Client column — links to session */}
               <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <p style={{ fontSize: '13px', fontWeight: '600', margin: 0, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.01em' }}>
-                  {name}
+                <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>
+                  {s.clients?.full_name ?? '—'}
                 </p>
               </Link>
 
-              {/* Client column */}
-              <p style={{ fontSize: '13px', fontWeight: '500', margin: 0 }}>
-                {s.clients?.full_name ?? '—'}
+              {/* Session name column */}
+              <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.01em' }}>
+                {name}
               </p>
 
               <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500' }}>

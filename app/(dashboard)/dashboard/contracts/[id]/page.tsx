@@ -37,11 +37,11 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     <div style={{ maxWidth: '680px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px', fontFamily: 'var(--font-mono, monospace)' }}>
-            {sessionName(contract.bookings?.clients?.full_name, contract.bookings?.booking_ref, contract.bookings?.booking_id, contract.bookings?.session_date)}
+          <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px' }}>
+            {contract.bookings?.clients?.full_name ?? '—'}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {contract.bookings?.clients?.full_name ?? '—'}
+            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(contract.bookings?.clients?.full_name, contract.bookings?.booking_ref, contract.bookings?.booking_id, contract.bookings?.session_date)}</span>
             {contract.bookings?.session_date
               ? ` · ${new Date(contract.bookings.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}`
               : ''}

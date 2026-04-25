@@ -104,14 +104,14 @@ export default async function PrintOrdersPage({
                 borderBottom: i < orders.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
-                  {booking ? (
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', fontFamily: 'monospace' }}>
-                      {sessionName(booking.clients?.full_name, booking.booking_ref, booking.booking_id, booking.session_date)}
-                    </p>
-                  ) : null}
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>
                     {booking?.clients?.full_name ?? 'No session linked'}
                   </p>
+                  {booking && (
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                      {sessionName(booking.clients?.full_name, booking.booking_ref, booking.booking_id, booking.session_date)}
+                    </p>
+                  )}
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
                   {new Date(o.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}

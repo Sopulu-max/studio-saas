@@ -141,10 +141,12 @@ function renderPage(
                 borderBottom: i < contracts.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace' }}>
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>
+                    {c.bookings?.clients?.full_name ?? '—'}
+                  </p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
                     {sessionName(c.bookings?.clients?.full_name, c.bookings?.booking_ref, c.bookings?.booking_id, c.bookings?.session_date)}
                   </p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{c.bookings?.clients?.full_name ?? '—'}</p>
                 </div>
                 <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
                   {c.created_at ? new Date(c.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}

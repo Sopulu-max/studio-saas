@@ -232,11 +232,11 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
                       borderBottom: i < grouped[role].length - 1 ? '1px solid var(--line-inner)' : 'none',
                     }}>
                       <div>
-                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace' }}>
-                          {sessionName(booking?.clients?.full_name, booking?.booking_ref, booking?.booking_id, booking?.session_date)}
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>
+                          {booking?.clients?.full_name ?? '—'}
                         </p>
                         <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                          {booking?.clients?.full_name ?? '—'}
+                          <span style={{ fontFamily: 'monospace', letterSpacing: '0.02em' }}>{sessionName(booking?.clients?.full_name, booking?.booking_ref, booking?.booking_id, booking?.session_date)}</span>
                           {booking?.session_date ? ` · ${new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                         </p>
                       </div>

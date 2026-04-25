@@ -103,11 +103,11 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 borderBottom: i < bookings.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace' }}>
-                    {sessionName(client.full_name, b.booking_ref, b.booking_id, b.session_date)}
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>
+                    {(b.packages as BookingPackageRelation)?.name ?? client.full_name}
                   </p>
                   <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                    {(b.packages as BookingPackageRelation)?.name ?? '—'}
+                    <span style={{ fontFamily: 'monospace', letterSpacing: '0.02em' }}>{sessionName(client.full_name, b.booking_ref, b.booking_id, b.session_date)}</span>
                     {b.session_date ? ` · ${new Date(b.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                   </p>
                 </div>

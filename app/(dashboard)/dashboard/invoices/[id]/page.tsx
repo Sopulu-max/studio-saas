@@ -62,11 +62,12 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     <div style={{ maxWidth: '640px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px', fontFamily: 'var(--font-mono, monospace)' }}>
-            {sessionName(invoice.bookings?.clients?.full_name, invoice.bookings?.booking_ref, invoice.bookings?.booking_id, invoice.bookings?.session_date)}
+          <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px' }}>
+            {invoice.bookings?.clients?.full_name ?? '—'}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {invoice.bookings?.clients?.full_name}{invoice.bookings?.packages?.name ? ` · ${invoice.bookings.packages.name}` : ''}
+            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(invoice.bookings?.clients?.full_name, invoice.bookings?.booking_ref, invoice.bookings?.booking_id, invoice.bookings?.session_date)}</span>
+            {invoice.bookings?.packages?.name ? ` · ${invoice.bookings.packages.name}` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

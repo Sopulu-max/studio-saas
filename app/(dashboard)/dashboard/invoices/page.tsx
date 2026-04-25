@@ -144,10 +144,12 @@ function renderPage(
                 borderBottom: i < invoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace' }}>
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>
+                    {inv.bookings?.clients?.full_name ?? '—'}
+                  </p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
                     {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
                   </p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
                 </div>
                 <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>₦{Number(inv.total).toLocaleString()}</p>
                 <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>

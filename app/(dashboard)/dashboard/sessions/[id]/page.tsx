@@ -106,13 +106,12 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     <div style={{ maxWidth: '640px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 4px', fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.02em' }}>
-            {sessionName(session.clients?.full_name, session.booking_ref, id, session.session_date)}
+          <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 4px' }}>
+            {session.clients?.full_name ?? '—'}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {session.clients?.full_name ?? '—'}
+            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(session.clients?.full_name, session.booking_ref, id, session.session_date)}</span>
             {session.packages?.name ? ` · ${session.packages.name}` : ''}
-            <span style={{ fontSize: '12px', color: 'var(--text-4)', marginLeft: '6px', fontFamily: 'monospace' }}>{refCode}</span>
           </p>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const, justifyContent: 'flex-end' }}>

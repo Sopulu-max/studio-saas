@@ -189,14 +189,12 @@ export default async function CalendarPage({
                             >
                               <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.color_fg, flexShrink: 0, opacity: 0.75, marginTop: '3px' }} />
                               <span style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-                                <span style={{ fontSize: '11px', color: sc.color_fg, fontWeight: '600', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+                                <span style={{ fontSize: '11px', color: sc.color_fg, fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {clientName ?? sName}
+                                </span>
+                                <span style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
                                   {sName}
                                 </span>
-                                {clientName && (
-                                  <span style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {clientName}
-                                  </span>
-                                )}
                               </span>
                             </Link>
                           )
