@@ -1,11 +1,9 @@
-type QueryChain<T> = {
-  select(query: string): QueryChain<T>
-  eq(column: string, value: string): QueryChain<T>
-  maybeSingle(): Promise<{ data: T | null }>
-}
-
+// Using `any` for the query chain return so that the real Supabase
+// PostgrestQueryBuilder (whose chained methods don't satisfy a strict
+// self-referential type) is assignable to AdminLike.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AdminLike = {
-  from(table: string): QueryChain<unknown>
+  from(table: string): any
 }
 
 async function hasStudioRecordAccess(
