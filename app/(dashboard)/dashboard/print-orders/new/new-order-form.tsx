@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { addPrintOrder } from '@/app/actions/print-orders'
 import SearchableSelect from '@/components/searchable-select'
-import { sessionTitle } from '@/lib/session-title'
+import { sessionName } from '@/lib/session-title'
 
 type Item = { product_name: string; size: string; quantity: string; unit_price: string }
 type Session = { booking_id: string; booking_ref?: number | null; session_date?: string | null; session_type?: string | null; clients: any; packages: any }
