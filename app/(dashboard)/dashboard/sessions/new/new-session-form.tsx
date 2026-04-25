@@ -1,11 +1,33 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { addSession } from '@/app/actions/sessions'
 import { addPackage } from '@/app/actions/packages'
 import SearchableSelect from '@/components/searchable-select'
 import { useStudioConfig } from '@/components/studio-config-provider'
+
+type Client = {
+  client_id: string
+  full_name: string
+  phone?: string | null
+}
+
+type SessionPackage = {
+  package_id: string
+  name: string
+  base_price: number | string
+  session_type?: string | null
+  outfits_count?: number | null
+  edited_photos?: number | null
+}
+
+type StaffMember = {
+  staff_id: string
+  full_name: string
+  role?: string | null
+}
 
 const CATEGORY_SUGGESTIONS = [
   'Portrait', 'Wedding', 'Maternity', 'Corporate', 'Fashion',
@@ -17,14 +39,15 @@ function isEventType(t: string)   { return t === 'event' }
 function isOutdoorType(t: string) { return t === 'outdoor' }
 
 export default function NewSessionForm({ clients, packages, staff }: {
-  clients: any[]
-  packages: any[]
-  staff: any[]
+  clients: Client[]
+  packages: SessionPackage[]
+  staff: StaffMember[]
 }) {
   const router = useRouter()
   const config = useStudioConfig()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loading, setLoading]         = useState(false)
+  const [error, setError]             = useState('')
+  const [dupSessionId, setDupId]      = useState<string | null>(null)
   const [newPackageName, setNewPackageName] = useState('')
 
   const firstType    = config.sessionTypes[0]?.value ?? 'studio'
@@ -58,23 +81,21 @@ export default function NewSessionForm({ clients, packages, staff }: {
   const photosNum    = form.edited_photos ? parseInt(form.edited_photos) : null
   const hasSpecs     = outfitsNum != null || photosNum != null
 
-  const sessionFiltered = packages.filter((p: any) =>
+  const sessionFiltered = packages.filter((p) =>
     !p.session_type || p.session_type === form.session_type
   )
   const exactMatches = hasSpecs
-    ? sessionFiltered.filter((p: any) => {
+    ? sessionFiltered.filter((p) => {
         const outfitsOk = outfitsNum != null ? p.outfits_count === outfitsNum : true
         const photosOk  = photosNum  != null ? p.edited_photos === photosNum  : true
         return outfitsOk && photosOk
       })
     : []
   const otherPackages = hasSpecs
-    ? sessionFiltered.filter((p: any) => !exactMatches.includes(p))
+    ? sessionFiltered.filter((p) => !exactMatches.includes(p))
     : sessionFiltered
 
-  const noExactMatch = hasSpecs && exactMatches.length === 0
-
-  function pkgCard(p: any) {
+  function pkgCard(p: SessionPackage) {
     const selected = form.package_id === p.package_id
     const specs: string[] = []
     if (p.outfits_count != null) specs.push(`${p.outfits_count} outfit${p.outfits_count !== 1 ? 's' : ''}`)
@@ -141,15 +162,39 @@ export default function NewSessionForm({ clients, packages, staff }: {
       packageId = newId ?? ''
     }
 
-    const { error } = await addSession({
+    const result = await addSession({
       ...form,
       service_type: form.service_type,
       package_id: packageId,
       photographer_id: form.photographer_id,
       editor_id: form.editor_id,
     })
-    if (error) {
-      setError(error)
+    if (result.error === '__DUPLICATE__') {
+      setDupId((result as { duplicateId?: string }).duplicateId ?? null)
+      setError('__DUPLICATE__')
+      setLoading(false)
+    } else if (result.error) {
+      setError(result.error)
+      setLoading(false)
+    } else {
+      router.push('/dashboard/sessions')
+    }
+  }
+
+  async function handleForceSave() {
+    setLoading(true)
+    setError('')
+    setDupId(null)
+    const result = await addSession({
+      ...form,
+      service_type: form.service_type,
+      package_id: form.package_id,
+      photographer_id: form.photographer_id,
+      editor_id: form.editor_id,
+      force_duplicate: true,
+    })
+    if (result.error) {
+      setError(result.error)
       setLoading(false)
     } else {
       router.push('/dashboard/sessions')
@@ -221,11 +266,11 @@ export default function NewSessionForm({ clients, packages, staff }: {
           <label style={labelStyle}>Client <span style={{ color: '#e24b4a' }}>*</span></label>
           {clients.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
-              No clients yet — <a href="/dashboard/clients/new" style={{ color: 'var(--link)' }}>add one first</a>
+              No clients yet — <Link href="/dashboard/clients/new" style={{ color: 'var(--link)' }}>add one first</Link>
             </p>
           ) : (
             <SearchableSelect
-              options={clients.map((c: any) => ({
+              options={clients.map((c) => ({
                 value: c.client_id,
                 label: c.full_name,
                 sublabel: c.phone ?? undefined,
@@ -396,7 +441,7 @@ export default function NewSessionForm({ clients, packages, staff }: {
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>{isVideoSession ? 'CREW' : 'TEAM'}</p>
         {staff.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
-            No staff yet — <a href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</a>
+            No staff yet — <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</Link>
           </p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -405,7 +450,7 @@ export default function NewSessionForm({ clients, packages, staff }: {
               <SearchableSelect
                 options={[
                   { value: '', label: 'None', sublabel: undefined },
-                  ...staff.map((s: any) => ({
+                  ...staff.map((s) => ({
                     value: s.staff_id,
                     label: s.full_name,
                     sublabel: s.role ?? undefined,
@@ -422,7 +467,7 @@ export default function NewSessionForm({ clients, packages, staff }: {
               <SearchableSelect
                 options={[
                   { value: '', label: 'None', sublabel: undefined },
-                  ...staff.map((s: any) => ({
+                  ...staff.map((s) => ({
                     value: s.staff_id,
                     label: s.full_name,
                     sublabel: s.role ?? undefined,
@@ -452,7 +497,30 @@ export default function NewSessionForm({ clients, packages, staff }: {
         />
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '12px' }}>{error}</p>}
+      {error === '__DUPLICATE__' ? (
+        <div style={{ marginBottom: '14px', padding: '14px 16px', borderRadius: '10px', background: '#faeeda', border: '1px solid #e8c97a' }}>
+          <p style={{ fontSize: '13px', fontWeight: '600', color: '#854f0b', margin: '0 0 6px' }}>
+            ⚠️ This client already has a session on this date
+          </p>
+          <p style={{ fontSize: '13px', color: '#854f0b', margin: '0 0 12px' }}>
+            A session for this client is already booked for the selected date.
+          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {dupSessionId && (
+              <a href={`/dashboard/sessions/${dupSessionId}`}
+                style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: '1px solid #c89040', color: '#854f0b', textDecoration: 'none', background: 'transparent' }}>
+                View existing session →
+              </a>
+            )}
+            <button onClick={handleForceSave} disabled={loading}
+              style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: '1px solid #c89040', color: '#854f0b', background: 'transparent', cursor: 'pointer', opacity: loading ? 0.6 : 1 }}>
+              {loading ? 'Saving…' : 'Create anyway'}
+            </button>
+          </div>
+        </div>
+      ) : error ? (
+        <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '12px' }}>{error}</p>
+      ) : null}
 
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>

@@ -76,6 +76,18 @@ export async function submitBookingRequest(form: {
     clientId = newClient.client_id
   }
 
+  // Duplicate booking check — same client, same date, not cancelled
+  const { data: dupBooking } = await admin
+    .from('bookings')
+    .select('booking_id')
+    .eq('studio_id', form.studio_id)
+    .eq('client_id', clientId)
+    .eq('session_date', form.preferred_date)
+    .neq('status', 'cancelled')
+    .maybeSingle()
+
+  if (dupBooking) return { error: '__DUPLICATE__' }
+
   const noteParts = [
     form.notes?.trim(),
   ].filter(Boolean)

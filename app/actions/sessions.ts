@@ -19,6 +19,7 @@ const addSessionSchema = z.object({
   editor_id: z.string().optional().default(''),
   edited_photos: z.string().optional().default(''),
   shoot_type: z.string().optional().default(''),
+  force_duplicate: z.boolean().optional().default(false),
 })
 
 export async function addSession(form: {
@@ -37,6 +38,7 @@ export async function addSession(form: {
   editor_id: string
   edited_photos: string
   shoot_type: string
+  force_duplicate?: boolean
 }) {
   const result = addSessionSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -57,6 +59,21 @@ export async function addSession(form: {
   }
   if (form.editor_id && !(await ownsStaff(context.admin, context.studioId, form.editor_id))) {
     return { error: 'Staff member not found' }
+  }
+
+  // Soft duplicate check — same client, same date, not cancelled
+  // Returns a warning ID so the form can ask "are you sure?" before proceeding
+  const { data: dupSession } = await context.admin
+    .from('bookings')
+    .select('booking_id')
+    .eq('studio_id', context.studioId)
+    .eq('client_id', form.client_id)
+    .eq('session_date', form.session_date)
+    .neq('status', 'cancelled')
+    .maybeSingle()
+
+  if (dupSession && !form.force_duplicate) {
+    return { error: '__DUPLICATE__', duplicateId: dupSession.booking_id }
   }
 
   const insertData: Record<string, string | number | null> = {

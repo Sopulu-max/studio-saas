@@ -14,9 +14,10 @@ export default function BookingForm({
   sessionTypes: { value: string; label: string }[]
   serviceTypes: { value: string; label: string }[]
 }) {
-  const [submitted, setSubmitted] = useState(false)
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState('')
+  const [submitted, setSubmitted]   = useState(false)
+  const [duplicate, setDuplicate]   = useState(false)
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState('')
 
   const [form, setForm] = useState({
     full_name:        '',
@@ -56,7 +57,9 @@ export default function BookingForm({
     setError('')
 
     const { error: err } = await submitBookingRequest({ ...form, studio_id: studioId })
-    if (err) {
+    if (err === '__DUPLICATE__') {
+      setDuplicate(true)
+    } else if (err) {
       setError(err)
       setLoading(false)
     } else {
@@ -68,6 +71,23 @@ export default function BookingForm({
   const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box' }
   const req:   React.CSSProperties = { color: '#e24b4a' }
   const row:   React.CSSProperties = { marginBottom: '16px' }
+
+  // ── Already submitted screen ──────────────────────────────────────────────
+  if (duplicate) {
+    return (
+      <div style={{ textAlign: 'center', padding: '48px 24px' }}>
+        <div style={{ fontSize: '36px', marginBottom: '20px' }}>✅</div>
+        <h2 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '10px', color: '#111' }}>
+          Already received!
+        </h2>
+        <p style={{ fontSize: '15px', color: '#666', lineHeight: '1.6', maxWidth: '340px', margin: '0 auto 28px' }}>
+          <strong>{form.full_name.split(' ')[0]}</strong>, we already have a booking request from you for this date.
+          {studioName} will be in touch to confirm your session — no need to submit again.
+        </p>
+        <p style={{ fontSize: '13px', color: '#aaa' }}>You can close this page.</p>
+      </div>
+    )
+  }
 
   // ── Success screen ────────────────────────────────────────────────────────
   if (submitted) {
