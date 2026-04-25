@@ -92,6 +92,18 @@ export async function submitBookingRequest(form: {
     form.notes?.trim(),
   ].filter(Boolean)
 
+  // Compute next booking_ref for this studio (app-level assignment)
+  const { data: maxRefRow } = await admin
+    .from('bookings')
+    .select('booking_ref')
+    .eq('studio_id', form.studio_id)
+    .not('booking_ref', 'is', null)
+    .order('booking_ref', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextRef = ((maxRefRow?.booking_ref as number | null) ?? 0) + 1
+
   const insertData: Record<string, string | number | null> = {
     studio_id:    form.studio_id,
     client_id:    clientId,
@@ -100,6 +112,7 @@ export async function submitBookingRequest(form: {
     session_date: form.preferred_date,
     status:       'pending_confirmation',
     notes:        noteParts.length ? noteParts.join('\n\n') : null,
+    booking_ref:  nextRef,
   }
 
   if (form.outfits_count) insertData.outfits_count = parseInt(form.outfits_count, 10)

@@ -1,7 +1,11 @@
+const MONTHS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC']
+
 /**
  * Generates a short unique session identifier.
- * Format: "<first3charsLower><paddedRef>-<d/M/yy>"
- * Example: "ada0004-2/5/26"
+ * Format: "ADA-0004-02MAY26"
+ *   - First 3 chars of client first name, uppercase
+ *   - Padded booking ref (or first 4 chars of UUID if ref is null)
+ *   - Zero-padded day + 3-letter month + 2-digit year
  */
 export function sessionName(
   clientName: string | null | undefined,
@@ -9,27 +13,30 @@ export function sessionName(
   bookingId: string | null | undefined,
   sessionDate: string | null | undefined,
 ): string {
-  const firstName = clientName?.trim().split(' ')[0] ?? 'unk'
-  const prefix = firstName.slice(0, 3).toLowerCase()
+  const firstName = clientName?.trim().split(' ')[0] ?? 'UNK'
+  const prefix = firstName.slice(0, 3).toUpperCase()
 
   const ref =
     bookingRef != null
       ? String(bookingRef).padStart(4, '0')
       : (bookingId ?? '').slice(0, 4).toUpperCase()
 
-  let dateStr = ''
+  let datePart = ''
   if (sessionDate) {
     try {
       const d = new Date(
         sessionDate.includes('T') ? sessionDate : sessionDate + 'T00:00:00',
       )
-      dateStr = `${d.getDate()}/${d.getMonth() + 1}/${String(d.getFullYear()).slice(-2)}`
+      const day   = String(d.getDate()).padStart(2, '0')
+      const month = MONTHS[d.getMonth()]
+      const year  = String(d.getFullYear()).slice(-2)
+      datePart = `${day}${month}${year}`
     } catch {
-      dateStr = ''
+      datePart = ''
     }
   }
 
-  return dateStr ? `${prefix}${ref}-${dateStr}` : `${prefix}${ref}`
+  return datePart ? `${prefix}-${ref}-${datePart}` : `${prefix}-${ref}`
 }
 
 /**

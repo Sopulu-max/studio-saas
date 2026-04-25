@@ -76,18 +76,27 @@ export async function addSession(form: {
     return { error: '__DUPLICATE__', duplicateId: dupSession.booking_id }
   }
 
+  // Compute next booking_ref for this studio (app-level, since no DB trigger is guaranteed)
+  const { data: maxRefRow } = await context.admin
+    .from('bookings')
+    .select('booking_ref')
+    .eq('studio_id', context.studioId)
+    .not('booking_ref', 'is', null)
+    .order('booking_ref', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  const nextRef = ((maxRefRow?.booking_ref as number | null) ?? 0) + 1
+
   const insertData: Record<string, string | number | null> = {
     client_id: form.client_id,
     session_date: form.session_date,
     studio_id: context.studioId,
     status: 'confirmed', // staff-created sessions skip pending_confirmation
     notes: form.notes || null,
+    booking_ref: nextRef,
   }
 
-  // Only include columns that exist — new columns require a migration first
-  // Run: ALTER TABLE bookings ADD COLUMN session_type TEXT DEFAULT 'studio'
-  //      ADD COLUMN outfits_count INTEGER, ADD COLUMN location_address TEXT,
-  //      ADD COLUMN event_name TEXT, ADD COLUMN event_date DATE, ADD COLUMN drive_link TEXT
   if (form.session_type) insertData.session_type = form.session_type
   if (form.service_type) insertData.service_type = form.service_type
   if (form.location_address) insertData.location_address = form.location_address
