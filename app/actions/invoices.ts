@@ -232,6 +232,7 @@ export async function addExtraCharge(invoiceId: string, extraAmount: number) {
 
 type InvoiceBooking = {
   booking_id: string
+  booking_ref: number | null
   session_date: string | null
   status: string | null
   session_type: string | null
@@ -251,7 +252,7 @@ export async function getInvoiceFormData(bookingId?: string) {
 
   const { data: studioBookings } = await context.admin
     .from('bookings')
-    .select('booking_id, session_date, status, session_type, package_id, outfits_count, clients(full_name, phone), packages(name, base_price)')
+    .select('booking_id, booking_ref, session_date, status, session_type, package_id, outfits_count, clients(full_name, phone), packages(name, base_price)')
     .eq('studio_id', context.studioId)
     .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })

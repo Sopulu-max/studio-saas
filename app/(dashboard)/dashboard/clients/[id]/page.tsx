@@ -3,6 +3,7 @@ import Link from 'next/link'
 import ClientActions from './client-actions'
 import AvatarUpload from '@/components/avatar-upload'
 import { getStudioContext } from '@/lib/studio'
+import { sessionName } from '@/lib/session-title'
 
 type BookingPackageRelation = { name?: string | null } | null
 
@@ -22,7 +23,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   const { data: bookings } = await context.admin
     .from('bookings')
-    .select('booking_id, session_date, status, packages(name)')
+    .select('booking_id, booking_ref, session_type, session_date, status, packages(name)')
     .eq('client_id', id)
     .eq('studio_id', context.studioId)
     .order('session_date', { ascending: false })
@@ -102,11 +103,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                 borderBottom: i < bookings.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
-                  <p style={{ fontSize: '14px', margin: '0 0 2px' }}>
-                    {(b.packages as BookingPackageRelation)?.name ?? '—'}
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace' }}>
+                    {sessionName(client.full_name, b.booking_ref, b.booking_id, b.session_date)}
                   </p>
                   <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                    {new Date(b.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {(b.packages as BookingPackageRelation)?.name ?? '—'}
+                    {b.session_date ? ` · ${new Date(b.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                   </p>
                 </div>
                 <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>

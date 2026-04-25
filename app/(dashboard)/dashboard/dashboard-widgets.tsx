@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import TodayActions from './today-actions'
+import { sessionName } from '@/lib/session-title'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type Style   = { label: string; color_bg: string; color_fg: string }
 type Session = {
   booking_id:   string
+  booking_ref?: number | null
   session_date?: string | null
   session_type?: string | null
   status:        string
@@ -175,9 +177,12 @@ export default function DashboardWidgets(props: DashboardProps) {
               borderBottom: i < props.todaySessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
             }}>
               <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{s.clients?.full_name}</p>
+                <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', fontFamily: 'monospace' }}>
+                  {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                </p>
                 <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
-                  {s.session_date ? new Date(s.session_date).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' }) : ''}
+                  {s.clients?.full_name}
+                  {s.session_date ? ` · ${new Date(s.session_date).toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}` : ''}
                   {s.packages?.name ? ` · ${s.packages.name}` : ''}
                 </p>
               </Link>
@@ -232,9 +237,12 @@ export default function DashboardWidgets(props: DashboardProps) {
               <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0', borderBottom: i < props.upcomingSessions.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{s.clients?.full_name}</p>
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', fontFamily: 'monospace' }}>
+                      {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                    </p>
                     <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
-                      {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
+                      {s.clients?.full_name}
+                      {s.session_date ? ` · ${new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' })}` : ''}
                       {s.packages?.name ? ` · ${s.packages.name}` : ''}
                     </p>
                   </div>
@@ -261,7 +269,9 @@ export default function DashboardWidgets(props: DashboardProps) {
             return (
               <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: i < props.activeSessions.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
-                  <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{s.clients?.full_name}</p>
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: 0, fontFamily: 'monospace' }}>
+                    {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                  </p>
                   <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.color_bg, color: st.color_fg, fontWeight: '500' }}>{st.label}</span>
                 </div>
               </Link>

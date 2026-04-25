@@ -2,6 +2,7 @@ import Link from 'next/link'
 import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
+import { sessionName } from '@/lib/session-title'
 
 type PrintOrderItem = {
   quantity: number
@@ -9,6 +10,10 @@ type PrintOrderItem = {
 }
 
 type PrintOrderBooking = {
+  booking_id?: string | null
+  booking_ref?: number | null
+  session_date?: string | null
+  session_type?: string | null
   clients?: { full_name?: string | null } | null
 } | null
 
@@ -47,7 +52,7 @@ export default async function PrintOrdersPage({
     .from('print_orders')
     .select(`
       order_id, status, created_at, notes,
-      bookings ( session_date, clients ( full_name ) ),
+      bookings ( booking_id, booking_ref, session_date, session_type, clients ( full_name ) ),
       print_order_items ( quantity, unit_price )
     `, { count: 'exact' })
     .eq('studio_id', context.studioId)
@@ -85,7 +90,7 @@ export default async function PrintOrdersPage({
       ) : (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
-            <span>Client</span><span>Date</span><span>Items</span><span>Total</span><span>Status</span>
+            <span>Session</span><span>Date</span><span>Items</span><span>Total</span><span>Status</span>
           </div>
           {orders.map((o, i) => {
             const st    = STATUS_COLORS[o.status ?? ''] ?? STATUS_COLORS.pending
@@ -98,9 +103,16 @@ export default async function PrintOrdersPage({
                 padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                 borderBottom: i < orders.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
-                <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>
-                  {booking?.clients?.full_name ?? 'No session linked'}
-                </p>
+                <div>
+                  {booking ? (
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', fontFamily: 'monospace' }}>
+                      {sessionName(booking.clients?.full_name, booking.booking_ref, booking.booking_id, booking.session_date)}
+                    </p>
+                  ) : null}
+                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
+                    {booking?.clients?.full_name ?? 'No session linked'}
+                  </p>
+                </div>
                 <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
                   {new Date(o.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </p>

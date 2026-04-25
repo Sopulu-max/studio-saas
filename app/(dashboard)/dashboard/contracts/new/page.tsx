@@ -19,6 +19,7 @@ export default async function NewContractPage({
 
   type BookingOption = {
     booking_id: string
+    booking_ref: number | null
     session_date: string | null
     status: string | null
     session_type: string | null
@@ -28,7 +29,7 @@ export default async function NewContractPage({
 
   const { data: bookings } = await context.admin
     .from('bookings')
-    .select('booking_id, session_date, status, session_type, clients(full_name, phone), packages(package_id, contract_template)')
+    .select('booking_id, booking_ref, session_date, status, session_type, clients(full_name, phone), packages(package_id, contract_template)')
     .eq('studio_id', context.studioId)
     .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })

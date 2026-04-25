@@ -4,6 +4,7 @@ import FilterSelect from '@/components/filter-select'
 import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
+import { sessionName } from '@/lib/session-title'
 
 type GalleryPhotoCount = { count?: number | null }
 
@@ -13,7 +14,7 @@ type GalleryListRow = {
   status: string
   cover_photo_url?: string | null
   gallery_photos?: GalleryPhotoCount[] | null
-  bookings?: { session_date?: string | null; clients?: { full_name?: string | null } | null } | null
+  bookings?: { booking_id?: string | null; booking_ref?: number | null; session_date?: string | null; session_type?: string | null; clients?: { full_name?: string | null } | null } | null
 }
 
 const PAGE_SIZE = 20
@@ -56,7 +57,7 @@ export default async function GalleriesPage({
 
   let query = context.admin
     .from('galleries')
-    .select('*, gallery_photos(count), bookings!inner(session_date, clients(full_name), studio_id)', { count: 'exact' })
+    .select('*, gallery_photos(count), bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)', { count: 'exact' })
     .eq('bookings.studio_id', context.studioId)
 
   if (q) query = query.ilike('title', `%${q}%`)
@@ -129,7 +130,10 @@ function renderPage(galleries: GalleryListRow[], total: number, page: number, q:
                           {gallery.status}
                         </span>
                       </div>
-                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 8px' }}>{gallery.bookings?.clients?.full_name}</p>
+                      <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace', color: 'var(--text-2)' }}>
+                        {sessionName(gallery.bookings?.clients?.full_name, gallery.bookings?.booking_ref, gallery.bookings?.booking_id, gallery.bookings?.session_date)}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 8px' }}>{gallery.bookings?.clients?.full_name ?? '—'}</p>
                       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-4)' }}>
                         <span>{photoCount} photo{photoCount !== 1 ? 's' : ''}</span>
                         <span>

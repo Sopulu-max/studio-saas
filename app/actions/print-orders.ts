@@ -134,7 +134,7 @@ export async function getPrintOrderFormData() {
 
   const { data: sessions } = await context.admin
     .from('bookings')
-    .select('booking_id, session_date, session_type, clients(full_name, phone), packages(name)')
+    .select('booking_id, booking_ref, session_date, session_type, clients(full_name, phone), packages(name)')
     .eq('studio_id', context.studioId)
     .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })

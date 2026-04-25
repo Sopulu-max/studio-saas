@@ -3,13 +3,14 @@ import FilterSelect from '@/components/filter-select'
 import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
+import { sessionName } from '@/lib/session-title'
 
 type InvoiceListRow = {
   invoice_id: string
   total?: number | string | null
   due_date?: string | null
   status: string
-  bookings?: { session_date?: string | null; clients?: { full_name?: string | null } | null } | null
+  bookings?: { booking_id?: string | null; booking_ref?: number | null; session_date?: string | null; session_type?: string | null; clients?: { full_name?: string | null } | null } | null
 }
 
 const PAGE_SIZE = 20
@@ -58,7 +59,7 @@ export default async function InvoicesPage({
 
   let query = context.admin
     .from('invoices')
-    .select('*, bookings!inner(session_date, clients(full_name), studio_id)', { count: 'exact' })
+    .select('*, bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)', { count: 'exact' })
     .eq('bookings.studio_id', context.studioId)
 
   if (status) query = query.eq('status', status)
@@ -132,7 +133,7 @@ function renderPage(
       ) : (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
-            <span>Client</span><span>Total</span><span>Due date</span><span>Status</span>
+            <span>Session</span><span>Total</span><span>Due date</span><span>Status</span>
           </div>
           {invoices.map((inv, i) => {
             const s = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
@@ -143,12 +144,10 @@ function renderPage(
                 borderBottom: i < invoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
-                  <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{inv.bookings?.clients?.full_name}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                    {inv.bookings?.session_date
-                      ? new Date(inv.bookings.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-                      : '—'}
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace' }}>
+                    {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
                   </p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
                 </div>
                 <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>₦{Number(inv.total).toLocaleString()}</p>
                 <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>

@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import InvoiceActions from './invoice-actions'
 import { getStudioContext } from '@/lib/studio'
 import { buildSignedPublicLink } from '@/lib/public-links'
+import { sessionName } from '@/lib/session-title'
 
 type InvoiceAddonRelation = {
   quantity: number
@@ -19,7 +20,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     .select(`
       *,
       bookings!inner (
-        booking_id, session_date, location, notes, status, studio_id,
+        booking_id, booking_ref, session_date, location, notes, status, studio_id,
         clients ( full_name, email, phone ),
         packages ( name, base_price ),
         booking_staff ( role, staff ( full_name ) )
@@ -61,9 +62,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     <div style={{ maxWidth: '640px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Invoice</h1>
+          <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px', fontFamily: 'var(--font-mono, monospace)' }}>
+            {sessionName(invoice.bookings?.clients?.full_name, invoice.bookings?.booking_ref, invoice.bookings?.booking_id, invoice.bookings?.session_date)}
+          </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {invoice.bookings?.clients?.full_name} | {invoice.bookings?.packages?.name}
+            {invoice.bookings?.clients?.full_name}{invoice.bookings?.packages?.name ? ` · ${invoice.bookings.packages.name}` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>

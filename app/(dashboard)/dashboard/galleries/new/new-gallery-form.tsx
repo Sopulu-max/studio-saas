@@ -8,6 +8,7 @@ import { sessionTitle } from '@/lib/session-title'
 
 type GalleryBooking = {
   booking_id: string
+  booking_ref?: number | null
   session_date?: string | null
   session_type?: string | null
   clients?: { full_name?: string | null; phone?: string | null } | null
@@ -58,7 +59,7 @@ export default function NewGalleryForm({ bookings, preselectedSessionId = '' }: 
             <SearchableSelect
               options={bookings.map((b) => ({
                 value: b.booking_id,
-                label: sessionTitle(b.clients?.full_name, b.session_type, b.session_date),
+                label: sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date),
                 sublabel: b.clients?.phone ?? '',
               }))}
               value={form.booking_id}

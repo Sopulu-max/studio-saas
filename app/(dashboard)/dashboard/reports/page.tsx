@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
+import { sessionName } from '@/lib/session-title'
 
 function fmt(n: number) {
   return '₦' + n.toLocaleString('en-NG')
@@ -46,7 +47,7 @@ export default async function ReportsPage() {
       .not('status', 'eq', 'cancelled'),
     context.admin
       .from('bookings')
-      .select('booking_id, session_date, status, session_type, clients(full_name), packages(name)')
+      .select('booking_id, booking_ref, session_date, status, session_type, clients(full_name), packages(name)')
       .eq('studio_id', context.studioId)
       .order('session_date', { ascending: false })
       .limit(8),
@@ -248,11 +249,11 @@ export default async function ReportsPage() {
                 borderBottom: i < recentSessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
-                  <p style={{ fontSize: '14px', margin: '0 0 2px' }}>{(s.clients as any)?.full_name ?? '—'}</p>
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', fontFamily: 'monospace' }}>
+                    {sessionName((s as any).clients?.full_name, (s as any).booking_ref, s.booking_id, s.session_date)}
+                  </p>
                   <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                    {s.session_date
-                      ? new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-                      : '—'}
+                    {(s.clients as any)?.full_name ?? '—'}
                     {(s.packages as any)?.name ? ` · ${(s.packages as any).name}` : ''}
                   </p>
                 </div>

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ContractActions from './contract-actions'
 import { getStudioContext } from '@/lib/studio'
+import { sessionName } from '@/lib/session-title'
 
 export default async function ContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -13,7 +14,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     .select(`
       *,
       bookings!inner (
-        booking_id, session_date, location_address, studio_id,
+        booking_id, booking_ref, session_date, location_address, studio_id,
         clients ( full_name, email ),
         packages ( name )
       )
@@ -36,9 +37,11 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     <div style={{ maxWidth: '680px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Contract</h1>
+          <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px', fontFamily: 'var(--font-mono, monospace)' }}>
+            {sessionName(contract.bookings?.clients?.full_name, contract.bookings?.booking_ref, contract.bookings?.booking_id, contract.bookings?.session_date)}
+          </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {contract.bookings?.clients?.full_name}
+            {contract.bookings?.clients?.full_name ?? '—'}
             {contract.bookings?.session_date
               ? ` · ${new Date(contract.bookings.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}`
               : ''}

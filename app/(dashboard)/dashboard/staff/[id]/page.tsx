@@ -3,6 +3,7 @@ import Link from 'next/link'
 import StaffActions from './staff-actions'
 import AvatarUpload from '@/components/avatar-upload'
 import { getStudioContext } from '@/lib/studio'
+import { sessionName } from '@/lib/session-title'
 
 const WEEKDAYS = [
   { value: 'monday',    label: 'Mon' },
@@ -16,6 +17,7 @@ const WEEKDAYS = [
 
 type AssignedBooking = {
   booking_id?: string | null
+  booking_ref?: number | null
   session_date?: string | null
   status?: string | null
   clients?: { full_name?: string | null } | null
@@ -55,7 +57,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
 
   const { data: assignments } = await context.admin
     .from('booking_staff')
-    .select('role, bookings!inner(booking_id, session_date, status, studio_id, clients(full_name))')
+    .select('role, bookings!inner(booking_id, booking_ref, session_date, status, studio_id, clients(full_name))')
     .eq('staff_id', id)
     .eq('bookings.studio_id', context.studioId)
     .order('booking_id', { ascending: false })
@@ -230,11 +232,12 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
                       borderBottom: i < grouped[role].length - 1 ? '1px solid var(--line-inner)' : 'none',
                     }}>
                       <div>
-                        <p style={{ fontSize: '14px', margin: '0 0 2px' }}>{booking?.clients?.full_name ?? '—'}</p>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', fontFamily: 'monospace' }}>
+                          {sessionName(booking?.clients?.full_name, booking?.booking_ref, booking?.booking_id, booking?.session_date)}
+                        </p>
                         <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                          {booking?.session_date
-                            ? new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })
-                            : '—'}
+                          {booking?.clients?.full_name ?? '—'}
+                          {booking?.session_date ? ` · ${new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                         </p>
                       </div>
                       <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', width: 'fit-content' }}>

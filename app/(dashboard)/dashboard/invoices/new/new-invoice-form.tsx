@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { addInvoice } from '@/app/actions/invoices'
 import SearchableSelect from '@/components/searchable-select'
-import { sessionTitle } from '@/lib/session-title'
+import { sessionName } from '@/lib/session-title'
 
 type Addon = {
   addon_id: string
@@ -25,6 +25,7 @@ type BookingClientSummary = {
 
 type Booking = {
   booking_id: string
+  booking_ref?: number | null
   package_id?: string | null
   session_type?: string | null
   session_date?: string | null
@@ -292,7 +293,7 @@ export default function NewInvoiceForm({
             <SearchableSelect
               options={bookings.map((booking) => ({
                 value: booking.booking_id,
-                label: sessionTitle(booking.clients?.full_name, booking.session_type, booking.session_date),
+                label: sessionName(booking.clients?.full_name, booking.booking_ref, booking.booking_id, booking.session_date),
                 sublabel: [
                   booking.clients?.phone,
                   booking.packages?.name,

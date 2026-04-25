@@ -62,7 +62,7 @@ export default async function DashboardPage() {
       .eq('studio_id', studioId).eq('status', pendingStatus),
 
     context.admin.from('bookings')
-      .select('booking_id, session_date, session_type, status, clients(full_name), packages(name)')
+      .select('booking_id, booking_ref, session_date, session_type, status, clients(full_name), packages(name)')
       .eq('studio_id', studioId)
       .gt('session_date',  todayStr + 'T23:59:59')
       .lte('session_date', in7Days)
@@ -72,7 +72,7 @@ export default async function DashboardPage() {
 
     activePipelineStatuses.length
       ? context.admin.from('bookings')
-          .select('booking_id, session_date, session_type, status, clients(full_name)')
+          .select('booking_id, booking_ref, session_date, session_type, status, clients(full_name)')
           .eq('studio_id', studioId)
           .in('status', activePipelineStatuses)
           .order('session_date', { ascending: false })
@@ -98,7 +98,7 @@ export default async function DashboardPage() {
   // Today's sessions
   const { data: todaySessions } = await context.admin
     .from('bookings')
-    .select('booking_id, session_date, session_type, status, clients(full_name), packages(name)')
+    .select('booking_id, booking_ref, session_date, session_type, status, clients(full_name), packages(name)')
     .eq('studio_id', studioId)
     .gte('session_date', todayStr)
     .lte('session_date', todayStr + 'T23:59:59')
