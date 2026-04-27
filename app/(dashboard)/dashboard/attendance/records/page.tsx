@@ -72,7 +72,7 @@ export default async function AttendanceRecordsPage({
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Attendance records</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
             {fromLabel} — {toLabel}
-            {staffId && staffList ? ` · ${staffList.find(s => s.staff_id === staffId)?.full_name ?? ''}` : ''}
+            {staffId && staff.length ? ` · ${staff.find(s => s.staff_id === staffId)?.full_name ?? ''}` : ''}
           </p>
         </div>
       </div>
