@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import PrintButton from './print-button'
 
 export default async function ContractPrintPage({ params }: { params: Promise<{ id: string }> }) {
@@ -8,11 +8,7 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studio } = await context.admin
-    .from('studios')
-    .select('name, email')
-    .eq('studio_id', context.studioId)
-    .single()
+  const studio = await fetchStudio(context.admin, context.studioId)
 
   const { data: contract } = await context.admin
     .from('contracts')

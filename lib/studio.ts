@@ -2,6 +2,38 @@ import 'server-only'
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+
+// ─── Shared studio row type ──────────────────────────────────────────────────
+// The studios table has JSONB columns (session_types, booking_statuses,
+// service_types, contract_templates) that are not present in the generated
+// Supabase type definitions. Any query that selects those columns returns
+// `never` from the typed client. fetchStudio handles the cast once so every
+// page gets a properly typed row without repeating the workaround.
+
+export type StudioRow = {
+  studio_id:                string
+  name:                     string | null
+  slug:                     string | null
+  email:                    string | null
+  phone:                    string | null
+  address:                  string | null
+  timezone:                 string | null
+  logo_url:                 string | null
+  onboarding_completed_at:  string | null
+  session_types:            unknown
+  booking_statuses:         unknown
+  service_types:            unknown
+  contract_templates:       unknown
+}
+
+export async function fetchStudio(
+  admin: ReturnType<typeof createAdminClient>,
+  studioId: string,
+): Promise<StudioRow | null> {
+  const { data } = await admin.from('studios').select('*').eq('studio_id', studioId).single()
+  return (data ?? null) as unknown as StudioRow | null
+}
+
 export {
   ownsBooking,
   ownsClient,

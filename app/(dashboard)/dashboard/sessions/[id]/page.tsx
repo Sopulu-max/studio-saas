@@ -6,7 +6,7 @@ import QuickPayment from './quick-payment'
 import PendingActions from './pending-actions'
 import DeleteSessionButton from './delete-session-button'
 import Link from 'next/link'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig, getStatusConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 
@@ -47,11 +47,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
   if (!session) redirect('/dashboard/sessions')
 
-  const { data: studioRow } = await context.admin
-    .from('studios')
-    .select('session_types, service_types, booking_statuses')
-    .eq('studio_id', context.studioId)
-    .single()
+  const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   const { data: invoice } = await context.admin

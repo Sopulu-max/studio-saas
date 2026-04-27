@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import NewContractForm from './new-contract-form'
 
 export default async function NewContractPage({
@@ -11,11 +11,7 @@ export default async function NewContractPage({
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studio } = await context.admin
-    .from('studios')
-    .select('studio_id, contract_templates')
-    .eq('studio_id', context.studioId)
-    .single()
+  const studio = await fetchStudio(context.admin, context.studioId)
 
   type BookingOption = {
     booking_id: string

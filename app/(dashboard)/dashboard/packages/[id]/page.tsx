@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import PackageActions from './package-actions'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig } from '@/lib/studio-config'
 
 type PackageAddon = {
@@ -53,11 +53,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studioRow } = await context.admin
-    .from('studios')
-    .select('session_types, service_types, booking_statuses')
-    .eq('studio_id', context.studioId)
-    .single()
+  const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   const { data: pkg } = await context.admin

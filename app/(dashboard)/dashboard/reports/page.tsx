@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 
@@ -15,11 +15,7 @@ export default async function ReportsPage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studioRow } = await context.admin
-    .from('studios')
-    .select('session_types, service_types, booking_statuses')
-    .eq('studio_id', context.studioId)
-    .single()
+  const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   const now   = new Date()

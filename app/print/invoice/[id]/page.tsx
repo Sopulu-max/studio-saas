@@ -1,7 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import PrintButton from './print-button'
 
 type AddonRow = {
@@ -14,11 +14,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studio } = await context.admin
-    .from('studios')
-    .select('name, email, slug, address, phone, logo_url')
-    .eq('studio_id', context.studioId)
-    .single()
+  const studio = await fetchStudio(context.admin, context.studioId)
 
   const { data: invoice } = await context.admin
     .from('invoices')

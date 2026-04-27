@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import { buildStudioConfig } from '@/lib/studio-config'
+import type { StudioRow } from '@/lib/studio'
 import BookingForm from './booking-form'
 import type { Metadata } from 'next'
 
@@ -9,13 +10,12 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { slug } = await params
   const admin = createAdminClient()
-  const { data: studio } = await admin
+  const { data: studioMeta } = await admin
     .from('studios')
     .select('name')
     .eq('slug', slug)
     .maybeSingle()
-
-  const name = studio?.name ?? 'Studio'
+  const name = (studioMeta as unknown as { name?: string | null } | null)?.name ?? 'Studio'
   const title = `Book a session — ${name}`
   const description = `Request a photography session with ${name}. Pick your session type and preferred date.`
 
@@ -44,11 +44,12 @@ export default async function PublicBookingPage({
   const { slug } = await params
   const admin = createAdminClient()
 
-  const { data: studio } = await admin
+  const { data: studioRaw } = await admin
     .from('studios')
     .select('studio_id, name, email, slug, session_types, service_types, logo_url')
     .eq('slug', slug)
     .maybeSingle()
+  const studio = studioRaw as unknown as StudioRow | null
 
   if (!studio) notFound()
 

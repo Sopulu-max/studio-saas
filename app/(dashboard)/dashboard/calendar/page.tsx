@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 
@@ -34,18 +34,8 @@ export default async function CalendarPage({
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  // Load studio config for dynamic status colours/labels
-  const { data: studioRow } = await context.admin
-    .from('studios')
-    .select('session_types, booking_statuses, service_types')
-    .eq('studio_id', context.studioId)
-    .single()
-
-  const config = buildStudioConfig(
-    studioRow?.session_types,
-    studioRow?.booking_statuses,
-    studioRow?.service_types,
-  )
+  const studioRow = await fetchStudio(context.admin, context.studioId)
+  const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   // Fetch all sessions for this month
   const monthEnd = new Date(year, month, 0)

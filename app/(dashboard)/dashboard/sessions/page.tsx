@@ -5,7 +5,7 @@ import DateRangeFilter from '@/components/date-range-filter'
 import Pagination from '@/components/pagination'
 import BulkSessionList from './bulk-session-list'
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
 
 type SessionRow = {
@@ -39,12 +39,7 @@ export default async function SessionsPage({
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studioRow } = await context.admin
-    .from('studios')
-    .select('session_types, service_types, booking_statuses')
-    .eq('studio_id', context.studioId)
-    .single()
-
+  const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   // Resolve client name search to IDs first

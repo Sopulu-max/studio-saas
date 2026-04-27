@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import DashboardWidgets from './dashboard-widgets'
 import type { DashboardProps } from './dashboard-widgets'
@@ -10,13 +10,8 @@ export default async function DashboardPage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studio } = await context.admin
-    .from('studios')
-    .select('*')
-    .eq('studio_id', context.studioId)
-    .single()
-
-  const studioId = studio?.studio_id
+  const studio = await fetchStudio(context.admin, context.studioId)
+  const studioId = studio?.studio_id ?? context.studioId
   const config   = buildStudioConfig(studio?.session_types, studio?.booking_statuses, studio?.service_types)
 
   // Date helpers

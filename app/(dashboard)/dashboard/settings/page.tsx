@@ -1,18 +1,13 @@
 import { redirect } from 'next/navigation'
 import SettingsTabs from './settings-tabs'
 import { buildStudioConfig } from '@/lib/studio-config'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 
 export default async function SettingsPage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: studio } = await context.admin
-    .from('studios')
-    .select('*')
-    .eq('studio_id', context.studioId)
-    .single()
-
+  const studio = await fetchStudio(context.admin, context.studioId)
   if (!studio) redirect('/dashboard')
 
   const config = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types)

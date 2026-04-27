@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation'
 import Sidebar from '@/components/sidebar'
 import { StudioConfigProvider } from '@/components/studio-config-provider'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
 
 
@@ -12,11 +12,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect(`/login?reason=${reason}`)
   }
 
-  const { data: studio } = await context.admin
-    .from('studios')
-    .select('*')
-    .eq('studio_id', context.studioId)
-    .single()
+  const studio = await fetchStudio(context.admin, context.studioId)
 
   // Redirect only when the column explicitly = null (migration ran, studio is genuinely new).
   // If the column is undefined (migration not run yet), let existing studios through.
