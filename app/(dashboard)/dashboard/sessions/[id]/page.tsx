@@ -192,10 +192,10 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          {session.pictures_requested != null && (
+          {session.edited_photos != null && (
             <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Pictures requested</p>
-              <p style={{ fontSize: '14px', margin: 0 }}>{session.pictures_requested}</p>
+              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Edited photos</p>
+              <p style={{ fontSize: '14px', margin: 0 }}>{session.edited_photos}</p>
             </div>
           )}
 
