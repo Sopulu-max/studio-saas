@@ -59,10 +59,11 @@ export default async function CalendarPage({
     query = query.neq('status', val)
   }
 
-  const { data: sessions } = await query
+  const { data: sessionsRaw } = await query
+  const sessions = (sessionsRaw ?? []) as unknown as CalendarSessionRow[]
 
   // Group sessions by date string YYYY-MM-DD
-  const byDate: Record<string, typeof sessions> = {}
+  const byDate: Record<string, CalendarSessionRow[]> = {}
   for (const s of sessions ?? []) {
     if (!s.session_date) continue
     const dateKey = s.session_date.slice(0, 10)
