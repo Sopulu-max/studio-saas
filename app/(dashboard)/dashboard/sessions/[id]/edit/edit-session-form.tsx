@@ -35,6 +35,7 @@ type SessionRecord = {
   session_date?: string | null
   package_id?: string | null
   outfits_count?: number | null
+  pictures_requested?: number | null
   location_address?: string | null
   event_name?: string | null
   event_date?: string | null
@@ -78,20 +79,21 @@ export default function EditSessionForm({
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({
-    client_id:        session.client_id        ?? '',
-    session_type:     session.session_type     ?? config.sessionTypes[0]?.value ?? 'studio',
-    service_type:     session.service_type     ?? config.serviceTypes[0]?.value ?? 'photo',
-    session_date:     toDatetimeLocal(session.session_date),
-    package_id:       session.package_id       ?? '',
-    outfits_count:    session.outfits_count    != null ? String(session.outfits_count) : '',
-    location_address: session.location_address ?? '',
-    event_name:       session.event_name       ?? '',
-    event_date:       session.event_date        ?? '',
-    notes:            session.notes            ?? '',
-    photographer_id:  photographerId,
-    editor_id:        editorId,
-    videographer_id:  videographerId ?? '',
-    video_editor_id:  videoEditorId  ?? '',
+    client_id:          session.client_id          ?? '',
+    session_type:       session.session_type       ?? config.sessionTypes[0]?.value ?? 'studio',
+    service_type:       session.service_type       ?? config.serviceTypes[0]?.value ?? 'photo',
+    session_date:       toDatetimeLocal(session.session_date),
+    package_id:         session.package_id         ?? '',
+    outfits_count:      session.outfits_count      != null ? String(session.outfits_count)      : '',
+    pictures_requested: session.pictures_requested != null ? String(session.pictures_requested) : '',
+    location_address:   session.location_address   ?? '',
+    event_name:         session.event_name         ?? '',
+    event_date:         session.event_date          ?? '',
+    notes:              session.notes              ?? '',
+    photographer_id:    photographerId,
+    editor_id:          editorId,
+    videographer_id:    videographerId ?? '',
+    video_editor_id:    videoEditorId  ?? '',
   })
 
   function update(field: string, value: string) {
@@ -153,9 +155,21 @@ export default function EditSessionForm({
     setLoading(true)
     setError('')
     const { error } = await updateSession(sessionId, {
-      ...form,
-      videographer_id: form.videographer_id,
-      video_editor_id: form.video_editor_id,
+      client_id:          form.client_id,
+      session_type:       form.session_type,
+      service_type:       form.service_type,
+      session_date:       form.session_date,
+      package_id:         form.package_id,
+      outfits_count:      form.outfits_count,
+      pictures_requested: form.pictures_requested,
+      location_address:   form.location_address,
+      event_name:         form.event_name,
+      event_date:         form.event_date,
+      notes:              form.notes,
+      photographer_id:    form.photographer_id,
+      editor_id:          form.editor_id,
+      videographer_id:    form.videographer_id,
+      video_editor_id:    form.video_editor_id,
     })
     if (error) {
       setError(error)
@@ -285,13 +299,21 @@ export default function EditSessionForm({
           {isPhotoVideo ? 'PROJECT DETAILS' : isVideoSession ? 'PROJECT DETAILS' : 'PRICING SPECS'}
         </p>
 
-        {/* Outfits — shown for photo and photo+video, hidden for pure video */}
+        {/* Outfits — shown for photo/photo+video, not pure video or event */}
         {hasPhotoComponent && !isEvent && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Outfits {isPhotoVideo && <span style={{ fontWeight: 400, color: 'var(--text-4)', fontSize: '12px' }}>(photo)</span>}</label>
-            <input type="number" min="1" value={form.outfits_count}
-              onChange={e => update('outfits_count', e.target.value)}
-              placeholder="e.g. 3" style={{ ...inputStyle, maxWidth: '200px' }} />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div>
+              <label style={labelStyle}>Outfits {isPhotoVideo && <span style={{ fontWeight: 400, color: 'var(--text-4)', fontSize: '12px' }}>(photo)</span>}</label>
+              <input type="number" min="1" value={form.outfits_count}
+                onChange={e => update('outfits_count', e.target.value)}
+                placeholder="e.g. 3" style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Pictures requested</label>
+              <input type="number" min="1" value={form.pictures_requested}
+                onChange={e => update('pictures_requested', e.target.value)}
+                placeholder="e.g. 20" style={inputStyle} />
+            </div>
           </div>
         )}
 

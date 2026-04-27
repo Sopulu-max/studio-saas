@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import SessionActions from './session-actions'
 import SessionIntake from './session-intake'
+import SessionExtras from './session-extras'
 import QuickPayment from './quick-payment'
 import PendingActions from './pending-actions'
 import DeleteSessionButton from './delete-session-button'
@@ -191,6 +192,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
+          {session.pictures_requested != null && (
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Pictures requested</p>
+              <p style={{ fontSize: '14px', margin: 0 }}>{session.pictures_requested}</p>
+            </div>
+          )}
+
           {session.selections_count != null && (
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Selections</p>
@@ -311,6 +319,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
       </div>
+
+      {/* Extras — post-agreement scope additions */}
+      <SessionExtras
+        sessionId={id}
+        extraOutfits={session.extra_outfits ?? null}
+        extraPictures={session.extra_pictures ?? null}
+      />
 
       {/* Invoice + Gallery + Print orders + Contract quick links */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>

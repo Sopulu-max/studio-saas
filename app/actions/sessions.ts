@@ -357,6 +357,26 @@ export async function getSessionFormData() {
   }
 }
 
+export async function updateSessionScope(sessionId: string, data: {
+  extra_outfits: string
+  extra_pictures: string
+}) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsBooking(context.admin, context.studioId, sessionId))) return { error: 'Session not found' }
+
+  const { error } = await context.admin
+    .from('bookings')
+    .update({
+      extra_outfits:  data.extra_outfits  ? parseInt(data.extra_outfits, 10)  : null,
+      extra_pictures: data.extra_pictures ? parseInt(data.extra_pictures, 10) : null,
+    })
+    .eq('booking_id', sessionId)
+
+  return { error: error?.message ?? null }
+}
+
 export async function updateSession(sessionId: string, form: {
   client_id: string
   session_type: string
@@ -364,6 +384,7 @@ export async function updateSession(sessionId: string, form: {
   session_date: string
   package_id: string
   outfits_count: string
+  pictures_requested: string
   location_address: string
   event_name: string
   event_date: string
@@ -391,7 +412,8 @@ export async function updateSession(sessionId: string, form: {
     service_type: form.service_type || 'photo',
     notes:        form.notes || null,
     package_id:   form.package_id   || null,
-    outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
+    outfits_count:       form.outfits_count       ? parseInt(form.outfits_count, 10)       : null,
+    pictures_requested:  form.pictures_requested  ? parseInt(form.pictures_requested, 10)  : null,
     location_address: form.location_address || null,
     event_name:   form.event_name   || null,
     event_date:   form.event_date   || null,

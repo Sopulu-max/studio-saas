@@ -195,8 +195,8 @@ export default function BookingForm({
         </p>
       </div>
 
-      {/* ── Studio-specific ───────────────────────────────────────────────── */}
-      {isStudio && (
+      {/* ── Outfits — studio & outdoor, not events ───────────────────────── */}
+      {!isEvent && (
         <div style={row}>
           <label style={label}>
             Number of outfits{' '}
