@@ -28,7 +28,7 @@ export default async function AttendancePage() {
     .eq('studio_id', context.studioId)
     .eq('date', todayISO)
 
-  const checkinMap: Record<string, typeof checkins extends (infer T)[] | null ? T : never> = {}
+  const checkinMap: Record<string, NonNullable<typeof checkins>[number]> = {}
   for (const c of checkins ?? []) {
     checkinMap[c.staff_id] = c
   }
