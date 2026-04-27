@@ -33,23 +33,15 @@ export async function getStudioContext(): Promise<StudioContext> {
 
   const admin = createAdminClient()
 
-  // Check if this user is a studio owner
-  const { data: studio } = await admin
-    .from('studios')
-    .select('studio_id')
-    .eq('owner_id', user.id)
-    .maybeSingle()
+  // Fire both lookups in parallel — saves a round-trip for staff users
+  const [{ data: studio }, { data: staffMember }] = await Promise.all([
+    admin.from('studios').select('studio_id').eq('owner_id', user.id).maybeSingle(),
+    admin.from('staff').select('staff_id, studio_id').eq('user_id', user.id).maybeSingle(),
+  ])
 
   if (studio?.studio_id) {
     return { admin, userId: user.id, studioId: studio.studio_id, role: 'owner' }
   }
-
-  // Check if this user is an invited staff member
-  const { data: staffMember } = await admin
-    .from('staff')
-    .select('staff_id, studio_id')
-    .eq('user_id', user.id)
-    .maybeSingle()
 
   if (staffMember?.studio_id) {
     return { admin, userId: user.id, studioId: staffMember.studio_id, role: 'staff', staffId: staffMember.staff_id }

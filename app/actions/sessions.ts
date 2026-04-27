@@ -1,6 +1,7 @@
 'use server'
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { getStudioContext, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
 
 const addSessionSchema = z.object({
@@ -46,45 +47,29 @@ export async function addSession(form: {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  if (!(await ownsClient(context.admin, context.studioId, form.client_id))) {
-    return { error: 'Client not found' }
-  }
+  // All ownership + pre-flight checks in one parallel batch
+  const [clientOk, pkgOk, photogOk, editorOk, { data: dupSession }, { data: maxRefRow }] = await Promise.all([
+    ownsClient(context.admin, context.studioId, form.client_id),
+    form.package_id      ? ownsPackage(context.admin, context.studioId, form.package_id)        : Promise.resolve(true),
+    form.photographer_id ? ownsStaff(context.admin, context.studioId, form.photographer_id)     : Promise.resolve(true),
+    form.editor_id       ? ownsStaff(context.admin, context.studioId, form.editor_id)           : Promise.resolve(true),
+    context.admin
+      .from('bookings').select('booking_id')
+      .eq('studio_id', context.studioId).eq('client_id', form.client_id)
+      .eq('session_date', form.session_date).neq('status', 'cancelled').maybeSingle(),
+    context.admin
+      .from('bookings').select('booking_ref')
+      .eq('studio_id', context.studioId).not('booking_ref', 'is', null)
+      .order('booking_ref', { ascending: false }).limit(1).maybeSingle(),
+  ])
 
-  if (form.package_id && !(await ownsPackage(context.admin, context.studioId, form.package_id))) {
-    return { error: 'Package not found' }
-  }
-
-  if (form.photographer_id && !(await ownsStaff(context.admin, context.studioId, form.photographer_id))) {
-    return { error: 'Staff member not found' }
-  }
-  if (form.editor_id && !(await ownsStaff(context.admin, context.studioId, form.editor_id))) {
-    return { error: 'Staff member not found' }
-  }
-
-  // Soft duplicate check — same client, same date, not cancelled
-  // Returns a warning ID so the form can ask "are you sure?" before proceeding
-  const { data: dupSession } = await context.admin
-    .from('bookings')
-    .select('booking_id')
-    .eq('studio_id', context.studioId)
-    .eq('client_id', form.client_id)
-    .eq('session_date', form.session_date)
-    .neq('status', 'cancelled')
-    .maybeSingle()
-
+  if (!clientOk)  return { error: 'Client not found' }
+  if (!pkgOk)     return { error: 'Package not found' }
+  if (!photogOk)  return { error: 'Staff member not found' }
+  if (!editorOk)  return { error: 'Staff member not found' }
   if (dupSession && !form.force_duplicate) {
     return { error: '__DUPLICATE__', duplicateId: dupSession.booking_id }
   }
-
-  // Compute next booking_ref for this studio (app-level, since no DB trigger is guaranteed)
-  const { data: maxRefRow } = await context.admin
-    .from('bookings')
-    .select('booking_ref')
-    .eq('studio_id', context.studioId)
-    .not('booking_ref', 'is', null)
-    .order('booking_ref', { ascending: false })
-    .limit(1)
-    .maybeSingle()
 
   const nextRef = ((maxRefRow?.booking_ref as number | null) ?? 0) + 1
 
@@ -164,7 +149,6 @@ export async function bulkUpdateSessionStatus(sessionIds: string[], status: stri
 
   if (error) return { error: error.message }
 
-  const { revalidatePath } = await import('next/cache')
   revalidatePath('/dashboard/sessions')
   return { error: null, updated: ownedIds.length }
 }
@@ -270,10 +254,7 @@ export async function deleteSession(sessionId: string) {
     .delete()
     .eq('booking_id', sessionId)
 
-  if (!error) {
-    const { revalidatePath } = await import('next/cache')
-    revalidatePath('/dashboard/sessions')
-  }
+  if (!error) revalidatePath('/dashboard/sessions')
   return { error: error?.message ?? null }
 }
 
@@ -375,6 +356,7 @@ export async function updateSessionScope(sessionId: string, data: {
     })
     .eq('booking_id', sessionId)
 
+  if (!error) revalidatePath(`/dashboard/sessions/${sessionId}`)
   return { error: error?.message ?? null }
 }
 
@@ -400,11 +382,19 @@ export async function updateSession(sessionId: string, form: {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  if (!(await ownsBooking(context.admin, context.studioId, sessionId))) return { error: 'Session not found' }
-  if (!(await ownsClient(context.admin, context.studioId, form.client_id)))  return { error: 'Client not found' }
-  if (form.package_id && !(await ownsPackage(context.admin, context.studioId, form.package_id))) return { error: 'Package not found' }
-  if (form.photographer_id && !(await ownsStaff(context.admin, context.studioId, form.photographer_id))) return { error: 'Photographer not found' }
-  if (form.editor_id && !(await ownsStaff(context.admin, context.studioId, form.editor_id)))       return { error: 'Editor not found' }
+  // All ownership checks in parallel
+  const [bookingOk, clientOk, pkgOk, photogOk, editorOk] = await Promise.all([
+    ownsBooking(context.admin, context.studioId, sessionId),
+    ownsClient(context.admin, context.studioId, form.client_id),
+    form.package_id      ? ownsPackage(context.admin, context.studioId, form.package_id)        : Promise.resolve(true),
+    form.photographer_id ? ownsStaff(context.admin, context.studioId, form.photographer_id)     : Promise.resolve(true),
+    form.editor_id       ? ownsStaff(context.admin, context.studioId, form.editor_id)           : Promise.resolve(true),
+  ])
+  if (!bookingOk) return { error: 'Session not found' }
+  if (!clientOk)  return { error: 'Client not found' }
+  if (!pkgOk)     return { error: 'Package not found' }
+  if (!photogOk)  return { error: 'Photographer not found' }
+  if (!editorOk)  return { error: 'Editor not found' }
 
   const updateData: Record<string, string | number | null> = {
     client_id:    form.client_id,
@@ -466,5 +456,7 @@ export async function updateSession(sessionId: string, form: {
     if (staffError) return { error: staffError.message }
   }
 
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  revalidatePath('/dashboard/sessions')
   return { error: null }
 }

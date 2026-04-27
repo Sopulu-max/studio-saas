@@ -176,7 +176,6 @@ export default function EditSessionForm({
       setLoading(false)
     } else {
       router.push(`/dashboard/sessions/${sessionId}`)
-      router.refresh()
     }
   }
 
