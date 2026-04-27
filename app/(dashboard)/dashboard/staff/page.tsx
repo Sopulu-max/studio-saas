@@ -49,9 +49,15 @@ export default async function StaffPage({
 
   if (q) query = query.or(`full_name.ilike.%${q}%,role.ilike.%${q}%`)
 
-  const { data: staff, count } = await query
+  type StaffMember = {
+    staff_id: string; full_name: string; email: string | null; role: string | null
+    roles: string[] | null; working_days: string[] | null
+    hire_date: string | null; avatar_url: string | null
+  }
+  const { data: staffRaw, count } = await query
     .order('full_name', { ascending: true })
     .range(from, to)
+  const staff = (staffRaw ?? []) as unknown as StaffMember[]
 
   const total = count ?? 0
   const totalPages = Math.ceil(total / PAGE_SIZE)

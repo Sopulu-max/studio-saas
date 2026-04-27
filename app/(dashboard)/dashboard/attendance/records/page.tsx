@@ -50,7 +50,7 @@ export default async function AttendanceRecordsPage({
     staff: Array.isArray(r.staff) ? (r.staff[0] ?? null) : (r.staff ?? null),
   }))
 
-  const staff: StaffOption[] = (staffList ?? []).map(s => ({
+  const staff: StaffOption[] = ((staffList ?? []) as unknown as StaffOption[]).map(s => ({
     staff_id:  s.staff_id,
     full_name: s.full_name,
   }))
