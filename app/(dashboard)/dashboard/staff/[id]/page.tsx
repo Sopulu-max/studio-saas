@@ -55,20 +55,27 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
 
   if (!member) redirect('/dashboard/staff')
 
-  const { data: assignments } = await context.admin
+  // booking_staff and staff_checkins are not in the generated Supabase types — cast explicitly
+  type AssignmentRow  = { role: string | null; bookings: AssignedBooking }
+  type CheckinRecord  = { checkin_id: string; date: string; checked_in_at: string; checked_out_at: string | null }
+
+  const { data: assignmentsRaw } = await context.admin
     .from('booking_staff')
     .select('role, bookings!inner(booking_id, booking_ref, session_date, status, studio_id, clients(full_name))')
     .eq('staff_id', id)
     .eq('bookings.studio_id', context.studioId)
     .order('booking_id', { ascending: false })
 
-  const { data: recentCheckins } = await context.admin
+  const { data: recentCheckinsRaw } = await context.admin
     .from('staff_checkins')
     .select('checkin_id, date, checked_in_at, checked_out_at')
     .eq('staff_id', id)
     .eq('studio_id', context.studioId)
     .order('date', { ascending: false })
     .limit(14)
+
+  const assignments   = (assignmentsRaw   ?? []) as unknown as AssignmentRow[]
+  const recentCheckins = (recentCheckinsRaw ?? []) as unknown as CheckinRecord[]
 
   const effectiveRoles: string[] =
     member.roles && member.roles.length > 0
@@ -201,7 +208,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
 
         // Group by role, preserving order: photographer → editor → colour_grader → others
         const roleOrder = ['photographer', 'editor', 'colour_grader']
-        const grouped: Record<string, typeof assignments> = {}
+        const grouped: Record<string, AssignmentRow[]> = {}
         for (const a of assignments) {
           const role = a.role ?? 'other'
           grouped[role] = grouped[role] ?? []

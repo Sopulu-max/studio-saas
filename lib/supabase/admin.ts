@@ -13,5 +13,8 @@ export function createAdminClient() {
       { auth: { persistSession: false, autoRefreshToken: false } }
     )
   }
-  return _adminClient
+  // Non-null assertion: the block above guarantees _adminClient is set.
+  // TypeScript cannot narrow module-level `let` variables through conditionals,
+  // so the assertion is required to keep the return type non-nullable.
+  return _adminClient!
 }

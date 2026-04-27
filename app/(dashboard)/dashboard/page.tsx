@@ -117,10 +117,16 @@ export default async function DashboardPage() {
   const outstanding  = Math.max(0, invoiceTotal - paidTotal)
   const fmt = (n: number) => '₦' + n.toLocaleString('en-NG')
 
+  // Explicit types for tables not in generated Supabase definitions
+  type DashStaffRow   = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
+  type DashCheckinRow = { staff_id: string; checked_in_at: string; checked_out_at: string | null }
+  const typedStaff    = (allStaff       ?? []) as unknown as DashStaffRow[]
+  const typedCheckins = (todayCheckins  ?? []) as unknown as DashCheckinRow[]
+
   // Today's staff map
-  const checkinMap: Record<string, { checked_in_at: string; checked_out_at: string | null }> = {}
-  for (const c of todayCheckins ?? []) checkinMap[c.staff_id] = c
-  const staffToday = (allStaff ?? [])
+  const checkinMap: Record<string, DashCheckinRow> = {}
+  for (const c of typedCheckins) checkinMap[c.staff_id] = c
+  const staffToday = typedStaff
     .filter(m => !m.working_days?.length || m.working_days.includes(todayDay))
     .map(m => ({ ...m, checkin: checkinMap[m.staff_id] ?? null }))
 

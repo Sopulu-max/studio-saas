@@ -15,7 +15,7 @@ export default async function AttendancePage() {
   const todayLabel = today.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   type StaffRow   = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
-  type CheckinRow = { checkin_id: string; staff_id: string; checked_in_at: string | null; checked_out_at: string | null }
+  type CheckinRow = { checkin_id: string; staff_id: string; checked_in_at: string; checked_out_at: string | null }
 
   // Fetch all staff
   const { data: staffListRaw } = await context.admin
