@@ -175,7 +175,10 @@ export async function verifyGalleryPhone(galleryId: string, phone: string) {
   }
 
   return {
-    verified: isMatchingGalleryPhone(booking.clients, phone),
+    verified: isMatchingGalleryPhone(
+      booking.clients as unknown as { phone?: string | null } | null,
+      phone,
+    ),
   }
 }
 

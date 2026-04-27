@@ -94,9 +94,9 @@ export default async function PrintOrdersPage({
           </div>
           {orders.map((o, i) => {
             const st    = STATUS_COLORS[o.status ?? ''] ?? STATUS_COLORS.pending
-            const items = (o.print_order_items as PrintOrderItem[]) ?? []
+            const items = (o.print_order_items as unknown as PrintOrderItem[]) ?? []
             const total = orderTotal(items)
-            const booking = o.bookings as PrintOrderBooking
+            const booking = o.bookings as unknown as PrintOrderBooking
             return (
               <Link key={o.order_id} href={`/dashboard/print-orders/${o.order_id}`} style={{
                 display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr',

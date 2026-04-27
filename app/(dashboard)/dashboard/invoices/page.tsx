@@ -44,10 +44,11 @@ export default async function InvoicesPage({
   if ('error' in context) redirect('/login')
 
   // Summary totals (unfiltered, unpaginated)
-  const { data: allInvoices } = await context.admin
+  const { data: allInvoicesRaw } = await context.admin
     .from('invoices')
     .select('total, status, bookings!inner(studio_id)')
     .eq('bookings.studio_id', context.studioId)
+  const allInvoices = allInvoicesRaw as unknown as { total: number | string | null; status: string }[] | null
 
   const totalInvoiced  = allInvoices?.reduce((sum, i) => sum + Number(i.total), 0) ?? 0
   const totalPaid      = allInvoices?.filter(i => i.status === 'paid').reduce((sum, i) => sum + Number(i.total), 0) ?? 0
@@ -64,11 +65,12 @@ export default async function InvoicesPage({
 
   if (status) query = query.eq('status', status)
 
-  const { data: invoices, count } = await query
+  const { data: invoicesRaw, count } = await query
     .order('created_at', { ascending: false })
     .range(from, to)
+  const invoices = (invoicesRaw ?? []) as unknown as InvoiceListRow[]
 
-  return renderPage(invoices ?? [], count ?? 0, pageNum, status, totalInvoiced, totalPaid, totalOutstanding)
+  return renderPage(invoices, count ?? 0, pageNum, status, totalInvoiced, totalPaid, totalOutstanding)
 }
 
 function renderPage(

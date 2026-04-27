@@ -10,7 +10,21 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
 
   const studio = await fetchStudio(context.admin, context.studioId)
 
-  const { data: contract } = await context.admin
+  type PrintContractRecord = {
+    contract_id?: string | null
+    content: string
+    status?: string | null
+    signed_at?: string | null
+    signed_by?: string | null
+    bookings?: {
+      studio_id?: string | null
+      session_date?: string | null
+      location?: string | null
+      clients?: { full_name?: string | null; email?: string | null } | null
+      packages?: { name?: string | null } | null
+    } | null
+  }
+  const { data: contractRaw } = await context.admin
     .from('contracts')
     .select(`
       *,
@@ -24,6 +38,7 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
     .eq('contract_id', id)
     .eq('bookings.studio_id', context.studioId)
     .single()
+  const contract = contractRaw as unknown as PrintContractRecord | null
 
   if (!contract) redirect('/dashboard/contracts')
 

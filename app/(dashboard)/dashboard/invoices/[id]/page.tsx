@@ -15,7 +15,28 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: invoice } = await context.admin
+  type InvoiceRecord = {
+    invoice_id: string
+    total?: number | string | null
+    subtotal?: number | string | null
+    discount?: number | string | null
+    tax?: number | string | null
+    status?: string | null
+    due_date?: string | null
+    issued_at?: string | null
+    bookings?: {
+      booking_id?: string | null
+      booking_ref?: number | null
+      session_date?: string | null
+      location?: string | null
+      notes?: string | null
+      status?: string | null
+      studio_id?: string | null
+      clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
+      packages?: { name?: string | null; base_price?: number | string | null } | null
+    } | null
+  }
+  const { data: invoiceRaw } = await context.admin
     .from('invoices')
     .select(`
       *,
@@ -29,6 +50,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     .eq('invoice_id', id)
     .eq('bookings.studio_id', context.studioId)
     .single()
+  const invoice = invoiceRaw as unknown as InvoiceRecord | null
 
   if (!invoice) redirect('/dashboard/invoices')
 
@@ -127,10 +149,10 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
           <span>{invoice.bookings?.packages?.name ?? 'Agreed amount'}</span>
-          <span>NGN {(Number(invoice.subtotal) - ((addons as InvoiceAddonRelation[] | null)?.reduce((sum, addon) => sum + Number(addon.package_addons?.price) * addon.quantity, 0) ?? 0)).toLocaleString('en-NG')}</span>
+          <span>NGN {(Number(invoice.subtotal) - ((addons as unknown as InvoiceAddonRelation[] | null)?.reduce((sum, addon) => sum + Number(addon.package_addons?.price) * addon.quantity, 0) ?? 0)).toLocaleString('en-NG')}</span>
         </div>
 
-        {(addons as InvoiceAddonRelation[] | null)?.map((addon, index) => (
+        {(addons as unknown as InvoiceAddonRelation[] | null)?.map((addon, index) => (
           <div key={index} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', color: 'var(--text-3)', marginBottom: '8px' }}>
             <span>{addon.package_addons?.name} x {addon.quantity}</span>
             <span>NGN {(Number(addon.package_addons?.price) * addon.quantity).toLocaleString('en-NG')}</span>
@@ -189,7 +211,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
       <InvoiceActions
         invoiceId={id}
-        currentStatus={invoice.status}
+        currentStatus={invoice.status ?? ''}
         balanceDue={balanceDue}
       />
     </div>

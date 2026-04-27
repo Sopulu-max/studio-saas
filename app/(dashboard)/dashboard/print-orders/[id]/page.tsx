@@ -48,8 +48,8 @@ export default async function PrintOrderDetailPage({
 
   if (!order) redirect('/dashboard/print-orders')
 
-  const items   = (order.print_order_items as PrintOrderItem[]) ?? []
-  const booking = order.bookings as PrintOrderBooking
+  const items   = (order.print_order_items as unknown as PrintOrderItem[]) ?? []
+  const booking = order.bookings as unknown as PrintOrderBooking
   const total   = items.reduce((sum, i) => sum + Number(i.unit_price) * i.quantity, 0)
   const s       = STATUS_COLORS[order.status ?? ''] ?? STATUS_COLORS.pending
 

@@ -24,7 +24,7 @@ export default async function EditPrintOrderPage({ params }: { params: Promise<{
 
   if (!order) redirect('/dashboard/print-orders')
 
-  const items = (order.print_order_items as PrintOrderItem[]).map(i => ({
+  const items = (order.print_order_items as unknown as PrintOrderItem[]).map(i => ({
     product_name: i.product_name,
     size:         i.size         ?? '',
     quantity:     String(i.quantity),

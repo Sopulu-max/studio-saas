@@ -8,7 +8,7 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
   if ('error' in context) redirect('/login')
 
   type StaffRecord = {
-    staff_id: string; full_name: string; email: string | null
+    staff_id: string; full_name: string; email: string
     roles: string[] | null; role: string | null; phone: string | null
     hire_date: string | null; working_days: string[] | null
   }

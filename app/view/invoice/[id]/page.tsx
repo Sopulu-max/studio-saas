@@ -53,7 +53,7 @@ export default async function PublicInvoiceViewPage({
     .eq('invoice_id', id)
     .order('paid_at', { ascending: true })
 
-  const booking = invoice.bookings as InvoiceBooking | null
+  const booking = invoice.bookings as unknown as InvoiceBooking | null
 
   const { data: addons } = await admin
     .from('booking_addons')
@@ -68,7 +68,7 @@ export default async function PublicInvoiceViewPage({
   const shortId = id.slice(-8).toUpperCase()
   const fmt = (n: number) => 'NGN ' + Number(n).toLocaleString('en-NG')
 
-  const addonsList = (addons ?? []) as AddonRow[]
+  const addonsList = (addons ?? []) as unknown as AddonRow[]
   const addonsTotal = addonsList.reduce((sum, addon) => sum + Number(addon.package_addons?.price ?? 0) * addon.quantity, 0)
   const baseAmount = Number(invoice.subtotal) - addonsTotal
 

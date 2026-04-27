@@ -62,10 +62,15 @@ export default async function EquipmentPage({
   if (category) query = query.eq('category', category)
   if (status) query = query.eq('status', status)
 
-  const { data: equipment, count } = await query
+  type EquipmentItem = {
+    equipment_id: string; name: string; category: string
+    serial_number?: string | null; status: string
+  }
+  const { data: equipmentRaw, count } = await query
     .order('category', { ascending: true })
     .order('name', { ascending: true })
     .range(from, to)
+  const equipment = (equipmentRaw ?? []) as unknown as EquipmentItem[]
 
   const total = count ?? 0
   const totalPages = Math.ceil(total / PAGE_SIZE)

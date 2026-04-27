@@ -56,12 +56,16 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
-  const { data: pkg } = await context.admin
+  type PackageRecord = Record<string, any> & {
+    package_addons?: PackageAddon[] | null
+  }
+  const { data: pkgRaw } = await context.admin
     .from('packages')
     .select('*, package_addons(*)')
     .eq('package_id', id)
     .eq('studio_id', context.studioId)
     .single()
+  const pkg = pkgRaw as unknown as PackageRecord | null
 
   if (!pkg) redirect('/dashboard/packages')
 
@@ -165,11 +169,11 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
         {!pkg.package_addons?.length ? (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '1rem 1.25rem' }}>No add-ons for this package</p>
         ) : (
-          (pkg.package_addons as PackageAddon[]).map((addon, i: number) => (
+          (pkg.package_addons as PackageAddon[] ?? []).map((addon, i: number) => (
             <div key={addon.addon_id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '0.875rem 1.25rem',
-              borderBottom: i < pkg.package_addons.length - 1 ? '1px solid var(--line-inner)' : 'none',
+              borderBottom: i < (pkg.package_addons?.length ?? 0) - 1 ? '1px solid var(--line-inner)' : 'none',
             }}>
               <div>
                 <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{addon.name}</p>

@@ -167,11 +167,20 @@ export async function sendInvoiceToClient(invoiceId: string) {
     .eq('owner_id', context.userId)
     .single()
 
-  const { data: invoice } = await context.admin
+  type InvoiceEmailRecord = {
+    total?: number | string | null
+    due_date?: string | null
+    bookings?: {
+      session_date?: string | null
+      clients?: { full_name?: string | null; email?: string | null } | null
+    } | null
+  }
+  const { data: invoiceRaw } = await context.admin
     .from('invoices')
     .select('*, bookings(session_date, clients(full_name, email))')
     .eq('invoice_id', invoiceId)
     .single()
+  const invoice = invoiceRaw as unknown as InvoiceEmailRecord | null
 
   if (!invoice) return { error: 'Invoice not found' }
 
@@ -263,8 +272,18 @@ export async function getInvoiceFormData(bookingId?: string) {
     .eq('studio_id', context.studioId)
     .order('base_price', { ascending: true })
 
+  type PackageWithAddons = {
+    package_id: string
+    name: string
+    base_price: number | string
+    session_type?: string | null
+    outfits_count?: number | null
+    edited_photos?: number | null
+    inclusions?: string[] | null
+    package_addons?: { addon_id: string; name: string; price: number | string }[] | null
+  }
   return {
     bookings: (studioBookings ?? []) as unknown as InvoiceBooking[],
-    packages: studioPackages ?? [],
+    packages: (studioPackages ?? []) as unknown as PackageWithAddons[],
   }
 }

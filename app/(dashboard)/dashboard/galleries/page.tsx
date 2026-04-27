@@ -63,11 +63,12 @@ export default async function GalleriesPage({
   if (q) query = query.ilike('title', `%${q}%`)
   if (status) query = query.eq('status', status)
 
-  const { data: galleries, count } = await query
+  const { data: galleriesRaw, count } = await query
     .order('created_at', { ascending: false })
     .range(from, to)
+  const galleries = (galleriesRaw ?? []) as unknown as GalleryListRow[]
 
-  return renderPage(galleries ?? [], count ?? 0, pageNum, q, status)
+  return renderPage(galleries, count ?? 0, pageNum, q, status)
 }
 
 function renderPage(galleries: GalleryListRow[], total: number, page: number, q: string, status: string) {

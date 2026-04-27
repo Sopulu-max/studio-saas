@@ -42,7 +42,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
     .eq('gallery_id', id)
     .order('uploaded_at', { ascending: false })
 
-  const booking = gallery.bookings as GalleryBooking | null
+  const booking = gallery.bookings as unknown as GalleryBooking | null
 
   const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
     processing: { bg: '#faeeda', color: '#854f0b' },

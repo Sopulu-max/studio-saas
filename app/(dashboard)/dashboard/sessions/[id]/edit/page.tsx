@@ -8,7 +8,7 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: session } = await context.admin
+  const { data: sessionRaw } = await context.admin
     .from('bookings')
     .select(`
       *,
@@ -17,6 +17,21 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
     .eq('booking_id', id)
     .eq('studio_id', context.studioId)
     .single()
+  type SessionEditRecord = {
+    client_id?: string | null
+    session_type?: string | null
+    service_type?: string | null
+    session_date?: string | null
+    package_id?: string | null
+    outfits_count?: number | null
+    edited_photos?: number | null
+    location_address?: string | null
+    event_name?: string | null
+    event_date?: string | null
+    notes?: string | null
+    booking_staff?: { role?: string | null; staff_id?: string | null }[] | null
+  }
+  const session = sessionRaw as unknown as SessionEditRecord | null
 
   if (!session) redirect('/dashboard/sessions')
 

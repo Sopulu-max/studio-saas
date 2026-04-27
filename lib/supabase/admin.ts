@@ -1,13 +1,42 @@
 import 'server-only'
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+
+// TypeScript 5.9 changed how `IsAny<T>` resolves inside Supabase's
+// template-literal query parser. When `Database = any` (the default),
+// `IsAny<Schema>` no longer reliably returns `true`, so the parser falls
+// through to a code path that yields `never` for every query result.
+//
+// Fix: supply an explicit PermissiveDB type that satisfies Supabase's
+// GenericSchema constraints but types every row/insert/update as
+// Record<string, any>. This keeps the schema-aware inference path active
+// (IsAny is false) while making all property lookups return `any` rather
+// than `never`.
+type PermissiveDB = {
+  public: {
+    Tables: Record<string, {
+      Row:           Record<string, any>
+      Insert:        Record<string, any>
+      Update:        Record<string, any>
+      Relationships: any[]
+    }>
+    Views: Record<string, {
+      Row:           Record<string, any>
+      Relationships: any[]
+    }>
+    Functions: Record<string, {
+      Args:    Record<string, any>
+      Returns: any
+    }>
+  }
+}
 
 // Module-level singleton — reused across warm function invocations.
 // The admin client uses a static service-role key, so it is safe to share.
-let _adminClient: ReturnType<typeof createClient> | null = null
+let _adminClient: SupabaseClient<PermissiveDB> | null = null
 
-export function createAdminClient() {
+export function createAdminClient(): SupabaseClient<PermissiveDB> {
   if (!_adminClient) {
-    _adminClient = createClient(
+    _adminClient = createClient<PermissiveDB>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!,
       { auth: { persistSession: false, autoRefreshToken: false } }

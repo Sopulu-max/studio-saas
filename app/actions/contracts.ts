@@ -126,11 +126,18 @@ export async function sendContractToClient(contractId: string) {
     .eq('owner_id', context.userId)
     .single()
 
-  const { data: contract } = await context.admin
+  type ContractEmailRecord = {
+    bookings?: {
+      session_date?: string | null
+      clients?: { full_name?: string | null; email?: string | null } | null
+    } | null
+  }
+  const { data: contractRaw } = await context.admin
     .from('contracts')
     .select('*, bookings(session_date, clients(full_name, email))')
     .eq('contract_id', contractId)
     .single()
+  const contract = contractRaw as unknown as ContractEmailRecord | null
 
   if (!contract) return { error: 'Contract not found' }
 

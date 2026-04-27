@@ -9,7 +9,23 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: contract } = await context.admin
+  type ContractRecord = {
+    contract_id: string
+    status?: string | null
+    content?: string | null
+    signed_at?: string | null
+    signed_by?: string | null
+    bookings?: {
+      booking_id?: string | null
+      booking_ref?: number | null
+      session_date?: string | null
+      location_address?: string | null
+      studio_id?: string | null
+      clients?: { full_name?: string | null; email?: string | null } | null
+      packages?: { name?: string | null } | null
+    } | null
+  }
+  const { data: contractRaw } = await context.admin
     .from('contracts')
     .select(`
       *,
@@ -22,6 +38,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
     .eq('contract_id', id)
     .eq('bookings.studio_id', context.studioId)
     .single()
+  const contract = contractRaw as unknown as ContractRecord | null
 
   if (!contract) redirect('/dashboard/contracts')
 
@@ -115,7 +132,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
       <ContractActions
         contractId={id}
-        currentStatus={contract.status}
+        currentStatus={contract.status ?? ''}
         clientEmail={contract.bookings?.clients?.email ?? ''}
         clientName={contract.bookings?.clients?.full_name ?? ''}
       />

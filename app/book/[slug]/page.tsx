@@ -78,7 +78,7 @@ export default async function PublicBookingPage({
           {/* Studio header */}
           <div style={{ textAlign: 'center', marginBottom: '32px' }}>
             {studio.logo_url && (
-              <img src={studio.logo_url} alt={studio.name}
+              <img src={studio.logo_url ?? undefined} alt={studio.name ?? ''}
                 style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '12px' }} />
             )}
             <p style={{ fontSize: '13px', color: '#aaa', marginBottom: '6px', letterSpacing: '.04em', textTransform: 'uppercase' }}>
@@ -94,7 +94,7 @@ export default async function PublicBookingPage({
           <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '16px', padding: '28px' }}>
             <BookingForm
               studioId={studio.studio_id}
-              studioName={studio.name}
+              studioName={studio.name ?? ''}
               sessionTypes={config.sessionTypes.map(t => ({ value: t.value, label: t.label }))}
               serviceTypes={config.serviceTypes.map(t => ({ value: t.value, label: t.label }))}
             />

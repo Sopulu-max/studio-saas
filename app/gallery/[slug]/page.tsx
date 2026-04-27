@@ -42,8 +42,9 @@ export default async function PublicGalleryPage({
     .order('is_favourite', { ascending: false })
     .order('uploaded_at', { ascending: true })
 
-  const booking        = gallery.bookings as PublicGalleryBooking | null
-  const allPhotos      = photos ?? []
+  const booking        = gallery.bookings as unknown as PublicGalleryBooking | null
+  type GalleryPhoto = { photo_id: string; file_url: string; thumbnail_url: string; is_favourite: boolean; is_edited: boolean }
+  const allPhotos      = (photos ?? []) as unknown as GalleryPhoto[]
   const selectionMode  = booking?.status === 'selecting'
   const outfitsCount   = booking?.outfits_count ?? null
   const baseCount      = outfitsCount != null ? outfitsCount * 2 : null

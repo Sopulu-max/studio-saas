@@ -43,10 +43,11 @@ export default async function ContractsPage({
   if ('error' in context) redirect('/login')
 
   // Summary counts (unfiltered)
-  const { data: allContracts } = await context.admin
+  const { data: allContractsRaw } = await context.admin
     .from('contracts')
     .select('status, bookings!inner(studio_id)')
     .eq('bookings.studio_id', context.studioId)
+  const allContracts = allContractsRaw as unknown as { status: string }[] | null
 
   const signedCount  = allContracts?.filter(c => c.status === 'signed').length ?? 0
   const pendingCount = allContracts?.filter(c => c.status === 'sent').length ?? 0
@@ -62,11 +63,12 @@ export default async function ContractsPage({
 
   if (status) query = query.eq('status', status)
 
-  const { data: contracts, count } = await query
+  const { data: contractsRaw, count } = await query
     .order('created_at', { ascending: false })
     .range(from, to)
+  const contracts = (contractsRaw ?? []) as unknown as ContractListRow[]
 
-  return renderPage(contracts ?? [], count ?? 0, pageNum, status, allContracts?.length ?? 0, signedCount, pendingCount)
+  return renderPage(contracts, count ?? 0, pageNum, status, allContracts?.length ?? 0, signedCount, pendingCount)
 }
 
 function renderPage(

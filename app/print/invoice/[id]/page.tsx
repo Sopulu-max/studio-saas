@@ -16,7 +16,25 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
 
   const studio = await fetchStudio(context.admin, context.studioId)
 
-  const { data: invoice } = await context.admin
+  type PrintInvoiceRecord = {
+    invoice_id?: string | null
+    total?: number | string | null
+    subtotal?: number | string | null
+    discount?: number | string | null
+    tax?: number | string | null
+    status?: string | null
+    issued_at?: string | null
+    due_date?: string | null
+    bookings?: {
+      studio_id?: string | null
+      booking_id?: string | null
+      session_date?: string | null
+      location?: string | null
+      clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
+      packages?: { name?: string | null; base_price?: number | string | null } | null
+    } | null
+  }
+  const { data: invoiceRaw } = await context.admin
     .from('invoices')
     .select(`
       *,
@@ -30,6 +48,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
     .eq('invoice_id', id)
     .eq('bookings.studio_id', context.studioId)
     .single()
+  const invoice = invoiceRaw as unknown as PrintInvoiceRecord | null
 
   if (!invoice) redirect('/dashboard/invoices')
 
@@ -44,7 +63,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
     .select('quantity, package_addons(name, price)')
     .eq('booking_id', invoice.bookings?.booking_id ?? '')
 
-  const addonRows = (addons ?? []) as AddonRow[]
+  const addonRows = (addons ?? []) as unknown as AddonRow[]
   const addonsTotal = addonRows.reduce((sum, addon) => sum + Number(addon.package_addons?.price ?? 0) * addon.quantity, 0)
   const amountPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0
   const balanceDue = Math.max(0, Number(invoice.total) - amountPaid)
@@ -87,7 +106,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
             {studio?.logo_url && (
               <Image
                 src={studio.logo_url}
-                alt={studio.name}
+                alt={studio.name ?? ''}
                 width={52}
                 height={52}
                 unoptimized

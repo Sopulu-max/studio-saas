@@ -26,13 +26,36 @@ type PrintOrderItemRelation = {
   unit_price?: number | string | null
 }
 
+type SessionRecord = {
+  booking_id: string
+  studio_id?: string | null
+  booking_ref?: number | null
+  session_date?: string | null
+  session_type?: string | null
+  service_type?: string | null
+  status: string
+  notes?: string | null
+  drive_link?: string | null
+  location_address?: string | null
+  event_name?: string | null
+  event_date?: string | null
+  outfits_count?: number | null
+  selections_count?: number | null
+  edited_photos?: number | null
+  extra_outfits?: number | null
+  extra_pictures?: number | null
+  clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
+  packages?: { name?: string | null; base_price?: number | string | null; duration_mins?: number | null } | null
+  booking_staff?: SessionStaffRelation[] | null
+  booking_addons?: SessionAddonRelation[] | null
+}
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: session } = await context.admin
+  const { data: sessionRaw } = await context.admin
     .from('bookings')
     .select(`
       *,
@@ -44,6 +67,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     .eq('booking_id', id)
     .eq('studio_id', context.studioId)
     .single()
+  const session = sessionRaw as unknown as SessionRecord | null
 
   if (!session) redirect('/dashboard/sessions')
 
@@ -56,7 +80,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     .eq('booking_id', id)
     .single()
 
-  const amountPaid = ((invoice?.payments as { amount: number }[] | null) ?? [])
+  const amountPaid = ((invoice?.payments as unknown as { amount: number }[] | null) ?? [])
     .reduce((sum, p) => sum + Number(p.amount), 0)
   const balanceDue = invoice ? Math.max(0, Number(invoice.total) - amountPaid) : 0
 
@@ -214,7 +238,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           )}
 
           {(() => {
-            const staffList    = (session.booking_staff as SessionStaffRelation[]) ?? []
+            const staffList    = (session.booking_staff as unknown as SessionStaffRelation[]) ?? []
             const photographer  = staffList.find(s => s.role === 'photographer')
             const editor        = staffList.find(s => s.role === 'editor')
             const videographer  = staffList.find(s => s.role === 'videographer')
@@ -286,10 +310,10 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           })()}
         </div>
 
-        {session.booking_addons?.length > 0 && (
+        {(session.booking_addons?.length ?? 0) > 0 && (
           <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '16px', paddingTop: '16px' }}>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 8px' }}>ADD-ONS</p>
-            {(session.booking_addons as SessionAddonRelation[]).map((a, i: number) => (
+            {(session.booking_addons as unknown as SessionAddonRelation[]).map((a, i: number) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
                 <span>{a.package_addons?.name} × {a.quantity}</span>
                 <span style={{ color: 'var(--text-3)' }}>₦{(Number(a.package_addons?.price) * a.quantity).toLocaleString()}</span>
@@ -372,7 +396,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           {printOrder ? (
             <>
               <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>
-                ₦{((printOrder.print_order_items as PrintOrderItemRelation[]) ?? []).reduce((sum, item) => sum + Number(item.unit_price) * item.quantity, 0).toLocaleString()}
+                ₦{((printOrder.print_order_items as unknown as PrintOrderItemRelation[]) ?? []).reduce((sum, item) => sum + Number(item.unit_price) * item.quantity, 0).toLocaleString()}
               </p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: 'var(--text-3)', textTransform: 'capitalize' }}>{printOrder.status}</span>
@@ -419,7 +443,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         serviceType={session.service_type ?? 'photo'}
         outfitsCount={session.outfits_count ?? null}
         invoiceId={invoice?.invoice_id ?? null}
-        assignedStaff={((session.booking_staff as SessionStaffRelation[]) ?? []).map((bs) => ({
+        assignedStaff={((session.booking_staff as unknown as SessionStaffRelation[]) ?? []).map((bs) => ({
           staff_id: bs.staff_id ?? '',
           full_name: bs.staff?.full_name ?? '',
           role: bs.role ?? '',

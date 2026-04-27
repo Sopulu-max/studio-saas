@@ -75,11 +75,12 @@ export default async function SessionsPage({
     query = query.in('client_id', clientIds)
   }
 
-  const { data: sessions, count } = await query
+  const { data: sessionsRaw, count } = await query
     .order('session_date', { ascending: false })
     .range(from, to)
+  const sessions = (sessionsRaw ?? []) as unknown as SessionRow[]
 
-  return renderPage(sessions ?? [], count ?? 0, pageNum, q, status, type, date_from, date_to, pendingCount ?? 0, pendingStatus, config)
+  return renderPage(sessions, count ?? 0, pageNum, q, status, type, date_from, date_to, pendingCount ?? 0, pendingStatus, config)
 }
 
 function renderPage(
