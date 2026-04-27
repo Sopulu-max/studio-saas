@@ -39,8 +39,13 @@ export default async function AttendanceRecordsPage({
     staffId: staffId || null,
   })
 
+  // rawRecords is typed as never[] because staff_checkins isn't in the generated
+  // Supabase types — cast to a shape that matches AttendanceRecord before mapping.
+  type RawRecord = Omit<AttendanceRecord, 'staff'> & {
+    staff: AttendanceRecord['staff'] | AttendanceRecord['staff'][] | null
+  }
   // Normalise: Supabase join can return array or object for `staff`
-  const records: AttendanceRecord[] = (rawRecords ?? []).map(r => ({
+  const records: AttendanceRecord[] = ((rawRecords ?? []) as unknown as RawRecord[]).map(r => ({
     ...r,
     staff: Array.isArray(r.staff) ? (r.staff[0] ?? null) : (r.staff ?? null),
   }))
