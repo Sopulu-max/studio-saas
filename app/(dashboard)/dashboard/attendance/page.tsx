@@ -14,14 +14,15 @@ export default async function AttendancePage() {
   const todayISO = today.toISOString().slice(0, 10)
   const todayLabel = today.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
+  type StaffRow   = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
+  type CheckinRow = { checkin_id: string; staff_id: string; checked_in_at: string | null; checked_out_at: string | null }
+
   // Fetch all staff
-  const { data: staffList } = await context.admin
+  const { data: staffListRaw } = await context.admin
     .from('staff')
     .select('staff_id, full_name, role, roles, working_days')
     .eq('studio_id', context.studioId)
     .order('full_name')
-
-  type CheckinRow = { checkin_id: string; staff_id: string; checked_in_at: string | null; checked_out_at: string | null }
 
   // Fetch today's checkins for this studio
   const { data: checkinsRaw } = await context.admin
@@ -30,13 +31,14 @@ export default async function AttendancePage() {
     .eq('studio_id', context.studioId)
     .eq('date', todayISO)
 
-  const checkins = (checkinsRaw ?? []) as unknown as CheckinRow[]
+  const staffList = (staffListRaw ?? []) as unknown as StaffRow[]
+  const checkins  = (checkinsRaw  ?? []) as unknown as CheckinRow[]
   const checkinMap: Record<string, CheckinRow> = {}
   for (const c of checkins) {
     checkinMap[c.staff_id] = c
   }
 
-  const staff = (staffList ?? []).map(m => ({
+  const staff = staffList.map(m => ({
     ...m,
     checkin: checkinMap[m.staff_id] ?? null,
   }))
