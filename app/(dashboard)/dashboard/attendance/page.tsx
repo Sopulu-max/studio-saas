@@ -21,15 +21,18 @@ export default async function AttendancePage() {
     .eq('studio_id', context.studioId)
     .order('full_name')
 
+  type CheckinRow = { checkin_id: string; staff_id: string; checked_in_at: string | null; checked_out_at: string | null }
+
   // Fetch today's checkins for this studio
-  const { data: checkins } = await context.admin
+  const { data: checkinsRaw } = await context.admin
     .from('staff_checkins')
     .select('checkin_id, staff_id, checked_in_at, checked_out_at')
     .eq('studio_id', context.studioId)
     .eq('date', todayISO)
 
-  const checkinMap: Record<string, NonNullable<typeof checkins>[number]> = {}
-  for (const c of checkins ?? []) {
+  const checkins = (checkinsRaw ?? []) as unknown as CheckinRow[]
+  const checkinMap: Record<string, CheckinRow> = {}
+  for (const c of checkins) {
     checkinMap[c.staff_id] = c
   }
 
