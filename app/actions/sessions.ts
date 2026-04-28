@@ -364,6 +364,7 @@ export async function updateSession(sessionId: string, form: {
   client_id: string
   session_type: string
   service_type: string
+  shoot_type?: string
   session_date: string
   package_id: string
   outfits_count: string
@@ -401,6 +402,7 @@ export async function updateSession(sessionId: string, form: {
     session_date: form.session_date,
     session_type: form.session_type,
     service_type: form.service_type || 'photo',
+    shoot_type:   form.shoot_type   || null,
     notes:        form.notes || null,
     package_id:   form.package_id   || null,
     outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,

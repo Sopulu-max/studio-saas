@@ -58,11 +58,33 @@ export default async function ReportsPage() {
   const todayEnd   = `${todayISO}T23:59:59`
   const next30End  = `${next30ISO}T23:59:59`
 
+  // Week calculations — Monday of current week through today
+  const dayOfWeek  = now.getDay()                            // 0=Sun, 1=Mon, …
+  const daysBack   = dayOfWeek === 0 ? 6 : dayOfWeek - 1    // steps back to Monday
+  const monday     = new Date(now.getTime() - daysBack * 86_400_000)
+  const mondayISO  = monday.toISOString().slice(0, 10)
+
+  // Build ordered list of days Mon → today
+  const weekDays: { iso: string; label: string; isToday: boolean }[] = []
+  for (
+    let d = new Date(monday);
+    d.toISOString().slice(0, 10) <= todayISO;
+    d = new Date(d.getTime() + 86_400_000)
+  ) {
+    const iso = d.toISOString().slice(0, 10)
+    weekDays.push({
+      iso,
+      label:   d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }),
+      isToday: iso === todayISO,
+    })
+  }
+
   // ── Phase 1: get invoice IDs so we can filter payments by studio ───────────
+  // Invoices have no direct studio_id — must join through bookings
   const { data: invoiceIdRows } = await admin
     .from('invoices')
-    .select('invoice_id')
-    .eq('studio_id', studioId)
+    .select('invoice_id, bookings!inner(studio_id)')
+    .eq('bookings.studio_id', studioId)
   const invoiceIds = (invoiceIdRows ?? []).map((r: any) => r.invoice_id as string)
 
   // ── Phase 2: all remaining queries in parallel ─────────────────────────────
@@ -85,6 +107,8 @@ export default async function ReportsPage() {
     { data: allInvoicesRaw },
     { data: todayPaymentsRaw },
     { data: todayInvoicesRaw },
+    { data: weekBookingsRaw },
+    { data: weekPaymentsRaw },
   ] = await Promise.all([
     // All active sessions (pipeline)
     bookingsBase().order('session_date', { ascending: true }),
@@ -104,11 +128,11 @@ export default async function ReportsPage() {
       .lte('session_date', next30End)
       .order('session_date', { ascending: true }),
 
-    // All invoices
+    // All invoices (join through bookings — invoices have no direct studio_id)
     admin
       .from('invoices')
-      .select('total, status, issued_at')
-      .eq('studio_id', studioId),
+      .select('total, status, issued_at, bookings!inner(studio_id)')
+      .eq('bookings.studio_id', studioId),
 
     // Payments received today — filtered via invoice IDs (avoids broken join)
     invoiceIds.length > 0
@@ -123,10 +147,26 @@ export default async function ReportsPage() {
     // Invoices issued today
     admin
       .from('invoices')
-      .select('total, status')
-      .eq('studio_id', studioId)
+      .select('total, status, bookings!inner(studio_id)')
+      .eq('bookings.studio_id', studioId)
       .gte('issued_at', todayISO)
       .lte('issued_at', todayEnd),
+
+    // Sessions this week (Mon → today)
+    bookingsBase()
+      .gte('session_date', mondayISO)
+      .lte('session_date', todayEnd)
+      .order('session_date', { ascending: true }),
+
+    // Payments this week
+    invoiceIds.length > 0
+      ? admin
+          .from('payments')
+          .select('amount, paid_at')
+          .in('invoice_id', invoiceIds)
+          .gte('paid_at', mondayISO)
+          .lte('paid_at', todayEnd)
+      : Promise.resolve({ data: [] }),
   ])
 
   const allBookings     = (allBookingsRaw     ?? []) as unknown as BookingRow[]
@@ -135,6 +175,17 @@ export default async function ReportsPage() {
   const allInvoices     = (allInvoicesRaw     ?? []) as { total: number | string; status: string; issued_at: string }[]
   const todayPayments   = (todayPaymentsRaw   ?? []) as { amount: number | string; method: string }[]
   const todayInvoices   = (todayInvoicesRaw   ?? []) as { total: number | string; status: string }[]
+  const weekBookings    = (weekBookingsRaw    ?? []) as unknown as BookingRow[]
+  const weekPayments    = (weekPaymentsRaw    ?? []) as { amount: number | string; paid_at: string }[]
+
+  // Per-day stats for the week strip
+  const dayStats = weekDays.map(day => {
+    const sessions = weekBookings.filter(b => b.session_date?.startsWith(day.iso)).length
+    const revenue  = weekPayments
+      .filter(p => p.paid_at?.startsWith(day.iso))
+      .reduce((s, p) => s + Number(p.amount), 0)
+    return { ...day, sessions, revenue }
+  })
 
   // ── Status helpers ─────────────────────────────────────────────────────────
   function statusStyle(v: string) {
@@ -302,6 +353,35 @@ export default async function ReportsPage() {
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions scheduled for today</p>
         </div>
       )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 1.5 — THIS WEEK
+      ════════════════════════════════════════════════════════════════════ */}
+      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>This week</p>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weekDays.length}, 1fr)`, gap: '8px', marginBottom: '28px' }}>
+        {dayStats.map(day => (
+          <div key={day.iso} style={{
+            background: day.isToday ? 'var(--btn)' : 'var(--surface)',
+            border: `1px solid ${day.isToday ? 'var(--btn)' : 'var(--line)'}`,
+            borderRadius: '10px', padding: '0.875rem', textAlign: 'center',
+          }}>
+            <p style={{ fontSize: '11px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '0 0 6px', fontWeight: '500' }}>
+              {day.label}
+            </p>
+            <p style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 2px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text)' }}>
+              {day.sessions}
+            </p>
+            <p style={{ fontSize: '11px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: 0, opacity: 0.85 }}>
+              {day.sessions === 1 ? 'session' : 'sessions'}
+            </p>
+            {day.revenue > 0 && (
+              <p style={{ fontSize: '11px', fontWeight: '600', margin: '6px 0 0', color: day.isToday ? 'var(--btn-fg)' : '#3b6d11' }}>
+                {fmt(day.revenue)}
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 2 — UPCOMING BY CATEGORY (next 30 days)

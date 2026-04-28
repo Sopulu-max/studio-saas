@@ -28,10 +28,17 @@ type StaffMember = {
   role?: string | null
 }
 
+const CATEGORY_SUGGESTIONS = [
+  'Portrait', 'Wedding', 'Maternity', 'Corporate', 'Fashion',
+  'Birthday', 'Graduation', 'Engagement', 'Newborn', 'Event',
+  'Boudoir', 'Product', 'Lifestyle', 'Family', 'Other',
+]
+
 type SessionRecord = {
   client_id?: string | null
   session_type?: string | null
   service_type?: string | null
+  shoot_type?: string | null
   session_date?: string | null
   package_id?: string | null
   outfits_count?: number | null
@@ -82,6 +89,7 @@ export default function EditSessionForm({
     client_id:          session.client_id          ?? '',
     session_type:       session.session_type       ?? config.sessionTypes[0]?.value ?? 'studio',
     service_type:       session.service_type       ?? config.serviceTypes[0]?.value ?? 'photo',
+    shoot_type:         session.shoot_type         ?? '',
     session_date:       toDatetimeLocal(session.session_date),
     package_id:         session.package_id         ?? '',
     outfits_count: session.outfits_count != null ? String(session.outfits_count) : '',
@@ -158,6 +166,7 @@ export default function EditSessionForm({
       client_id:       form.client_id,
       session_type:    form.session_type,
       service_type:    form.service_type,
+      shoot_type:      form.shoot_type,
       session_date:    form.session_date,
       package_id:      form.package_id,
       outfits_count:   form.outfits_count,
@@ -297,6 +306,33 @@ export default function EditSessionForm({
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>
           {isPhotoVideo ? 'PROJECT DETAILS' : isVideoSession ? 'PROJECT DETAILS' : 'PRICING SPECS'}
         </p>
+
+        {/* Category (shoot_type) */}
+        <div style={{ marginBottom: '16px' }}>
+          <label style={labelStyle}>Category</label>
+          <input
+            type="text"
+            list="edit-session-category-suggestions"
+            value={form.shoot_type}
+            onChange={e => update('shoot_type', e.target.value)}
+            placeholder={isVideoSession ? 'e.g. Reel, Brand film, Coverage…' : 'e.g. Portrait, Wedding, Birthday…'}
+            style={inputStyle}
+          />
+          <datalist id="edit-session-category-suggestions">
+            {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+          </datalist>
+        </div>
+
+        {/* Occasion date for non-event sessions (Birthday, Anniversary, etc.) */}
+        {!isEvent && form.shoot_type && (
+          <div style={{ marginBottom: '16px' }}>
+            <label style={labelStyle}>
+              {form.shoot_type} date{' '}
+              <span style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '400' }}>— optional</span>
+            </label>
+            <input type="date" value={form.event_date} onChange={e => update('event_date', e.target.value)} style={inputStyle} />
+          </div>
+        )}
 
         {/* Outfits + edited photos — photo/photo+video, not pure video or event */}
         {hasPhotoComponent && !isEvent && (

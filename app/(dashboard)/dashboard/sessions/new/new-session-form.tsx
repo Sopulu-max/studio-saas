@@ -361,6 +361,17 @@ export default function NewSessionForm({ clients, packages, staff }: {
           </div>
         </div>
 
+        {/* Occasion date for non-event sessions (Birthday, Anniversary, etc.) */}
+        {!isEvent && form.shoot_type && (
+          <div style={{ marginTop: '4px', marginBottom: '4px' }}>
+            <label style={labelStyle}>
+              {form.shoot_type} date{' '}
+              <span style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '400' }}>— optional</span>
+            </label>
+            <input type="date" value={form.event_date} onChange={e => update('event_date', e.target.value)} style={inputStyle} />
+          </div>
+        )}
+
         {/* Package matching */}
         {hasSpecs && (
           <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '14px' }}>

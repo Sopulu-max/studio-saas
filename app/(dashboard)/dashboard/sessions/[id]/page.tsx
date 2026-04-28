@@ -33,6 +33,7 @@ type SessionRecord = {
   session_date?: string | null
   session_type?: string | null
   service_type?: string | null
+  shoot_type?: string | null
   status: string
   notes?: string | null
   drive_link?: string | null
@@ -186,6 +187,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </p>
           </div>
 
+          {session.shoot_type && (
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Category</p>
+              <p style={{ fontSize: '14px', margin: 0 }}>{session.shoot_type}</p>
+            </div>
+          )}
+
           {(isOutdoor || isEvent) && session.location_address && (
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{isEvent ? 'Venue' : 'Location'}</p>
@@ -202,6 +210,18 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                   {new Date(session.event_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
               )}
+            </div>
+          )}
+
+          {/* Occasion date for non-event sessions (e.g. Birthday, Anniversary) */}
+          {!isEvent && session.event_date && (
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>
+                {session.shoot_type ? `${session.shoot_type} date` : 'Occasion date'}
+              </p>
+              <p style={{ fontSize: '14px', margin: 0 }}>
+                {new Date(session.event_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
             </div>
           )}
 
