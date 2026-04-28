@@ -117,6 +117,14 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   const typeCfg        = getSessionTypeConfig(config, session.session_type)
   const serviceTypeCfg = getServiceTypeConfig(config, session.service_type ?? 'photo')
 
+  // Dynamic pending-panel: show when session is in the first (intake) status
+  const sortedActive   = config.bookingStatuses.filter(s => !s.is_cancellation && !s.is_terminal).sort((a, b) => a.order - b.order)
+  const intakeStatus   = sortedActive[0]
+  const confirmStatus  = sortedActive[1]?.value ?? sortedActive[0]?.value ?? 'confirmed'
+  const cancelStatusCfg = config.bookingStatuses.find(s => s.is_cancellation)
+  const cancelStatusVal = cancelStatusCfg?.value ?? 'cancelled'
+  const isPendingIntake = !!intakeStatus && session.status === intakeStatus.value
+
   const isEvent        = session.session_type === 'event'
   const isOutdoor      = session.session_type === 'outdoor'
   const isVideoSession = session.service_type === 'video' || session.service_type === 'photo_video'
@@ -157,9 +165,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      {/* Pending confirmation banner */}
-      {session.status === 'pending_confirmation' && (
-        <PendingActions sessionId={id} />
+      {/* Pending confirmation banner — shown for the intake/pending stage */}
+      {isPendingIntake && (
+        <PendingActions
+          sessionId={id}
+          confirmStatus={confirmStatus}
+          cancelStatus={cancelStatusVal}
+        />
       )}
 
       {/* Client */}

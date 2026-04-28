@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 import { sendInvoiceEmail } from '@/lib/email'
-import { getStudioContext, ownsBooking, ownsInvoice, ownsPackage } from '@/lib/studio'
+import { getStudioContext, fetchStudio, ownsBooking, ownsInvoice, ownsPackage } from '@/lib/studio'
+import { buildStudioConfig } from '@/lib/studio-config'
 
 const addInvoiceSchema = z.object({
   booking_id:    z.string().min(1, 'Session is required'),
@@ -259,12 +260,18 @@ export async function getInvoiceFormData(bookingId?: string) {
     return { bookings: [] as InvoiceBooking[], packages: [] }
   }
 
-  const { data: studioBookings } = await context.admin
+  // Build config so the cancellation filter is dynamic, not hardcoded
+  const studioRow    = await fetchStudio(context.admin, context.studioId)
+  const config       = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+  const cancelValues = config.bookingStatuses.filter(s => s.is_cancellation).map(s => s.value)
+
+  let bookingsQuery = context.admin
     .from('bookings')
     .select('booking_id, booking_ref, session_date, status, session_type, package_id, outfits_count, clients(full_name, phone), packages(name, base_price)')
     .eq('studio_id', context.studioId)
-    .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })
+  for (const v of cancelValues) { bookingsQuery = bookingsQuery.neq('status', v) }
+  const { data: studioBookings } = await bookingsQuery
 
   const { data: studioPackages } = await context.admin
     .from('packages')

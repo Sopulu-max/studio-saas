@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { getStudioContext, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
+import { getStudioContext, fetchStudio, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
+import { buildStudioConfig } from '@/lib/studio-config'
 
 const addSessionSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -47,16 +48,30 @@ export async function addSession(form: {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
+  // Fetch studio config so status values are dynamic, not hardcoded
+  const studioRow = await fetchStudio(context.admin, context.studioId)
+  const config    = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+
+  const cancelValues   = config.bookingStatuses.filter(s => s.is_cancellation).map(s => s.value)
+  const sortedActive   = config.bookingStatuses.filter(s => !s.is_cancellation && !s.is_terminal).sort((a, b) => a.order - b.order)
+  // Staff-created sessions skip the intake/pending stage → start at the second active status
+  const staffInitialStatus = sortedActive[1]?.value ?? sortedActive[0]?.value ?? 'confirmed'
+
+  // Build duplicate-check query without hardcoded 'cancelled'
+  let dupQuery = context.admin
+    .from('bookings').select('booking_id')
+    .eq('studio_id', context.studioId)
+    .eq('client_id', form.client_id)
+    .eq('session_date', form.session_date)
+  for (const v of cancelValues) { dupQuery = dupQuery.neq('status', v) }
+
   // All ownership + pre-flight checks in one parallel batch
   const [clientOk, pkgOk, photogOk, editorOk, { data: dupSession }, { data: maxRefRow }] = await Promise.all([
     ownsClient(context.admin, context.studioId, form.client_id),
     form.package_id      ? ownsPackage(context.admin, context.studioId, form.package_id)        : Promise.resolve(true),
     form.photographer_id ? ownsStaff(context.admin, context.studioId, form.photographer_id)     : Promise.resolve(true),
     form.editor_id       ? ownsStaff(context.admin, context.studioId, form.editor_id)           : Promise.resolve(true),
-    context.admin
-      .from('bookings').select('booking_id')
-      .eq('studio_id', context.studioId).eq('client_id', form.client_id)
-      .eq('session_date', form.session_date).neq('status', 'cancelled').maybeSingle(),
+    dupQuery.maybeSingle(),
     context.admin
       .from('bookings').select('booking_ref')
       .eq('studio_id', context.studioId).not('booking_ref', 'is', null)
@@ -77,7 +92,7 @@ export async function addSession(form: {
     client_id: form.client_id,
     session_date: form.session_date,
     studio_id: context.studioId,
-    status: 'confirmed', // staff-created sessions skip pending_confirmation
+    status: staffInitialStatus, // staff-created sessions skip the intake/pending stage
     notes: form.notes || null,
     booking_ref: nextRef,
   }
@@ -262,9 +277,18 @@ export async function recordSelections(sessionId: string, count: number) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
+  // Determine the next status dynamically: the stage after requires_selection_count
+  const studioRow     = await fetchStudio(context.admin, context.studioId)
+  const config        = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+  const sortedPipeline = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)
+  const selIdx        = sortedPipeline.findIndex(s => s.requires_selection_count)
+  const nextStatus    = selIdx >= 0 && selIdx + 1 < sortedPipeline.length
+    ? sortedPipeline[selIdx + 1].value
+    : 'editing' // safe fallback
+
   const { error } = await context.admin
     .from('bookings')
-    .update({ selections_count: count, status: 'editing' })
+    .update({ selections_count: count, status: nextStatus })
     .eq('booking_id', sessionId)
     .eq('studio_id', context.studioId)
   return { error: error?.message ?? null }

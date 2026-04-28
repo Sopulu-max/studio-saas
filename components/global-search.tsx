@@ -4,20 +4,16 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Client  = { client_id: string; full_name: string; email?: string | null; phone?: string | null }
-type Session = { booking_id: string; session_date?: string | null; status: string; session_type?: string | null; clients?: { full_name?: string | null } | null }
+type Session = { booking_id: string; session_date?: string | null; status: string; color_fg?: string | null; session_type?: string | null; clients?: { full_name?: string | null } | null }
 type Invoice = { invoice_id: string; total?: number | string | null; status: string; bookings?: { clients?: { full_name?: string | null } | null } | null }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending_confirmation: '#854f0b',
-  confirmed:    '#185fa5',
-  in_progress:  '#534ab7',
-  editing:      '#854f0b',
-  delivered:    '#3b6d11',
-  cancelled:    '#a32d2d',
-  draft:        '#5f5e5a',
-  sent:         '#185fa5',
-  paid:         '#3b6d11',
-  overdue:      '#a32d2d',
+// Invoice statuses are a separate fixed domain (not booking workflows) — keep as constants
+const INVOICE_STATUS_COLORS: Record<string, string> = {
+  draft:   '#5f5e5a',
+  sent:    '#185fa5',
+  paid:    '#3b6d11',
+  overdue: '#a32d2d',
+  cancelled: '#a32d2d',
 }
 
 export default function GlobalSearch() {
@@ -176,7 +172,7 @@ export default function GlobalSearch() {
                         <ResultRow key={s.booking_id} active={idx === cursor}
                           onClick={() => navigate(`/dashboard/sessions/${s.booking_id}`)}>
                           <span style={{ fontWeight: '500', fontSize: '14px' }}>{s.clients?.full_name}</span>
-                          <span style={{ fontSize: '12px', color: STATUS_COLORS[s.status] ?? 'var(--text-4)' }}>
+                          <span style={{ fontSize: '12px', color: s.color_fg ?? 'var(--text-4)' }}>
                             {s.status.replace(/_/g, ' ')}
                             {s.session_date ? ` · ${new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                           </span>
@@ -193,7 +189,7 @@ export default function GlobalSearch() {
                         <ResultRow key={inv.invoice_id} active={idx === cursor}
                           onClick={() => navigate(`/dashboard/invoices/${inv.invoice_id}`)}>
                           <span style={{ fontWeight: '500', fontSize: '14px' }}>{inv.bookings?.clients?.full_name}</span>
-                          <span style={{ fontSize: '12px', color: STATUS_COLORS[inv.status] ?? 'var(--text-4)' }}>
+                          <span style={{ fontSize: '12px', color: INVOICE_STATUS_COLORS[inv.status] ?? 'var(--text-4)' }}>
                             ₦{Number(inv.total).toLocaleString()} · {inv.status}
                           </span>
                         </ResultRow>

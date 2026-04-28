@@ -5,13 +5,21 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { updateSessionStatus } from '@/app/actions/sessions'
 
-export default function PendingActions({ sessionId }: { sessionId: string }) {
+export default function PendingActions({
+  sessionId,
+  confirmStatus,
+  cancelStatus,
+}: {
+  sessionId:     string
+  confirmStatus: string
+  cancelStatus:  string
+}) {
   const router = useRouter()
   const [loading, setLoading] = useState<'confirm' | 'decline' | null>(null)
   const [showDecline, setShowDecline] = useState(false)
 
-  async function handle(next: 'confirmed' | 'cancelled') {
-    setLoading(next === 'confirmed' ? 'confirm' : 'decline')
+  async function handle(next: string) {
+    setLoading(next === confirmStatus ? 'confirm' : 'decline')
     const { error } = await updateSessionStatus(sessionId, next)
     if (error) {
       toast.error(error)
@@ -60,7 +68,7 @@ export default function PendingActions({ sessionId }: { sessionId: string }) {
               Decline
             </button>
             <button
-              onClick={() => handle('confirmed')}
+              onClick={() => handle(confirmStatus)}
               disabled={!!loading}
               style={{
                 padding: '8px 18px', fontSize: '13px', borderRadius: '8px',
@@ -82,7 +90,7 @@ export default function PendingActions({ sessionId }: { sessionId: string }) {
               Cancel
             </button>
             <button
-              onClick={() => handle('cancelled')}
+              onClick={() => handle(cancelStatus)}
               disabled={!!loading}
               style={{
                 padding: '8px 16px', fontSize: '13px', borderRadius: '8px',

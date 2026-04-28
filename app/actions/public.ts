@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendBookingConfirmationEmail, sendStudioBookingNotification } from '@/lib/email'
 import { isGallerySelectionOpen, isMatchingGalleryPhone } from '@/lib/gallery-public'
+import { buildStudioConfig } from '@/lib/studio-config'
 
 const bookingRequestSchema = z.object({
   studio_id:        z.string().min(1),
@@ -46,11 +47,16 @@ export async function submitBookingRequest(form: {
 
   const { data: studio } = await admin
     .from('studios')
-    .select('studio_id, name, email')
+    .select('studio_id, name, email, booking_statuses, session_types, service_types')
     .eq('studio_id', form.studio_id)
     .maybeSingle()
 
   if (!studio) return { error: 'Studio not found' }
+
+  // Build config so status values are dynamic, not hardcoded strings
+  const config        = buildStudioConfig((studio as any).session_types, (studio as any).booking_statuses, (studio as any).service_types)
+  const cancelValues  = config.bookingStatuses.filter(s => s.is_cancellation).map(s => s.value)
+  const initialStatus = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)[0]?.value ?? 'pending_confirmation'
 
   let clientId: string
   const { data: existing } = await admin
@@ -78,15 +84,15 @@ export async function submitBookingRequest(form: {
     clientId = newClient.client_id
   }
 
-  // Duplicate booking check — same client, same date, not cancelled
-  const { data: dupBooking } = await admin
+  // Duplicate booking check — same client, same date, excluding all cancellation statuses
+  let dupQuery = admin
     .from('bookings')
     .select('booking_id')
     .eq('studio_id', form.studio_id)
     .eq('client_id', clientId)
     .eq('session_date', form.preferred_date)
-    .neq('status', 'cancelled')
-    .maybeSingle()
+  for (const v of cancelValues) { dupQuery = dupQuery.neq('status', v) }
+  const { data: dupBooking } = await dupQuery.maybeSingle()
 
   if (dupBooking) return { error: '__DUPLICATE__' }
 
@@ -112,7 +118,7 @@ export async function submitBookingRequest(form: {
     session_type: form.session_type,
     service_type: form.service_type || 'photo',
     session_date: form.preferred_date,
-    status:       'pending_confirmation',
+    status:       initialStatus,
     notes:        noteParts.length ? noteParts.join('\n\n') : null,
     booking_ref:  nextRef,
   }

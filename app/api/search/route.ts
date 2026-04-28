@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
+import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
 
 type SearchInvoiceRow = {
   invoice_id: string
@@ -14,6 +15,9 @@ export async function GET(req: NextRequest) {
 
   const context = await getStudioContext()
   if ('error' in context) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const studioRow = await fetchStudio(context.admin, context.studioId)
+  const config    = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   const like = `%${q}%`
 
@@ -52,9 +56,15 @@ export async function GET(req: NextRequest) {
       .limit(4),
   ])
 
+  // Annotate sessions with config-driven status color so the client doesn't need a hardcoded map
+  const annotatedSessions = (sessions ?? []).map(s => ({
+    ...s,
+    color_fg: getStatusConfig(config, (s as any).status).color_fg,
+  }))
+
   return NextResponse.json({
-    clients:  clients  ?? [],
-    sessions: sessions ?? [],
+    clients:  clients ?? [],
+    sessions: annotatedSessions,
     invoices: ((invoices ?? []) as SearchInvoiceRow[]).filter((inv) => {
       const name: string = inv.bookings?.clients?.full_name ?? ''
       return name.toLowerCase().includes(q.toLowerCase())
