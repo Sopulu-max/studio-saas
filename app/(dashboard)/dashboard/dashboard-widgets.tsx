@@ -65,13 +65,12 @@ function isLate(iso: string) {
 
 // ─── Block layout ─────────────────────────────────────────────────────────────
 
-type BlockId = 'today' | 'schedule' | 'pipeline' | 'bottom'
-const BLOCK_DEFAULT: BlockId[] = ['today', 'schedule', 'pipeline', 'bottom']
+type BlockId = 'today' | 'middle' | 'bottom'
+const BLOCK_DEFAULT: BlockId[] = ['today', 'middle', 'bottom']
 const BLOCK_LABEL: Record<BlockId, string> = {
-  'today':    "Today's sessions",
-  'schedule': 'Next 3 days',
-  'pipeline': 'Active pipeline',
-  'bottom':   'Quick actions & staff',
+  'today':  "Today's sessions",
+  'middle': 'Next 3 days & pipeline',
+  'bottom': 'Quick actions & staff',
 }
 
 function moveItem<T>(arr: T[], from: number, to: number): T[] {
@@ -97,7 +96,7 @@ export default function DashboardWidgets(props: DashboardProps) {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('dashboard-block-order-v2')
+      const saved = localStorage.getItem('dashboard-block-order-v3')
       if (saved) {
         const p: BlockId[] = JSON.parse(saved)
         if (p.length === BLOCK_DEFAULT.length && p.every(id => (BLOCK_DEFAULT as string[]).includes(id))) setOrder(p)
@@ -107,7 +106,7 @@ export default function DashboardWidgets(props: DashboardProps) {
 
   function saveOrder(next: BlockId[]) {
     setOrder(next)
-    localStorage.setItem('dashboard-block-order-v2', JSON.stringify(next))
+    localStorage.setItem('dashboard-block-order-v3', JSON.stringify(next))
   }
 
   function wrap(id: BlockId, content: React.ReactNode) {
@@ -329,6 +328,17 @@ export default function DashboardWidgets(props: DashboardProps) {
     )
   }
 
+  // ── Middle: next 3 days + pipeline (side by side on wide screens) ───────────
+
+  function renderMiddle() {
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="dash-middle-grid">
+        {renderSchedule()}
+        {renderPipeline()}
+      </div>
+    )
+  }
+
   // ── Bottom: quick actions + staff ────────────────────────────────────────────
 
   function renderBottom() {
@@ -431,17 +441,17 @@ export default function DashboardWidgets(props: DashboardProps) {
   // ── Render ───────────────────────────────────────────────────────────────────
 
   const blockRenderers: Record<BlockId, () => React.ReactNode> = {
-    'today':    renderToday,
-    'schedule': renderSchedule,
-    'pipeline': renderPipeline,
-    'bottom':   renderBottom,
+    'today':  renderToday,
+    'middle': renderMiddle,
+    'bottom': renderBottom,
   }
 
   return (
-    <div style={{ maxWidth: '860px' }}>
+    <div>
       <style>{`
-        @media (max-width: 640px) {
-          .dash-bottom-grid { grid-template-columns: 1fr !important; }
+        @media (max-width: 780px) {
+          .dash-middle-grid { grid-template-columns: 1fr !important; }
+          .dash-bottom-grid  { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
