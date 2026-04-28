@@ -3,6 +3,12 @@
 import { useState } from 'react'
 import { submitBookingRequest } from '@/app/actions/public'
 
+const CATEGORY_SUGGESTIONS = [
+  'Birthday','Anniversary','Maternity','Newborn','Graduation',
+  'Engagement','Pre-wedding','Wedding','Baby Shower','Naming Ceremony',
+  'Prom','Corporate','Family','Portrait','Boudoir','Pet',
+]
+
 export default function BookingForm({
   studioId,
   studioName,
@@ -28,6 +34,7 @@ export default function BookingForm({
     preferred_date:   '',
     outfits_count:    '',
     location_address: '',
+    shoot_type:       '',
     event_name:       '',
     event_date:       '',
     notes:            '',
@@ -210,6 +217,44 @@ export default function BookingForm({
             style={{ ...input, maxWidth: '160px' }}
           />
         </div>
+      )}
+
+      {/* ── Category (shoot_type) — all non-event sessions ───────────────── */}
+      {!isEvent && (
+        <>
+          <div style={row}>
+            <label style={label}>
+              What's the occasion?{' '}
+              <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
+            </label>
+            <input
+              type="text"
+              list="category-list"
+              value={form.shoot_type}
+              onChange={e => set('shoot_type', e.target.value)}
+              placeholder="e.g. Birthday, Anniversary, Graduation…"
+              style={input}
+              autoComplete="off"
+            />
+            <datalist id="category-list">
+              {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+          {form.shoot_type.trim() && (
+            <div style={row}>
+              <label style={label}>
+                {form.shoot_type} date{' '}
+                <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
+              </label>
+              <input
+                type="date"
+                value={form.event_date}
+                onChange={e => set('event_date', e.target.value)}
+                style={{ ...input, maxWidth: '200px' }}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* ── Outdoor-specific ──────────────────────────────────────────────── */}

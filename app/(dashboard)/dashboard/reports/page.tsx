@@ -28,7 +28,13 @@ type BookingRow = {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export default async function ReportsPage() {
+export default async function ReportsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ range?: string; from?: string; to?: string }>
+}) {
+  const { range = 'this_month', from: fromParam, to: toParam } = await searchParams
+
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
@@ -44,10 +50,40 @@ export default async function ReportsPage() {
   const tomorrowISO = tomorrow.toISOString().slice(0, 10)
   const next30ISO   = new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10)
 
-  // Month boundaries for revenue
+  // Month boundaries (used for bar chart)
   const thisMonthStart = `${year}-${String(month).padStart(2, '0')}-01`
   const lastMonthDate  = new Date(year, month - 2, 1)
   const lastMonthStart = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}-01`
+
+  // ── Financial date range ─────────────────────────────────────────────────────
+  // Presets: this_month | last_3_months | this_year | all_time | custom
+  type RangePreset = 'this_month' | 'last_3_months' | 'this_year' | 'all_time' | 'custom'
+  const activeRange = (fromParam || toParam) ? 'custom' : (range as RangePreset)
+
+  let finFrom: string | null = null
+  let finTo:   string | null = null
+  if (activeRange === 'custom') {
+    finFrom = fromParam ?? null
+    finTo   = toParam   ?? null
+  } else if (activeRange === 'this_month') {
+    finFrom = thisMonthStart
+    finTo   = null
+  } else if (activeRange === 'last_3_months') {
+    const d3 = new Date(year, month - 4, 1)
+    finFrom = `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, '0')}-01`
+    finTo   = null
+  } else if (activeRange === 'this_year') {
+    finFrom = `${year}-01-01`
+    finTo   = null
+  }
+  // all_time → no date filter (finFrom = finTo = null)
+
+  const PRESETS: { value: string; label: string }[] = [
+    { value: 'this_month',    label: 'This month' },
+    { value: 'last_3_months', label: 'Last 3 months' },
+    { value: 'this_year',     label: 'This year' },
+    { value: 'all_time',      label: 'All time' },
+  ]
 
   // Cancellation status values — exclude from pipeline
   const cancelValues = config.bookingStatuses
@@ -109,6 +145,7 @@ export default async function ReportsPage() {
     { data: todayInvoicesRaw },
     { data: weekBookingsRaw },
     { data: weekPaymentsRaw },
+    { data: allPaymentsRaw },
   ] = await Promise.all([
     // All active sessions (pipeline)
     bookingsBase().order('session_date', { ascending: true }),
@@ -129,6 +166,7 @@ export default async function ReportsPage() {
       .order('session_date', { ascending: true }),
 
     // All invoices (join through bookings — invoices have no direct studio_id)
+    // Still needed for outstanding + overdue amounts
     admin
       .from('invoices')
       .select('total, status, issued_at, bookings!inner(studio_id)')
@@ -167,6 +205,14 @@ export default async function ReportsPage() {
           .gte('paid_at', mondayISO)
           .lte('paid_at', todayEnd)
       : Promise.resolve({ data: [] }),
+
+    // All-time payments — for accurate revenue figures (use paid_at not issued_at)
+    invoiceIds.length > 0
+      ? admin
+          .from('payments')
+          .select('amount, paid_at')
+          .in('invoice_id', invoiceIds)
+      : Promise.resolve({ data: [] }),
   ])
 
   const allBookings     = (allBookingsRaw     ?? []) as unknown as BookingRow[]
@@ -177,6 +223,7 @@ export default async function ReportsPage() {
   const todayInvoices   = (todayInvoicesRaw   ?? []) as { total: number | string; status: string }[]
   const weekBookings    = (weekBookingsRaw    ?? []) as unknown as BookingRow[]
   const weekPayments    = (weekPaymentsRaw    ?? []) as { amount: number | string; paid_at: string }[]
+  const allPayments     = (allPaymentsRaw     ?? []) as { amount: number | string; paid_at: string }[]
 
   // Per-day stats for the week strip
   const dayStats = weekDays.map(day => {
@@ -218,20 +265,38 @@ export default async function ReportsPage() {
     upcomingByType[t].push(b)
   }
 
-  // ── Financial ─────────────────────────────────────────────────────────────
-  const paidInvoices       = allInvoices.filter(i => i.status === 'paid')
-  const revenueTotal        = paidInvoices.reduce((s, i) => s + Number(i.total), 0)
-  const revenueThisMonth    = paidInvoices.filter(i => i.issued_at >= thisMonthStart).reduce((s, i) => s + Number(i.total), 0)
-  const revenueLastMonth    = paidInvoices.filter(i => i.issued_at >= lastMonthStart && i.issued_at < thisMonthStart).reduce((s, i) => s + Number(i.total), 0)
+  // ── Financial — use payment receipt dates (paid_at), not invoice issue dates ──
+  // Filter payments by the selected date range
+  function filterPaymentsByRange(payments: { amount: number | string; paid_at: string }[]) {
+    return payments.filter(p => {
+      if (finFrom && p.paid_at < finFrom) return false
+      if (finTo   && p.paid_at > finTo + 'T23:59:59') return false
+      return true
+    })
+  }
+
+  const rangePayments       = filterPaymentsByRange(allPayments)
+  const revenueInRange      = rangePayments.reduce((s, p) => s + Number(p.amount), 0)
+
+  // For MoM comparison: always compare this month vs last month (independent of range)
+  const thisMonthPayments   = allPayments.filter(p => p.paid_at >= thisMonthStart)
+  const lastMonthPayments   = allPayments.filter(p => p.paid_at >= lastMonthStart && p.paid_at < thisMonthStart)
+  const revenueThisMonth    = thisMonthPayments.reduce((s, p) => s + Number(p.amount), 0)
+  const revenueLastMonth    = lastMonthPayments.reduce((s, p) => s + Number(p.amount), 0)
+  const revenueTotal        = allPayments.reduce((s, p) => s + Number(p.amount), 0)
+
   const outstanding         = allInvoices.filter(i => i.status === 'sent' || i.status === 'draft').reduce((s, i) => s + Number(i.total), 0)
   const overdue             = allInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0)
-  const momDiff             = revenueThisMonth - revenueLastMonth
-  const momPercent          = revenueLastMonth > 0 ? Math.round((momDiff / revenueLastMonth) * 100) : null
+
+  // MoM shown only for "this month" range
+  const showMoM    = activeRange === 'this_month'
+  const momDiff    = revenueThisMonth - revenueLastMonth
+  const momPercent = revenueLastMonth > 0 ? Math.round((momDiff / revenueLastMonth) * 100) : null
 
   const todayPaymentsTotal  = todayPayments.reduce((s, p) => s + Number(p.amount), 0)
   const todayInvoicesTotal  = todayInvoices.reduce((s, i) => s + Number(i.total), 0)
 
-  // ── Revenue bar chart (last 6 months) ────────────────────────────────────
+  // ── Revenue bar chart (last 6 months, always uses payment dates) ──────────
   const monthlyRevenue: { label: string; amount: number }[] = []
   for (let i = 5; i >= 0; i--) {
     const d    = new Date(year, month - 1 - i, 1)
@@ -240,7 +305,7 @@ export default async function ReportsPage() {
     const from = `${y}-${String(m).padStart(2, '0')}-01`
     const toD  = new Date(y, m, 1)
     const to   = `${toD.getFullYear()}-${String(toD.getMonth() + 1).padStart(2, '0')}-01`
-    const amt  = paidInvoices.filter(inv => inv.issued_at >= from && inv.issued_at < to).reduce((s, inv) => s + Number(inv.total), 0)
+    const amt  = allPayments.filter(p => p.paid_at >= from && p.paid_at < to).reduce((s, p) => s + Number(p.amount), 0)
     monthlyRevenue.push({ label: monthLabel(y, m), amount: amt })
   }
   const maxMonthly = Math.max(...monthlyRevenue.map(m => m.amount), 1)
@@ -520,22 +585,48 @@ export default async function ReportsPage() {
       {/* ═══════════════════════════════════════════════════════════════════
           SECTION 4 — FINANCIAL OVERVIEW
       ════════════════════════════════════════════════════════════════════ */}
-      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Financial overview</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
+        <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: 0 }}>Financial overview</p>
+        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+          {PRESETS.map(p => (
+            <Link
+              key={p.value}
+              href={`/dashboard/reports?range=${p.value}`}
+              style={{
+                fontSize: '12px', padding: '4px 10px', borderRadius: '20px', textDecoration: 'none',
+                border: `1px solid ${activeRange === p.value ? 'var(--btn)' : 'var(--line)'}`,
+                background: activeRange === p.value ? 'var(--btn)' : 'var(--surface)',
+                color:      activeRange === p.value ? 'var(--btn-fg)' : 'var(--text-3)',
+                fontWeight: activeRange === p.value ? '600' : '400',
+              }}
+            >
+              {p.label}
+            </Link>
+          ))}
+        </div>
+      </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
         <div style={card}>
-          <p style={lbl}>Revenue this month</p>
-          <p style={val}>{fmt(revenueThisMonth)}</p>
-          {momPercent !== null && (
+          <p style={lbl}>
+            {activeRange === 'this_month' ? 'Revenue this month' :
+             activeRange === 'last_3_months' ? 'Revenue (3 months)' :
+             activeRange === 'this_year' ? `Revenue ${year}` :
+             'All-time paid'}
+          </p>
+          <p style={val}>{fmt(activeRange === 'all_time' ? revenueTotal : revenueInRange)}</p>
+          {showMoM && momPercent !== null && (
             <p style={{ fontSize: '12px', margin: '4px 0 0', color: momDiff >= 0 ? '#3b6d11' : '#a32d2d' }}>
               {momDiff >= 0 ? '↑' : '↓'} {Math.abs(momPercent)}% vs last month
             </p>
           )}
         </div>
-        <div style={card}>
-          <p style={lbl}>All-time paid</p>
-          <p style={val}>{fmt(revenueTotal)}</p>
-        </div>
+        {activeRange !== 'all_time' && (
+          <div style={card}>
+            <p style={lbl}>All-time paid</p>
+            <p style={val}>{fmt(revenueTotal)}</p>
+          </div>
+        )}
         <div style={card}>
           <p style={lbl}>Outstanding</p>
           <p style={{ ...val, color: outstanding > 0 ? '#854f0b' : 'var(--text)' }}>{fmt(outstanding)}</p>

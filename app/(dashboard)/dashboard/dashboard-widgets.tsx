@@ -1,8 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { sessionName } from '@/lib/session-title'
+import { updateSessionStatus } from '@/app/actions/sessions'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,10 +91,13 @@ const badge  = (bg: string, fg: string): React.CSSProperties => ({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DashboardWidgets(props: DashboardProps) {
+  const router  = useRouter()
   const [editMode, setEditMode] = useState(false)
   const [order, setOrder]       = useState<BlockId[]>(BLOCK_DEFAULT)
   const [dragging, setDragging] = useState<BlockId | null>(null)
   const [dragOver, setDragOver] = useState<BlockId | null>(null)
+  const [statusPending, startStatusTransition] = useTransition()
+  const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   useEffect(() => {
     try {
@@ -164,35 +169,61 @@ export default function DashboardWidgets(props: DashboardProps) {
           props.todaySessions.map((s, i) => {
             const st = styleFor(props.statusStyles,      s.status)
             const ty = styleFor(props.sessionTypeStyles, s.session_type)
+            const isUpdating = updatingId === s.booking_id
             return (
-              <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '0.875rem 1.25rem',
-                  borderBottom: i < props.todaySessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  {/* Time */}
-                  <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-2)', flexShrink: 0, minWidth: '54px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                    {s.session_date ? fmtTime(s.session_date) : '—'}
-                  </span>
-                  {/* Client + ref */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {s.clients?.full_name ?? '—'}
-                    </p>
-                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                      {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
-                      {s.packages?.name ? ` · ${s.packages.name}` : ''}
-                      {s.shoot_type ? ` · ${s.shoot_type}` : ''}
-                    </p>
-                  </div>
-                  {/* Badges */}
-                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                    <span style={badge(ty.color_bg, ty.color_fg)}>{ty.label}</span>
-                    <span style={badge(st.color_bg, st.color_fg)}>{st.label}</span>
-                  </div>
-                </div>
-              </Link>
+              <div key={s.booking_id} style={{
+                display: 'flex', alignItems: 'center', gap: '12px',
+                padding: '0.875rem 1.25rem',
+                borderBottom: i < props.todaySessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                opacity: isUpdating ? 0.6 : 1, transition: 'opacity .15s',
+              }}>
+                {/* Time */}
+                <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-2)', flexShrink: 0, minWidth: '54px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                  {s.session_date ? fmtTime(s.session_date) : '—'}
+                </span>
+                {/* Client + ref — clickable */}
+                <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {s.clients?.full_name ?? '—'}
+                  </p>
+                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                    {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                    {s.packages?.name ? ` · ${s.packages.name}` : ''}
+                    {s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                  </p>
+                </Link>
+                {/* Type badge */}
+                <span style={{ ...badge(ty.color_bg, ty.color_fg), flexShrink: 0 }}>{ty.label}</span>
+                {/* Inline status selector */}
+                <select
+                  value={s.status}
+                  disabled={isUpdating}
+                  onChange={e => {
+                    const next = e.target.value
+                    setUpdatingId(s.booking_id)
+                    startStatusTransition(async () => {
+                      await updateSessionStatus(s.booking_id, next)
+                      setUpdatingId(null)
+                      router.refresh()
+                    })
+                  }}
+                  style={{
+                    fontSize: '11px', padding: '2px 6px', borderRadius: '20px',
+                    border: `1px solid ${st.color_fg}55`,
+                    background: st.color_bg, color: st.color_fg,
+                    fontWeight: 500, cursor: 'pointer', flexShrink: 0,
+                    outline: 'none', appearance: 'none', WebkitAppearance: 'none',
+                    paddingRight: '18px',
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='${encodeURIComponent(st.color_fg)}'/%3E%3C/svg%3E")`,
+                    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 5px center',
+                    backgroundSize: '8px',
+                  }}
+                >
+                  {props.activeStatuses.map(as => (
+                    <option key={as.value} value={as.value}>{as.label}</option>
+                  ))}
+                </select>
+              </div>
             )
           })
         )}

@@ -45,6 +45,7 @@ type SessionRecord = {
   edited_photos?: number | null
   extra_outfits?: number | null
   extra_pictures?: number | null
+  base_price?: number | string | null
   clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
   packages?: { name?: string | null; base_price?: number | string | null; duration_mins?: number | null } | null
   booking_staff?: SessionStaffRelation[] | null
@@ -246,7 +247,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          {session.packages?.name && (
+          {session.packages?.name ? (
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Package</p>
               <p style={{ fontSize: '14px', margin: 0 }}>{session.packages.name}</p>
@@ -255,7 +256,12 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
                 {session.packages.duration_mins ? ` · ${session.packages.duration_mins} mins` : ''}
               </p>
             </div>
-          )}
+          ) : session.base_price != null && Number(session.base_price) > 0 ? (
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Price</p>
+              <p style={{ fontSize: '14px', margin: 0 }}>₦{Number(session.base_price).toLocaleString()}</p>
+            </div>
+          ) : null}
 
           {(() => {
             const staffList    = (session.booking_staff as unknown as SessionStaffRelation[]) ?? []

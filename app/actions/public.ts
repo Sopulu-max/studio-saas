@@ -15,6 +15,7 @@ const bookingRequestSchema = z.object({
   preferred_date:   z.string().min(1, 'Please select a preferred date'),
   outfits_count:    z.string().optional(),
   location_address: z.string().optional(),
+  shoot_type:       z.string().optional(),
   event_name:       z.string().optional(),
   event_date:       z.string().optional(),
   notes:            z.string().optional(),
@@ -30,6 +31,7 @@ export async function submitBookingRequest(form: {
   preferred_date: string
   outfits_count: string
   location_address: string
+  shoot_type: string
   event_name: string
   event_date: string
   notes: string
@@ -117,6 +119,7 @@ export async function submitBookingRequest(form: {
 
   if (form.outfits_count) insertData.outfits_count = parseInt(form.outfits_count, 10)
   if (form.location_address) insertData.location_address = form.location_address.trim()
+  if (form.shoot_type) insertData.shoot_type = form.shoot_type.trim()
   if (form.event_name) insertData.event_name = form.event_name.trim()
   if (form.event_date) insertData.event_date = form.event_date
 
