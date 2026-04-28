@@ -5,6 +5,12 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { updateContractStatus, markContractSigned, deleteContract, sendContractToClient } from '@/app/actions/contracts'
 
+const CONTRACT_STATUSES = [
+  { value: 'draft',  label: 'Draft' },
+  { value: 'sent',   label: 'Sent to client' },
+  { value: 'signed', label: 'Signed' },
+]
+
 export default function ContractActions({
   contractId,
   currentStatus,
@@ -17,10 +23,11 @@ export default function ContractActions({
   clientName: string
 }) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]       = useState(false)
   const [showSignForm, setShowSignForm] = useState(false)
-  const [signedBy, setSignedBy] = useState(clientName)
-  const [error, setError] = useState('')
+  const [signedBy, setSignedBy]     = useState(clientName)
+  const [error, setError]           = useState('')
+  const [selectedStatus, setSelectedStatus] = useState(currentStatus === 'void' ? 'draft' : currentStatus)
 
   async function handleStatus(status: string) {
     setLoading(true)
@@ -61,17 +68,54 @@ export default function ContractActions({
 
   if (currentStatus === 'void') {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textAlign: 'center' }}>
-        <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>This contract has been voided.</p>
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 16px' }}>This contract has been voided.</p>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+          <button onClick={() => handleStatus('draft')} disabled={loading}
+            style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer' }}>
+            Reopen as draft
+          </button>
+          <button onClick={handleDelete} disabled={loading}
+            style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', background: 'transparent', color: '#e24b4a', border: '0.5px solid #f09595', cursor: 'pointer', marginLeft: 'auto' }}>
+            Delete
+          </button>
+        </div>
       </div>
     )
   }
 
+  const unchanged = selectedStatus === currentStatus
+
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
-      <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>ACTIONS</p>
+      {/* Status picker */}
+      <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 10px' }}>UPDATE STATUS</p>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' as const }}>
+        <select
+          value={selectedStatus}
+          onChange={e => setSelectedStatus(e.target.value)}
+          style={{ flex: 1, minWidth: '160px', fontSize: '13px', boxSizing: 'border-box' as const }}
+        >
+          {CONTRACT_STATUSES.map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => handleStatus(selectedStatus)}
+          disabled={loading || unchanged}
+          style={{
+            padding: '8px 18px', fontSize: '14px', borderRadius: '8px',
+            background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none',
+            cursor: unchanged ? 'default' : 'pointer',
+            opacity: unchanged ? 0.45 : 1,
+          }}
+        >
+          {loading ? '...' : 'Save'}
+        </button>
+      </div>
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '8px' }}>
+      {/* Other actions */}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: showSignForm ? '16px' : '0' }}>
         <a href={`/print/contract/${contractId}`} target="_blank" rel="noreferrer"
           style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', background: 'transparent', color: 'var(--text-2)', textDecoration: 'none', cursor: 'pointer', display: 'inline-block' }}>
           Download PDF
@@ -82,37 +126,25 @@ export default function ContractActions({
             Send to client
           </button>
         )}
-      </div>
-
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: showSignForm ? '16px' : '0' }}>
-        {currentStatus === 'draft' && (
-          <button onClick={() => handleStatus('sent')} disabled={loading}
-            style={{ padding: '8px 16px', fontSize: '13px' }}>
-            Mark as sent
-          </button>
-        )}
-        {(currentStatus === 'draft' || currentStatus === 'sent') && (
-          <button
-            onClick={() => setShowSignForm(v => !v)}
-            disabled={loading}
-            style={{ padding: '8px 16px', fontSize: '13px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none' }}>
-            {showSignForm ? 'Cancel' : 'Record signature'}
-          </button>
-        )}
-        {currentStatus === 'signed' && (
-          <button onClick={() => handleStatus('void')} disabled={loading}
-            style={{ padding: '8px 16px', fontSize: '13px', background: 'transparent', color: 'var(--text-3)' }}>
-            Void contract
-          </button>
-        )}
+        <button
+          onClick={() => setShowSignForm(v => !v)}
+          disabled={loading}
+          style={{ padding: '8px 16px', fontSize: '13px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
+          {showSignForm ? 'Cancel' : 'Record signature'}
+        </button>
+        <button onClick={() => handleStatus('void')} disabled={loading}
+          style={{ padding: '8px 16px', fontSize: '13px', background: 'transparent', color: '#e24b4a', border: '0.5px solid #f09595', borderRadius: '8px', cursor: 'pointer' }}>
+          Void
+        </button>
         <button onClick={handleDelete} disabled={loading}
-          style={{ padding: '8px 16px', fontSize: '13px', background: 'transparent', color: '#e24b4a', border: '0.5px solid #f09595', marginLeft: 'auto' }}>
+          style={{ padding: '8px 16px', fontSize: '13px', background: 'transparent', color: 'var(--text-4)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer', marginLeft: 'auto' }}>
           Delete
         </button>
       </div>
 
+      {/* Signature form */}
       {showSignForm && (
-        <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px' }}>
+        <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px', marginTop: '16px' }}>
           <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>
             Record that this contract was signed — enter the full name of the person who signed.
           </p>
