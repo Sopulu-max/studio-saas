@@ -99,7 +99,9 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
                 {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </p>
               <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.packages?.name ?? '—'}</p>
-              <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
+              <div style={{ display: 'flex' }}>
+                <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
+              </div>
             </div>
           )
         })}
