@@ -5,9 +5,10 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { useStudioConfig } from '@/components/studio-config-provider'
-import { getSessionTypeConfig, getStatusConfig } from '@/lib/studio-config'
+import { getSessionTypeConfig } from '@/lib/studio-config'
 import { bulkUpdateSessionStatus } from '@/app/actions/sessions'
 import { sessionName } from '@/lib/session-title'
+import InlineStatusSelect from '@/components/inline-status-select'
 
 type SessionRow = {
   booking_id:    string
@@ -68,7 +69,6 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
         {/* Rows */}
         {sessions.map((s, i) => {
           const typeCfg    = getSessionTypeConfig(config, s.session_type)
-          const statusCfg  = getStatusConfig(config, s.status)
           const isSelected = selected.has(s.booking_id)
           const name       = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
           return (
@@ -99,9 +99,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
                 {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </p>
               <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.packages?.name ?? '—'}</p>
-              <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: statusCfg.color_bg, color: statusCfg.color_fg, fontWeight: '500' }}>
-                {statusCfg.label}
-              </span>
+              <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
             </div>
           )
         })}

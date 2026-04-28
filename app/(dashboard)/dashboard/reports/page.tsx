@@ -1,8 +1,9 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
-import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
+import { buildStudioConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
+import InlineStatusSelect from '@/components/inline-status-select'
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -235,10 +236,6 @@ export default async function ReportsPage({
   })
 
   // ── Status helpers ─────────────────────────────────────────────────────────
-  function statusStyle(v: string) {
-    const s = getStatusConfig(config, v)
-    return { bg: s.color_bg, color: s.color_fg, label: s.label }
-  }
   function typeStyle(v: string | null | undefined) {
     const t = getSessionTypeConfig(config, v ?? '')
     return { bg: t.color_bg, color: t.color_fg, label: t.label }
@@ -387,29 +384,26 @@ export default async function ReportsPage({
       {todayBookings.length > 0 ? (
         <div style={{ ...cardPad, marginBottom: '28px' }}>
           {todayBookings.map((s, i) => {
-            const st = statusStyle(s.status)
             const ty = typeStyle(s.session_type)
             return (
-              <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '0.875rem 1.25rem',
-                  borderBottom: i < todayBookings.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                      {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
-                      {s.packages?.name ? ` · ${s.packages.name}` : ''}
-                      {s.shoot_type ? ` · ${s.shoot_type}` : ''}
-                    </p>
-                  </div>
-                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: ty.bg, color: ty.color, fontWeight: '500' }}>{ty.label}</span>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500' }}>{st.label}</span>
-                  </div>
+              <div key={s.booking_id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.875rem 1.25rem',
+                borderBottom: i < todayBookings.length - 1 ? '1px solid var(--line-inner)' : 'none',
+              }}>
+                <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                    {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                    {s.packages?.name ? ` · ${s.packages.name}` : ''}
+                    {s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                  </p>
+                </Link>
+                <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px', alignItems: 'center' }}>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: ty.bg, color: ty.color, fontWeight: '500' }}>{ty.label}</span>
+                  <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
                 </div>
-              </Link>
+              </div>
             )
           })}
         </div>
@@ -475,28 +469,23 @@ export default async function ReportsPage({
                   <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '0.875rem 1.25rem' }}>None scheduled</p>
                 ) : (
                   sessions.slice(0, 6).map((s, i) => {
-                    const st = statusStyle(s.status)
                     return (
-                      <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                        <div style={{
-                          padding: '0.75rem 1.25rem',
-                          borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none',
-                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
-                        }}>
-                          <div style={{ minWidth: 0 }}>
-                            <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {s.clients?.full_name ?? '—'}
-                            </p>
-                            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
-                              {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
-                              {s.shoot_type ? ` · ${s.shoot_type}` : ''}
-                            </p>
-                          </div>
-                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', flexShrink: 0 }}>
-                            {st.label}
-                          </span>
-                        </div>
-                      </Link>
+                      <div key={s.booking_id} style={{
+                        padding: '0.75rem 1.25rem',
+                        borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
+                      }}>
+                        <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
+                          <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {s.clients?.full_name ?? '—'}
+                          </p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
+                            {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
+                            {s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                          </p>
+                        </Link>
+                        <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
+                      </div>
                     )
                   })
                 )}
@@ -523,19 +512,16 @@ export default async function ReportsPage({
                   </span>
                 </div>
                 {sessions.slice(0, 6).map((s, i) => {
-                  const st = statusStyle(s.status)
                   return (
-                    <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <div style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
-                          <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
-                            {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
-                          </p>
-                        </div>
-                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', flexShrink: 0 }}>{st.label}</span>
-                      </div>
-                    </Link>
+                    <div key={s.booking_id} style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                      <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
+                          {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
+                        </p>
+                      </Link>
+                      <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
+                    </div>
                   )
                 })}
               </div>
@@ -559,16 +545,17 @@ export default async function ReportsPage({
                 <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)' }}>{sessions.length}</span>
               </div>
               {sessions.slice(0, 5).map((b, i) => (
-                <Link key={b.booking_id} href={`/dashboard/sessions/${b.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 5) - 1 ? '1px solid var(--line-inner)' : 'none' }}>
+                <div key={b.booking_id} style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 5) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                  <Link href={`/dashboard/sessions/${b.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
                     <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {b.clients?.full_name ?? '—'}
                     </p>
                     <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
                       {sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date)}
                     </p>
-                  </div>
-                </Link>
+                  </Link>
+                  <InlineStatusSelect sessionId={b.booking_id} currentStatus={b.status} />
+                </div>
               ))}
               {sessions.length > 5 && (
                 <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
