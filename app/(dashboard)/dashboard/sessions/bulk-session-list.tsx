@@ -13,6 +13,7 @@ type SessionRow = {
   booking_id:    string
   booking_ref?:  number | null
   session_type?: string | null
+  shoot_type?:   string | null
   session_date?: string | null
   status:        string
   clients?:      { full_name?: string | null; email?: string | null } | null
@@ -58,22 +59,22 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
     <div style={{ position: 'relative' }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '36px 1.5fr 1.2fr 1fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
           <input type="checkbox" checked={allChecked} onChange={toggleAll}
             style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
-          <span>Client</span><span>Session</span><span>Type</span><span>Date</span><span>Package</span><span>Status</span>
+          <span>Client</span><span>Type</span><span>Date</span><span>Package</span><span>Status</span>
         </div>
 
         {/* Rows */}
         {sessions.map((s, i) => {
-          const typeCfg   = getSessionTypeConfig(config, s.session_type)
-          const statusCfg = getStatusConfig(config, s.status)
+          const typeCfg    = getSessionTypeConfig(config, s.session_type)
+          const statusCfg  = getStatusConfig(config, s.status)
           const isSelected = selected.has(s.booking_id)
-          const name = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
+          const name       = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
           return (
             <div key={s.booking_id} style={{
-              display: 'grid', gridTemplateColumns: '36px 1.5fr 1.2fr 1fr 1fr 1fr 1fr',
-              padding: '1rem 1.25rem', alignItems: 'center',
+              display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr',
+              padding: '0.875rem 1.25rem', alignItems: 'center',
               borderBottom: i < sessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
               background: isSelected ? 'var(--active)' : 'transparent',
               transition: 'background 0.1s',
@@ -81,17 +82,15 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               <input type="checkbox" checked={isSelected} onChange={() => toggle(s.booking_id)}
                 style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
 
-              {/* Client column — links to session */}
-              <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>
+              {/* Client — ref + category as sub-line */}
+              <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
+                <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.clients?.full_name ?? '—'}
                 </p>
+                <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                  {name}{s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                </p>
               </Link>
-
-              {/* Session name column */}
-              <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.01em' }}>
-                {name}
-              </p>
 
               <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500' }}>
                 {typeCfg.label}
@@ -99,7 +98,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               <p style={{ fontSize: '13px', margin: 0 }}>
                 {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </p>
-              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{s.packages?.name ?? '—'}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.packages?.name ?? '—'}</p>
               <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: statusCfg.color_bg, color: statusCfg.color_fg, fontWeight: '500' }}>
                 {statusCfg.label}
               </span>

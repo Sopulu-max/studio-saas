@@ -9,12 +9,14 @@ import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
 
 type SessionRow = {
-  booking_id: string
+  booking_id:    string
+  booking_ref?:  number | null
   session_type?: string | null
+  shoot_type?:   string | null
   session_date?: string | null
-  status: string
-  clients?: { full_name?: string | null; email?: string | null } | null
-  packages?: { name?: string | null } | null
+  status:        string
+  clients?:      { full_name?: string | null; email?: string | null } | null
+  packages?:     { name?: string | null } | null
 }
 
 const PAGE_SIZE = 20

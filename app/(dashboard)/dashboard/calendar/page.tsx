@@ -8,11 +8,12 @@ const DAY_NAMES   = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 
 type CalendarSessionRow = {
-  booking_id: string
-  booking_ref?: number | null
+  booking_id:    string
+  booking_ref?:  number | null
   session_date?: string | null
   session_type?: string | null
-  status: string
+  shoot_type?:   string | null
+  status:        string
   clients?: { full_name?: string | null }[] | { full_name?: string | null } | null
 }
 
@@ -48,7 +49,7 @@ export default async function CalendarPage({
 
   let query = context.admin
     .from('bookings')
-    .select('booking_id, booking_ref, session_date, status, session_type, clients(full_name), packages(name)')
+    .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name)')
     .eq('studio_id', context.studioId)
     .gte('session_date', fromStr)
     .lte('session_date', toStr + 'T23:59:59')
@@ -170,7 +171,7 @@ export default async function CalendarPage({
                             <Link
                               key={s.booking_id}
                               href={`/dashboard/sessions/${s.booking_id}`}
-                              title={`${sName} · ${clientName ?? 'Unknown'} — ${sc.label}`}
+                              title={`${sName} · ${clientName ?? 'Unknown'}${s.shoot_type ? ` · ${s.shoot_type}` : ''} — ${sc.label}`}
                               style={{
                                 display: 'flex', alignItems: 'flex-start', gap: '5px',
                                 padding: '3px 6px', borderRadius: '5px',
@@ -184,7 +185,7 @@ export default async function CalendarPage({
                                   {clientName ?? sName}
                                 </span>
                                 <span style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-                                  {sName}
+                                  {sName}{s.shoot_type ? ` · ${s.shoot_type}` : ''}
                                 </span>
                               </span>
                             </Link>
