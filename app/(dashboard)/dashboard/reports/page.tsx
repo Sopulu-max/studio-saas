@@ -1,77 +1,168 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
 function fmt(n: number) {
   return '₦' + n.toLocaleString('en-NG')
 }
-
 function monthLabel(year: number, month: number) {
   return new Date(year, month - 1).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })
 }
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type BookingRow = {
+  booking_id:    string
+  booking_ref?:  number | null
+  session_date?: string | null
+  status:        string
+  session_type?: string | null
+  shoot_type?:   string | null
+  clients?:      { full_name?: string | null } | null
+  packages?:     { name?: string | null } | null
+}
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function ReportsPage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
   const studioRow = await fetchStudio(context.admin, context.studioId)
-  const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+  const config    = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
-  const now   = new Date()
-  const year  = now.getFullYear()
-  const month = now.getMonth() + 1  // 1-based
+  const now       = new Date()
+  const year      = now.getFullYear()
+  const month     = now.getMonth() + 1
+  const todayISO  = now.toISOString().slice(0, 10)           // "2026-04-28"
+  const tomorrow  = new Date(now.getTime() + 86_400_000)
+  const tomorrowISO = tomorrow.toISOString().slice(0, 10)
+  const next30ISO   = new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10)
 
-  // Month boundaries
+  // Month boundaries for revenue
   const thisMonthStart = `${year}-${String(month).padStart(2, '0')}-01`
   const lastMonthDate  = new Date(year, month - 2, 1)
   const lastMonthStart = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}-01`
 
+  // Cancellation status values — exclude from pipeline
+  const cancelValues = config.bookingStatuses
+    .filter(s => s.is_cancellation)
+    .map(s => s.value)
+
   const [
-    { data: allInvoices },
-    { data: allBookings },
-    { data: recentSessions },
+    { data: allBookingsRaw },
+    { data: todayBookingsRaw },
+    { data: upcomingBookingsRaw },
+    { data: allInvoicesRaw },
+    { data: todayPaymentsRaw },
+    { data: todayInvoicesRaw },
   ] = await Promise.all([
+    // All active sessions (pipeline)
+    context.admin
+      .from('bookings')
+      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
+      .eq('studio_id', context.studioId)
+      .not('status', 'in', `(${cancelValues.join(',')})`)
+      .order('session_date', { ascending: true }),
+
+    // Today's sessions
+    context.admin
+      .from('bookings')
+      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
+      .eq('studio_id', context.studioId)
+      .gte('session_date', todayISO)
+      .lt('session_date', tomorrowISO)
+      .order('session_date', { ascending: true }),
+
+    // Upcoming sessions — tomorrow to +30 days
+    context.admin
+      .from('bookings')
+      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
+      .eq('studio_id', context.studioId)
+      .gte('session_date', tomorrowISO)
+      .lte('session_date', next30ISO)
+      .not('status', 'in', `(${cancelValues.join(',')})`)
+      .order('session_date', { ascending: true }),
+
+    // All invoices
     context.admin
       .from('invoices')
       .select('total, status, issued_at')
       .eq('studio_id', context.studioId),
+
+    // Payments received today (join through invoices to scope to this studio)
     context.admin
-      .from('bookings')
-      .select('booking_id, session_date, status, session_type, outfits_count, clients(full_name), packages(name, base_price)')
-      .eq('studio_id', context.studioId)
-      .not('status', 'eq', 'cancelled'),
+      .from('payments')
+      .select('amount, method, paid_at, invoices!inner(studio_id)')
+      .eq('invoices.studio_id', context.studioId)
+      .gte('paid_at', todayISO)
+      .lt('paid_at', tomorrowISO),
+
+    // Invoices issued today
     context.admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, clients(full_name), packages(name)')
+      .from('invoices')
+      .select('total, status')
       .eq('studio_id', context.studioId)
-      .order('session_date', { ascending: false })
-      .limit(8),
+      .gte('issued_at', todayISO)
+      .lt('issued_at', tomorrowISO),
   ])
 
-  const invoices  = allInvoices  ?? []
-  const bookings  = allBookings  ?? []
+  const allBookings     = (allBookingsRaw     ?? []) as unknown as BookingRow[]
+  const todayBookings   = (todayBookingsRaw   ?? []) as unknown as BookingRow[]
+  const upcomingBookings= (upcomingBookingsRaw?? []) as unknown as BookingRow[]
+  const allInvoices     = (allInvoicesRaw     ?? []) as { total: number | string; status: string; issued_at: string }[]
+  const todayPayments   = (todayPaymentsRaw   ?? []) as { amount: number | string; method: string }[]
+  const todayInvoices   = (todayInvoicesRaw   ?? []) as { total: number | string; status: string }[]
 
-  // ── Revenue stats ──────────────────────────────────────────────────────────
-  const paidInvoices = invoices.filter(i => i.status === 'paid')
+  // ── Status helpers ─────────────────────────────────────────────────────────
+  function statusStyle(v: string) {
+    const s = getStatusConfig(config, v)
+    return { bg: s.color_bg, color: s.color_fg, label: s.label }
+  }
+  function typeStyle(v: string | null | undefined) {
+    const t = getSessionTypeConfig(config, v ?? '')
+    return { bg: t.color_bg, color: t.color_fg, label: t.label }
+  }
 
-  const revenueTotal     = paidInvoices.reduce((s, i) => s + Number(i.total), 0)
-  const revenueThisMonth = paidInvoices
-    .filter(i => i.issued_at >= thisMonthStart)
-    .reduce((s, i) => s + Number(i.total), 0)
-  const revenueLastMonth = paidInvoices
-    .filter(i => i.issued_at >= lastMonthStart && i.issued_at < thisMonthStart)
-    .reduce((s, i) => s + Number(i.total), 0)
+  // ── Today's status breakdown ───────────────────────────────────────────────
+  const todayByStatus: Record<string, number> = {}
+  for (const b of todayBookings) {
+    todayByStatus[b.status] = (todayByStatus[b.status] ?? 0) + 1
+  }
 
-  const outstanding = invoices
-    .filter(i => i.status === 'sent' || i.status === 'draft')
-    .reduce((s, i) => s + Number(i.total), 0)
+  // ── Active pipeline by status (all, not just today) ───────────────────────
+  const pipelineByStatus: Record<string, BookingRow[]> = {}
+  for (const b of allBookings) {
+    if (!pipelineByStatus[b.status]) pipelineByStatus[b.status] = []
+    pipelineByStatus[b.status].push(b)
+  }
 
-  // Month-over-month trend
-  const momDiff    = revenueThisMonth - revenueLastMonth
-  const momPercent = revenueLastMonth > 0 ? Math.round((momDiff / revenueLastMonth) * 100) : null
+  // ── Upcoming grouped by session_type ──────────────────────────────────────
+  const upcomingByType: Record<string, BookingRow[]> = {}
+  for (const b of upcomingBookings) {
+    const t = b.session_type ?? 'other'
+    if (!upcomingByType[t]) upcomingByType[t] = []
+    upcomingByType[t].push(b)
+  }
 
-  // ── Revenue by month (last 6 months) ──────────────────────────────────────
+  // ── Financial ─────────────────────────────────────────────────────────────
+  const paidInvoices       = allInvoices.filter(i => i.status === 'paid')
+  const revenueTotal        = paidInvoices.reduce((s, i) => s + Number(i.total), 0)
+  const revenueThisMonth    = paidInvoices.filter(i => i.issued_at >= thisMonthStart).reduce((s, i) => s + Number(i.total), 0)
+  const revenueLastMonth    = paidInvoices.filter(i => i.issued_at >= lastMonthStart && i.issued_at < thisMonthStart).reduce((s, i) => s + Number(i.total), 0)
+  const outstanding         = allInvoices.filter(i => i.status === 'sent' || i.status === 'draft').reduce((s, i) => s + Number(i.total), 0)
+  const overdue             = allInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0)
+  const momDiff             = revenueThisMonth - revenueLastMonth
+  const momPercent          = revenueLastMonth > 0 ? Math.round((momDiff / revenueLastMonth) * 100) : null
+
+  const todayPaymentsTotal  = todayPayments.reduce((s, p) => s + Number(p.amount), 0)
+  const todayInvoicesTotal  = todayInvoices.reduce((s, i) => s + Number(i.total), 0)
+
+  // ── Revenue bar chart (last 6 months) ────────────────────────────────────
   const monthlyRevenue: { label: string; amount: number }[] = []
   for (let i = 5; i >= 0; i--) {
     const d    = new Date(year, month - 1 - i, 1)
@@ -80,95 +171,307 @@ export default async function ReportsPage() {
     const from = `${y}-${String(m).padStart(2, '0')}-01`
     const toD  = new Date(y, m, 1)
     const to   = `${toD.getFullYear()}-${String(toD.getMonth() + 1).padStart(2, '0')}-01`
-    const amt  = paidInvoices
-      .filter(inv => inv.issued_at >= from && inv.issued_at < to)
-      .reduce((s, inv) => s + Number(inv.total), 0)
+    const amt  = paidInvoices.filter(inv => inv.issued_at >= from && inv.issued_at < to).reduce((s, inv) => s + Number(inv.total), 0)
     monthlyRevenue.push({ label: monthLabel(y, m), amount: amt })
   }
-
-  // ── Sessions by status ────────────────────────────────────────────────────
-  const statusCounts: Record<string, number> = {}
-  for (const b of bookings) {
-    const st = b.status ?? 'unknown'
-    statusCounts[st] = (statusCounts[st] ?? 0) + 1
-  }
-
-  // Dynamic — from studio config
-  const getStatusStyle  = (v: string) => { const s = getStatusConfig(config, v);  return { bg: s.color_bg, color: s.color_fg } }
-  const getStatusLabel  = (v: string) => getStatusConfig(config, v).label
-  const getTypeStyle    = (v: string) => { const t = getSessionTypeConfig(config, v); return { bg: t.color_bg, color: t.color_fg } }
-  const getTypeLabel    = (v: string) => getSessionTypeConfig(config, v).label
-
-  // ── Sessions by type ──────────────────────────────────────────────────────
-  const typeCounts: Record<string, number> = {}
-  for (const b of bookings) {
-    const t = b.session_type ?? 'studio'
-    typeCounts[t] = (typeCounts[t] ?? 0) + 1
-  }
-
-  // ── Max value for bar chart ────────────────────────────────────────────────
   const maxMonthly = Math.max(...monthlyRevenue.map(m => m.amount), 1)
 
-  const cardStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }
-  const labelStyle = { fontSize: '12px', color: 'var(--text-4)', margin: '0 0 4px' }
-  const valueStyle = { fontSize: '22px', fontWeight: '600', margin: 0 }
+  // ── UI helpers ────────────────────────────────────────────────────────────
+  const card   = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' } as const
+  const cardPad= { ...card, padding: 0, overflow: 'hidden' } as const
+  const lbl    = { fontSize: '12px', color: 'var(--text-4)', margin: '0 0 4px' } as const
+  const val    = { fontSize: '22px', fontWeight: '600', margin: 0 } as const
+  const sxn    = { fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' } as const
+
+  const todayLabel = now.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+  // ── Ordered statuses for pipeline (non-cancellation) ─────────────────────
+  const orderedStatuses = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)
 
   return (
-    <div style={{ maxWidth: '800px' }}>
-      <div style={{ marginBottom: '1.5rem' }}>
+    <div style={{ maxWidth: '860px' }}>
+
+      {/* ── Header ── */}
+      <div style={{ marginBottom: '1.75rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Reports</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Studio overview</p>
+        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{todayLabel}</p>
       </div>
 
-      {/* Top KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-        <div style={cardStyle}>
-          <p style={labelStyle}>Revenue this month</p>
-          <p style={valueStyle}>{fmt(revenueThisMonth)}</p>
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 1 — TODAY'S SNAPSHOT
+      ════════════════════════════════════════════════════════════════════ */}
+      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Today</p>
+
+      {/* KPI row */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+        <div style={card}>
+          <p style={lbl}>Sessions today</p>
+          <p style={val}>{todayBookings.length}</p>
+        </div>
+        <div style={card}>
+          <p style={lbl}>Payments received</p>
+          <p style={{ ...val, fontSize: todayPaymentsTotal > 0 ? '18px' : '22px', color: todayPaymentsTotal > 0 ? '#3b6d11' : 'var(--text)' }}>
+            {todayPaymentsTotal > 0 ? fmt(todayPaymentsTotal) : '—'}
+          </p>
+          {todayPayments.length > 0 && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>{todayPayments.length} payment{todayPayments.length !== 1 ? 's' : ''}</p>}
+        </div>
+        <div style={card}>
+          <p style={lbl}>Invoices raised today</p>
+          <p style={{ ...val, fontSize: todayInvoicesTotal > 0 ? '18px' : '22px' }}>
+            {todayInvoicesTotal > 0 ? fmt(todayInvoicesTotal) : '—'}
+          </p>
+          {todayInvoices.length > 0 && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>{todayInvoices.length} invoice{todayInvoices.length !== 1 ? 's' : ''}</p>}
+        </div>
+        {overdue > 0 && (
+          <div style={card}>
+            <p style={lbl}>Overdue invoices</p>
+            <p style={{ ...val, fontSize: '18px', color: '#a32d2d' }}>{fmt(overdue)}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Today's status breakdown */}
+      {todayBookings.length > 0 && (
+        <div style={{ ...card, marginBottom: '10px' }}>
+          <p style={sxn}>TODAY BY STATUS</p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {orderedStatuses.map(s => {
+              const count = todayByStatus[s.value] ?? 0
+              if (!count) return null
+              return (
+                <div key={s.value} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: s.color_bg, borderRadius: '20px', padding: '5px 12px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: s.color_fg }}>{count}</span>
+                  <span style={{ fontSize: '12px', color: s.color_fg }}>{s.label}</span>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Today's session list */}
+      {todayBookings.length > 0 ? (
+        <div style={{ ...cardPad, marginBottom: '28px' }}>
+          {todayBookings.map((s, i) => {
+            const st = statusStyle(s.status)
+            const ty = typeStyle(s.session_type)
+            return (
+              <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '0.875rem 1.25rem',
+                  borderBottom: i < todayBookings.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                      {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                      {s.packages?.name ? ` · ${s.packages.name}` : ''}
+                      {s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px' }}>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: ty.bg, color: ty.color, fontWeight: '500' }}>{ty.label}</span>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500' }}>{st.label}</span>
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+      ) : (
+        <div style={{ ...card, textAlign: 'center', marginBottom: '28px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions scheduled for today</p>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 2 — UPCOMING BY CATEGORY (next 30 days)
+      ════════════════════════════════════════════════════════════════════ */}
+      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
+        Upcoming — next 30 days
+      </p>
+
+      {upcomingBookings.length === 0 ? (
+        <div style={{ ...card, textAlign: 'center', marginBottom: '28px' }}>
+          <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions in the next 30 days</p>
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+          {config.sessionTypes.map(type => {
+            const sessions = upcomingByType[type.value] ?? []
+            return (
+              <div key={type.value} style={cardPad}>
+                <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p style={{ ...sxn, margin: 0 }}>{type.label.toUpperCase()}</p>
+                  <span style={{ fontSize: '12px', fontWeight: '600', background: type.color_bg, color: type.color_fg, padding: '2px 10px', borderRadius: '20px' }}>
+                    {sessions.length}
+                  </span>
+                </div>
+                {sessions.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '0.875rem 1.25rem' }}>None scheduled</p>
+                ) : (
+                  sessions.slice(0, 6).map((s, i) => {
+                    const st = statusStyle(s.status)
+                    return (
+                      <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <div style={{
+                          padding: '0.75rem 1.25rem',
+                          borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none',
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
+                        }}>
+                          <div style={{ minWidth: 0 }}>
+                            <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                              {s.clients?.full_name ?? '—'}
+                            </p>
+                            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
+                              {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
+                              {s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                            </p>
+                          </div>
+                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', flexShrink: 0 }}>
+                            {st.label}
+                          </span>
+                        </div>
+                      </Link>
+                    )
+                  })
+                )}
+                {sessions.length > 6 && (
+                  <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
+                    <Link href="/dashboard/sessions" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
+                      +{sessions.length - 6} more →
+                    </Link>
+                  </div>
+                )}
+              </div>
+            )
+          })}
+
+          {/* Any session types not in config (edge case) */}
+          {Object.entries(upcomingByType)
+            .filter(([k]) => !config.sessionTypes.find(t => t.value === k))
+            .map(([type, sessions]) => (
+              <div key={type} style={cardPad}>
+                <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <p style={{ ...sxn, margin: 0 }}>{type.toUpperCase()}</p>
+                  <span style={{ fontSize: '12px', fontWeight: '600', background: 'var(--line)', color: 'var(--text-2)', padding: '2px 10px', borderRadius: '20px' }}>
+                    {sessions.length}
+                  </span>
+                </div>
+                {sessions.slice(0, 6).map((s, i) => {
+                  const st = statusStyle(s.status)
+                  return (
+                    <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <div style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ minWidth: 0 }}>
+                          <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
+                            {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
+                          </p>
+                        </div>
+                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', flexShrink: 0 }}>{st.label}</span>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            ))}
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 3 — ACTIVE PIPELINE BY STATUS
+      ════════════════════════════════════════════════════════════════════ */}
+      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Active pipeline</p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px', marginBottom: '28px' }}>
+        {orderedStatuses.map(s => {
+          const sessions = pipelineByStatus[s.value] ?? []
+          if (!sessions.length) return null
+          return (
+            <div key={s.value} style={cardPad}>
+              <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', background: s.color_bg, color: s.color_fg, padding: '3px 12px', borderRadius: '20px' }}>{s.label}</span>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)' }}>{sessions.length}</span>
+              </div>
+              {sessions.slice(0, 5).map((b, i) => (
+                <Link key={b.booking_id} href={`/dashboard/sessions/${b.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                  <div style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 5) - 1 ? '1px solid var(--line-inner)' : 'none' }}>
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {b.clients?.full_name ?? '—'}
+                    </p>
+                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                      {sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+              {sessions.length > 5 && (
+                <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
+                  <Link href={`/dashboard/sessions?status=${s.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
+                    +{sessions.length - 5} more →
+                  </Link>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          SECTION 4 — FINANCIAL OVERVIEW
+      ════════════════════════════════════════════════════════════════════ */}
+      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Financial overview</p>
+
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
+        <div style={card}>
+          <p style={lbl}>Revenue this month</p>
+          <p style={val}>{fmt(revenueThisMonth)}</p>
           {momPercent !== null && (
             <p style={{ fontSize: '12px', margin: '4px 0 0', color: momDiff >= 0 ? '#3b6d11' : '#a32d2d' }}>
               {momDiff >= 0 ? '↑' : '↓'} {Math.abs(momPercent)}% vs last month
             </p>
           )}
         </div>
-        <div style={cardStyle}>
-          <p style={labelStyle}>Total paid revenue</p>
-          <p style={valueStyle}>{fmt(revenueTotal)}</p>
+        <div style={card}>
+          <p style={lbl}>All-time paid</p>
+          <p style={val}>{fmt(revenueTotal)}</p>
         </div>
-        <div style={cardStyle}>
-          <p style={labelStyle}>Outstanding</p>
-          <p style={{ ...valueStyle, color: outstanding > 0 ? '#854f0b' : 'var(--text)' }}>{fmt(outstanding)}</p>
+        <div style={card}>
+          <p style={lbl}>Outstanding</p>
+          <p style={{ ...val, color: outstanding > 0 ? '#854f0b' : 'var(--text)' }}>{fmt(outstanding)}</p>
           <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>unpaid invoices</p>
         </div>
-        <div style={cardStyle}>
-          <p style={labelStyle}>Total sessions</p>
-          <p style={valueStyle}>{bookings.length}</p>
-          <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>excluding cancelled</p>
-        </div>
+        {overdue > 0 && (
+          <div style={card}>
+            <p style={lbl}>Overdue</p>
+            <p style={{ ...val, color: '#a32d2d' }}>{fmt(overdue)}</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>chasing needed</p>
+          </div>
+        )}
       </div>
 
       {/* Revenue bar chart */}
-      <div style={{ ...cardStyle, marginBottom: '20px' }}>
-        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>REVENUE — LAST 6 MONTHS</p>
+      <div style={{ ...card, marginBottom: '12px' }}>
+        <p style={sxn}>REVENUE — LAST 6 MONTHS</p>
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '120px' }}>
           {monthlyRevenue.map(({ label, amount }) => {
-            const heightPct = maxMonthly > 0 ? (amount / maxMonthly) * 100 : 0
-            const isCurrentMonth = label === monthLabel(year, month)
+            const heightPct    = maxMonthly > 0 ? (amount / maxMonthly) * 100 : 0
+            const isCurrent    = label === monthLabel(year, month)
             return (
               <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
                 <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: 0, whiteSpace: 'nowrap' }}>
                   {amount > 0 ? fmt(amount) : ''}
                 </p>
-                <div
-                  style={{
-                    width: '100%',
-                    height: `${Math.max(heightPct, amount > 0 ? 4 : 0)}%`,
-                    background: isCurrentMonth ? 'var(--btn)' : 'var(--line)',
-                    borderRadius: '4px 4px 0 0',
-                    minHeight: amount > 0 ? '4px' : '0',
-                  }}
-                />
-                <p style={{ fontSize: '10px', color: isCurrentMonth ? 'var(--text)' : 'var(--text-4)', margin: 0, fontWeight: isCurrentMonth ? '600' : '400' }}>
+                <div style={{
+                  width: '100%',
+                  height: `${Math.max(heightPct, amount > 0 ? 4 : 0)}%`,
+                  background: isCurrent ? 'var(--btn)' : 'var(--line)',
+                  borderRadius: '4px 4px 0 0',
+                  minHeight: amount > 0 ? '4px' : '0',
+                }} />
+                <p style={{ fontSize: '10px', color: isCurrent ? 'var(--text)' : 'var(--text-4)', margin: 0, fontWeight: isCurrent ? '600' : '400' }}>
                   {label}
                 </p>
               </div>
@@ -177,90 +480,6 @@ export default async function ReportsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
-        {/* Sessions by status */}
-        <div style={cardStyle}>
-          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>SESSIONS BY STATUS</p>
-          {Object.entries(statusCounts).length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions yet</p>
-          ) : (
-            Object.entries(statusCounts)
-              .sort((a, b) => b[1] - a[1])
-              .map(([status, count]) => {
-                const c = getStatusStyle(status)
-                return (
-                  <div key={status} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <span style={{ fontSize: '12px', padding: '2px 8px', borderRadius: '20px', background: c.bg, color: c.color, fontWeight: '500', width: 'fit-content' }}>
-                      {getStatusLabel(status)}
-                    </span>
-                    <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)' }}>{count}</span>
-                  </div>
-                )
-              })
-          )}
-        </div>
-
-        {/* Sessions by type */}
-        <div style={cardStyle}>
-          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>SESSIONS BY TYPE</p>
-          {Object.entries(typeCounts).length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions yet</p>
-          ) : (
-            Object.entries(typeCounts)
-              .sort((a, b) => b[1] - a[1])
-              .map(([type, count]) => {
-                const c = getTypeStyle(type)
-                const total = bookings.length
-                const pct = total > 0 ? Math.round((count / total) * 100) : 0
-                return (
-                  <div key={type} style={{ marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <span style={{ fontSize: '13px', color: 'var(--text-2)' }}>{getTypeLabel(type)}</span>
-                      <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>{count} ({pct}%)</span>
-                    </div>
-                    <div style={{ height: '6px', background: 'var(--line)', borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${pct}%`, background: c.color, borderRadius: '3px' }} />
-                    </div>
-                  </div>
-                )
-              })
-          )}
-        </div>
-      </div>
-
-      {/* Recent sessions */}
-      <div style={{ ...cardStyle, overflow: 'hidden', padding: 0 }}>
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
-          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>RECENT SESSIONS</p>
-        </div>
-        {!recentSessions?.length ? (
-          <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '1rem 1.25rem' }}>No sessions yet</p>
-        ) : (
-          recentSessions.map((s: any, i: number) => {
-            const sc = getStatusStyle(s.status ?? '')
-            return (
-              <a key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit',
-                borderBottom: i < recentSessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
-              }}>
-                <div>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', fontFamily: 'monospace' }}>
-                    {sessionName((s as any).clients?.full_name, (s as any).booking_ref, s.booking_id, s.session_date)}
-                  </p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                    {(s.clients as any)?.full_name ?? '—'}
-                    {(s.packages as any)?.name ? ` · ${(s.packages as any).name}` : ''}
-                  </p>
-                </div>
-                <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: sc.bg, color: sc.color, fontWeight: '500', width: 'fit-content' }}>
-                  {getStatusLabel(s.status ?? '')}
-                </span>
-              </a>
-            )
-          })
-        )}
-      </div>
     </div>
   )
 }
