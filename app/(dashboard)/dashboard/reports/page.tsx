@@ -32,7 +32,8 @@ export default async function ReportsPage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const studioRow = await fetchStudio(context.admin, context.studioId)
+  const { admin, studioId } = context
+  const studioRow = await fetchStudio(admin, studioId)
   const config    = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   const now       = new Date()
@@ -53,6 +54,30 @@ export default async function ReportsPage() {
     .filter(s => s.is_cancellation)
     .map(s => s.value)
 
+  // End-of-day markers (match the pattern used across the rest of the app)
+  const todayEnd   = `${todayISO}T23:59:59`
+  const next30End  = `${next30ISO}T23:59:59`
+
+  // ── Phase 1: get invoice IDs so we can filter payments by studio ───────────
+  const { data: invoiceIdRows } = await admin
+    .from('invoices')
+    .select('invoice_id')
+    .eq('studio_id', studioId)
+  const invoiceIds = (invoiceIdRows ?? []).map((r: any) => r.invoice_id as string)
+
+  // ── Phase 2: all remaining queries in parallel ─────────────────────────────
+  // Helper — build a bookings base query and apply cancellation exclusion safely
+  function bookingsBase() {
+    let q = admin
+      .from('bookings')
+      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
+      .eq('studio_id', studioId)
+    if (cancelValues.length > 0) {
+      q = q.not('status', 'in', `(${cancelValues.join(',')})`)
+    }
+    return q
+  }
+
   const [
     { data: allBookingsRaw },
     { data: todayBookingsRaw },
@@ -62,53 +87,46 @@ export default async function ReportsPage() {
     { data: todayInvoicesRaw },
   ] = await Promise.all([
     // All active sessions (pipeline)
-    context.admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
-      .eq('studio_id', context.studioId)
-      .not('status', 'in', `(${cancelValues.join(',')})`)
-      .order('session_date', { ascending: true }),
+    bookingsBase().order('session_date', { ascending: true }),
 
     // Today's sessions
-    context.admin
+    admin
       .from('bookings')
       .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
-      .eq('studio_id', context.studioId)
+      .eq('studio_id', studioId)
       .gte('session_date', todayISO)
-      .lt('session_date', tomorrowISO)
+      .lte('session_date', todayEnd)
       .order('session_date', { ascending: true }),
 
     // Upcoming sessions — tomorrow to +30 days
-    context.admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
-      .eq('studio_id', context.studioId)
+    bookingsBase()
       .gte('session_date', tomorrowISO)
-      .lte('session_date', next30ISO)
-      .not('status', 'in', `(${cancelValues.join(',')})`)
+      .lte('session_date', next30End)
       .order('session_date', { ascending: true }),
 
     // All invoices
-    context.admin
+    admin
       .from('invoices')
       .select('total, status, issued_at')
-      .eq('studio_id', context.studioId),
+      .eq('studio_id', studioId),
 
-    // Payments received today (join through invoices to scope to this studio)
-    context.admin
-      .from('payments')
-      .select('amount, method, paid_at, invoices!inner(studio_id)')
-      .eq('invoices.studio_id', context.studioId)
-      .gte('paid_at', todayISO)
-      .lt('paid_at', tomorrowISO),
+    // Payments received today — filtered via invoice IDs (avoids broken join)
+    invoiceIds.length > 0
+      ? admin
+          .from('payments')
+          .select('amount, method')
+          .in('invoice_id', invoiceIds)
+          .gte('paid_at', todayISO)
+          .lte('paid_at', todayEnd)
+      : Promise.resolve({ data: [] }),
 
     // Invoices issued today
-    context.admin
+    admin
       .from('invoices')
       .select('total, status')
-      .eq('studio_id', context.studioId)
+      .eq('studio_id', studioId)
       .gte('issued_at', todayISO)
-      .lt('issued_at', tomorrowISO),
+      .lte('issued_at', todayEnd),
   ])
 
   const allBookings     = (allBookingsRaw     ?? []) as unknown as BookingRow[]
