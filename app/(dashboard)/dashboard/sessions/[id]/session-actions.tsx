@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useStudioConfig } from '@/components/studio-config-provider'
-import { getNextStatus, getCancellationStatus, getStatusConfig } from '@/lib/studio-config'
+import { getCancellationStatus, getStatusConfig } from '@/lib/studio-config'
 import {
   updateSessionStatus,
   updateSessionDriveLink,
@@ -175,6 +175,46 @@ function StaffPanel({ assigned, availableStaff, onAssign, onRemove, loading, ser
   )
 }
 
+// ─── Status picker ────────────────────────────────────────────────────────────
+
+function StatusPicker({ currentStatus, statuses, onUpdate, loading }: {
+  currentStatus: string
+  statuses:      { value: string; label: string }[]
+  onUpdate:      (status: string) => Promise<void>
+  loading:       boolean
+}) {
+  const [selected, setSelected] = useState(currentStatus)
+  const unchanged = selected === currentStatus
+
+  return (
+    <div>
+      <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 10px' }}>UPDATE STATUS</p>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' as const }}>
+        <select
+          value={selected}
+          onChange={e => setSelected(e.target.value)}
+          style={{ flex: 1, minWidth: '160px', fontSize: '13px', boxSizing: 'border-box' as const }}
+        >
+          {statuses.map(s => (
+            <option key={s.value} value={s.value}>{s.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => onUpdate(selected)}
+          disabled={loading || unchanged}
+          style={{
+            ...btnStyle(true),
+            opacity: unchanged ? 0.45 : 1,
+            cursor: unchanged ? 'default' : 'pointer',
+          }}
+        >
+          {loading ? '...' : 'Save'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function SessionActions({
@@ -191,12 +231,15 @@ export default function SessionActions({
   const [showExtra, setShowExtra]           = useState(false)
 
   const currentStatusCfg = getStatusConfig(config, currentStatus)
-  const nextStatusCfg    = getNextStatus(config, currentStatus)
   const cancelStatusCfg  = getCancellationStatus(config)
-  const isVideoSession   = serviceType === 'video' || serviceType === 'photo_video'
-  const isTerminal       = !!currentStatusCfg.is_terminal
   const isCancellation   = !!currentStatusCfg.is_cancellation
+  const isTerminal       = !!currentStatusCfg.is_terminal
   const isSelectionStage = !!currentStatusCfg.requires_selection_count
+
+  // All non-cancellation statuses available for the status picker
+  const selectableStatuses = config.bookingStatuses
+    .filter(s => !s.is_cancellation)
+    .map(s => ({ value: s.value, label: s.label }))
 
   const baseImages     = (outfitsCount ?? 0) * 2
   const selCount       = parseInt(selectionCount) || 0
@@ -274,23 +317,6 @@ export default function SessionActions({
     )
   }
 
-  // ── Terminal success ───────────────────────────────────────────────────────
-  if (isTerminal) {
-    return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
-        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>ACTIONS</p>
-        <p style={{ fontSize: '13px', color: '#3b6d11', margin: '0 0 12px' }}>{currentStatusCfg.label} ✓</p>
-        <button onClick={() => setShowDriveForm(v => !v)} style={btnStyle(false)}>
-          {showDriveForm ? 'Cancel' : driveLink ? 'Update Drive link' : 'Add Drive link'}
-        </button>
-        {showDriveForm && (
-          <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
-        )}
-        <StaffPanel {...staffPanelProps} />
-      </div>
-    )
-  }
-
   // ── Selection stage ────────────────────────────────────────────────────────
   if (isSelectionStage) {
     return (
@@ -335,15 +361,58 @@ export default function SessionActions({
             )}
           </div>
         )}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: '16px' }}>
           <button onClick={handleRecordSelections} disabled={loading || !selectionCount} style={btnStyle(true)}>
-            {loading ? '...' : nextStatusCfg ? `Confirm & move to ${nextStatusCfg.label}` : 'Confirm selections'}
+            {loading ? '...' : 'Confirm selections'}
           </button>
           {showDriveBtn && (
             <button onClick={() => setShowDriveForm(v => !v)} style={btnStyle(false)}>
               {showDriveForm ? 'Cancel' : driveLink ? 'Update Drive link' : 'Add Drive link'}
             </button>
           )}
+        </div>
+        {showDriveForm && (
+          <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
+        )}
+
+        <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px', marginTop: '16px' }}>
+          <StatusPicker
+            currentStatus={currentStatus}
+            statuses={selectableStatuses}
+            onUpdate={handleStatus}
+            loading={loading}
+          />
+          {cancelStatusCfg && (
+            <div style={{ marginTop: '12px' }}>
+              <button onClick={() => handleStatus(cancelStatusCfg.value)} disabled={loading} style={btnStyle(false, true)}>
+                Cancel session
+              </button>
+            </div>
+          )}
+        </div>
+
+        <StaffPanel {...staffPanelProps} />
+      </div>
+    )
+  }
+
+  // ── Terminal success ───────────────────────────────────────────────────────
+  if (isTerminal) {
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+        <p style={{ fontSize: '13px', color: '#3b6d11', margin: '0 0 16px' }}>{currentStatusCfg.label} ✓</p>
+
+        <StatusPicker
+          currentStatus={currentStatus}
+          statuses={selectableStatuses}
+          onUpdate={handleStatus}
+          loading={loading}
+        />
+
+        <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+          <button onClick={() => setShowDriveForm(v => !v)} style={btnStyle(false)}>
+            {showDriveForm ? 'Cancel' : driveLink ? 'Update Drive link' : 'Add Drive link'}
+          </button>
         </div>
         {showDriveForm && (
           <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
@@ -356,14 +425,14 @@ export default function SessionActions({
   // ── All other statuses ─────────────────────────────────────────────────────
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
-      <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>ACTIONS</p>
+      <StatusPicker
+        currentStatus={currentStatus}
+        statuses={selectableStatuses}
+        onUpdate={handleStatus}
+        loading={loading}
+      />
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
-        {nextStatusCfg && (
-          <button onClick={() => handleStatus(nextStatusCfg.value)} disabled={loading} style={btnStyle(true)}>
-            {loading ? '...' : `Move to ${nextStatusCfg.label}`}
-          </button>
-        )}
+      <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' as const, alignItems: 'center' }}>
         {showDriveBtn && (
           <button onClick={() => setShowDriveForm(v => !v)} style={btnStyle(false)}>
             {showDriveForm ? 'Cancel' : driveLink ? 'Update Drive link' : 'Add Drive link'}
@@ -371,7 +440,7 @@ export default function SessionActions({
         )}
         {cancelStatusCfg && (
           <button onClick={() => handleStatus(cancelStatusCfg.value)} disabled={loading}
-            style={{ ...btnStyle(false), marginLeft: 'auto', color: '#e24b4a', borderColor: '#f09595' }}>
+            style={{ ...btnStyle(false, true), marginLeft: showDriveBtn ? 'auto' : undefined }}>
             Cancel session
           </button>
         )}
