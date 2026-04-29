@@ -26,7 +26,7 @@ export type ReportsViewProps = {
   finFrom: string | null; finTo: string | null
   todayISO: string; todayLabel: string
   config: {
-    bookingStatuses: { value: string; label: string; color_bg: string; color_fg: string; order: number; is_terminal: boolean; is_cancellation: boolean }[]
+    bookingStatuses: { value: string; label: string; color_bg: string; color_fg: string; order: number; is_terminal?: boolean; is_cancellation?: boolean }[]
     sessionTypes:    { value: string; label: string; color_bg: string; color_fg: string }[]
     serviceTypes:    { value: string; label: string; color_bg: string; color_fg: string }[]
   }
