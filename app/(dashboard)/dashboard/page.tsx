@@ -124,14 +124,14 @@ export default async function DashboardPage() {
       .lte('session_date', todayEnd)
       .not('status', 'in', `(${excludeIn})`),
 
-    // Payments this week / this month window
+    // Payments this week / this month window — with method + client info for today's breakdown
     invoiceIds.length > 0
       ? admin.from('payments')
-          .select('amount, paid_at')
+          .select('amount, paid_at, method, invoices(bookings(booking_ref, clients(full_name)))')
           .in('invoice_id', invoiceIds)
           .gte('paid_at', paymentFrom)
           .lte('paid_at', todayEnd)
-      : Promise.resolve({ data: [] as { amount: number; paid_at: string }[] }),
+      : Promise.resolve({ data: [] as any[] }),
 
     // Outstanding invoices (draft / sent / overdue) with session + client + payments detail
     admin.from('invoices')
@@ -152,7 +152,12 @@ export default async function DashboardPage() {
   type StaffRow    = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
   type CheckinRow  = { staff_id: string; checked_in_at: string; checked_out_at: string | null }
   type WeekBooking = { booking_id: string; session_date: string | null }
-  type RecentPayment = { amount: number | string; paid_at: string }
+  type RecentPayment = {
+    amount:   number | string
+    paid_at:  string
+    method?:  string | null
+    invoices?: { bookings?: { booking_ref?: number | null; clients?: { full_name?: string | null } | null } | null } | null
+  }
   type OutstandingInvoiceRow = {
     invoice_id: string; total: number | string | null; status: string
     due_date: string | null; issued_at: string | null
@@ -196,6 +201,22 @@ export default async function DashboardPage() {
   const revenueMonth = recentPayments
     .filter(p => p.paid_at >= thisMonthStart)
     .reduce((s, p) => s + Number(p.amount), 0)
+
+  // ── Today's payment breakdown (per-payment + by method) ──────────────────────
+  const todayPaymentsList = recentPayments
+    .filter(p => p.paid_at.startsWith(todayStr))
+    .map(p => ({
+      amount:     Number(p.amount),
+      method:     p.method ?? 'other',
+      clientName: (p as any).invoices?.bookings?.clients?.full_name ?? null as string | null,
+      bookingRef: (p as any).invoices?.bookings?.booking_ref ?? null  as number | null,
+      paid_at:    p.paid_at,
+    }))
+
+  const todayByMethod: Record<string, number> = {}
+  for (const p of todayPaymentsList) {
+    todayByMethod[p.method] = (todayByMethod[p.method] ?? 0) + p.amount
+  }
 
   // ── Weekly day strip (Mon → today) ────────────────────────────────────────────
   const weekDays: { iso: string; label: string; isToday: boolean; sessions: number; revenue: number }[] = []
@@ -243,6 +264,8 @@ export default async function DashboardPage() {
       value: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
     })),
     revenueToday,
+    todayPaymentsList,
+    todayByMethod,
     weekDays,
     outstandingInvoices: outstandingInvoices as DashboardProps['outstandingInvoices'],
     draftCount,

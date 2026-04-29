@@ -59,6 +59,8 @@ export type DashboardProps = {
   sessionTypeStyles: Record<string, Style>
   sessionTypeValues: { value: string; label: string; color_bg: string; color_fg: string }[]
   revenueToday:      number
+  todayPaymentsList: { amount: number; method: string; clientName: string | null; bookingRef: number | null; paid_at: string }[]
+  todayByMethod:     Record<string, number>
   weekDays:          { iso: string; label: string; isToday: boolean; sessions: number; revenue: number }[]
   outstandingInvoices: OutstandingInvoice[]
   draftCount:        number
@@ -396,17 +398,84 @@ export default function DashboardWidgets(props: DashboardProps) {
   // ── Revenue & weekly strip ───────────────────────────────────────────────────
 
   function renderRevenue() {
+    const methodLabel: Record<string, string> = {
+      cash:          'Cash',
+      bank_transfer: 'Bank transfer',
+      card:          'Card',
+      pos:           'POS',
+      online:        'Online',
+      other:         'Other',
+    }
+    const methodOrder = ['cash', 'pos', 'card', 'bank_transfer', 'online', 'other']
+    const methodEntries = methodOrder
+      .filter(m => props.todayByMethod[m] != null)
+      .map(m => ({ key: m, label: methodLabel[m] ?? m, amount: props.todayByMethod[m] }))
+    // any methods not in the ordered list (custom/unknown)
+    for (const [k, v] of Object.entries(props.todayByMethod)) {
+      if (!methodOrder.includes(k)) methodEntries.push({ key: k, label: k, amount: v })
+    }
+
+    const hasTodayPayments = props.todayPaymentsList.length > 0
+
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
+        {/* Header */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>This week</p>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 1px', fontWeight: 500 }}>Today's revenue</p>
+            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 1px', fontWeight: 500 }}>Collected today</p>
             <p style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: props.revenueToday > 0 ? '#3b6d11' : 'var(--text-3)' }}>
               {props.revenueToday > 0 ? fmt(props.revenueToday) : '—'}
             </p>
           </div>
         </div>
+
+        {/* Today's payment breakdown */}
+        {hasTodayPayments && (
+          <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
+            {/* By method */}
+            {methodEntries.length > 0 && (
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginBottom: props.todayPaymentsList.length > 0 ? '10px' : 0 }}>
+                {methodEntries.map(e => (
+                  <span key={e.key} style={{
+                    display: 'inline-flex', gap: '5px', alignItems: 'center',
+                    fontSize: '11px', padding: '3px 9px', borderRadius: '20px',
+                    background: '#e8f4ec', color: '#1e5e34', fontWeight: 500,
+                  }}>
+                    <span style={{ fontWeight: 400, opacity: 0.75 }}>{e.label}</span>
+                    <span>{fmt(e.amount)}</span>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Per-payment list */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+              {props.todayPaymentsList.map((p, i) => (
+                <div key={i} style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  padding: '4px 0', borderBottom: i < props.todayPaymentsList.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  gap: '10px',
+                }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <span style={{ fontSize: '12px', fontWeight: 500, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>
+                      {p.clientName ?? '—'}
+                      {p.bookingRef != null && (
+                        <span style={{ fontSize: '11px', fontWeight: 400, color: 'var(--text-4)', marginLeft: '4px' }}>#{p.bookingRef}</span>
+                      )}
+                    </span>
+                    <span style={{ fontSize: '10px', color: 'var(--text-4)' }}>
+                      {fmtTime(p.paid_at)} · {methodLabel[p.method] ?? p.method}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#3b6d11', flexShrink: 0 }}>{fmt(p.amount)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Weekly day strip */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.weekDays.length}, 1fr)`, padding: '0.875rem 1.25rem', gap: '8px' }}>
           {props.weekDays.map(day => (
             <div key={day.iso} style={{
