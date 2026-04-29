@@ -236,7 +236,12 @@ export default function DashboardWidgets(props: DashboardProps) {
             </button>
           </div>
         )}
-        {content}
+        {/* In edit mode, block pointer events on card content so links/images
+            don't intercept the mousedown and start their own native drag,
+            which would prevent the widget drag from ever firing. */}
+        <div style={{ pointerEvents: editMode ? 'none' : 'auto' }}>
+          {content}
+        </div>
       </div>
     )
   }
