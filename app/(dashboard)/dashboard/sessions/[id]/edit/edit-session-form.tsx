@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateSession } from '@/app/actions/sessions'
 import SearchableSelect from '@/components/searchable-select'
+import ClientField from '@/components/client-field'
 import { useStudioConfig } from '@/components/studio-config-provider'
 
 type Client = {
@@ -84,6 +85,9 @@ export default function EditSessionForm({
   const config = useStudioConfig()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [selectedClientName, setSelectedClientName] = useState(
+    () => clients.find(c => c.client_id === (session.client_id ?? ''))?.full_name ?? ''
+  )
 
   const [form, setForm] = useState({
     client_id:          session.client_id          ?? '',
@@ -255,16 +259,11 @@ export default function EditSessionForm({
       <div style={sectionStyle}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Client</label>
-          <SearchableSelect
-            options={clients.map((c) => ({
-              value: c.client_id,
-              label: c.full_name,
-              sublabel: c.phone ?? undefined,
-            }))}
+          <ClientField
             value={form.client_id}
-            onChange={v => update('client_id', v)}
-            placeholder="Search by name or phone…"
-            emptyMessage="No clients match"
+            selectedName={selectedClientName}
+            initialClients={clients}
+            onChange={(id, name) => { update('client_id', id); setSelectedClientName(name) }}
           />
         </div>
 
