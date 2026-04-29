@@ -103,12 +103,14 @@ type BlockId   = 'today' | 'revenue' | 'schedule' | 'pipeline' | 'invoices' | 'a
 type LayoutItem = { id: BlockId; col: ColType }
 
 const LAYOUT_DEFAULT: LayoutItem[] = [
-  { id: 'today',    col: 'full'  },
+  { id: 'today',    col: 'full'  },  // Always full-width at top
+  // Left column: schedule/time widgets (compact)
   { id: 'revenue',  col: 'left'  },
-  { id: 'schedule', col: 'right' },
-  { id: 'pipeline', col: 'left'  },
-  { id: 'invoices', col: 'right' },
+  { id: 'schedule', col: 'left'  },
   { id: 'actions',  col: 'left'  },
+  // Right column: active work widgets
+  { id: 'pipeline', col: 'right' },
+  { id: 'invoices', col: 'right' },
   { id: 'staff',    col: 'right' },
 ]
 
@@ -122,7 +124,7 @@ const BLOCK_LABEL: Record<BlockId, string> = {
   staff:    'Staff today',
 }
 
-const STORAGE_KEY = 'dashboard-layout-v6'
+const STORAGE_KEY = 'dashboard-layout-v7'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
