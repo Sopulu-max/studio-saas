@@ -1,40 +1,27 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
-import { buildStudioConfig, getSessionTypeConfig } from '@/lib/studio-config'
-import { sessionName } from '@/lib/session-title'
-import InlineStatusSelect from '@/components/inline-status-select'
+import { buildStudioConfig } from '@/lib/studio-config'
+import ReportsView from './reports-view'
+import type { ReportsViewProps } from './reports-view'
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-function fmt(n: number) {
-  return '₦' + n.toLocaleString('en-NG')
-}
 function monthLabel(year: number, month: number) {
   return new Date(year, month - 1).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })
 }
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-type BookingRow = {
-  booking_id:    string
-  booking_ref?:  number | null
-  session_date?: string | null
-  status:        string
-  session_type?: string | null
-  shoot_type?:   string | null
-  clients?:      { full_name?: string | null } | null
-  packages?:     { name?: string | null } | null
+function isoToMonth(iso: string) {
+  return iso.slice(0, 7) // "2026-04-29" → "2026-04"
 }
 
-// ─── Page ─────────────────────────────────────────────────────────────────────
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ range?: string; from?: string; to?: string }>
+  searchParams: Promise<{ range?: string; from?: string; to?: string; tab?: string }>
 }) {
-  const { range = 'this_month', from: fromParam, to: toParam } = await searchParams
+  const { range = 'this_month', from: fromParam, to: toParam, tab = 'revenue' } = await searchParams
 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
@@ -43,24 +30,25 @@ export default async function ReportsPage({
   const studioRow = await fetchStudio(admin, studioId)
   const config    = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
-  const now       = new Date()
-  const year      = now.getFullYear()
-  const month     = now.getMonth() + 1
-  const todayISO  = now.toISOString().slice(0, 10)           // "2026-04-28"
-  const tomorrow  = new Date(now.getTime() + 86_400_000)
-  const tomorrowISO = tomorrow.toISOString().slice(0, 10)
+  // ── Date constants ─────────────────────────────────────────────────────────
+  const now         = new Date()
+  const year        = now.getFullYear()
+  const month       = now.getMonth() + 1
+  const todayISO    = now.toISOString().slice(0, 10)
+  const todayEnd    = `${todayISO}T23:59:59`
+  const tomorrow    = new Date(now.getTime() + 86_400_000).toISOString().slice(0, 10)
   const next30ISO   = new Date(now.getTime() + 30 * 86_400_000).toISOString().slice(0, 10)
-
-  // Month boundaries (used for bar chart)
+  const next30End   = `${next30ISO}T23:59:59`
   const thisMonthStart = `${year}-${String(month).padStart(2, '0')}-01`
   const lastMonthDate  = new Date(year, month - 2, 1)
   const lastMonthStart = `${lastMonthDate.getFullYear()}-${String(lastMonthDate.getMonth() + 1).padStart(2, '0')}-01`
+  const dayOfWeek   = now.getDay()
+  const daysBack    = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  const monday      = new Date(now.getTime() - daysBack * 86_400_000)
+  const mondayISO   = monday.toISOString().slice(0, 10)
 
-  // ── Financial date range ─────────────────────────────────────────────────────
-  // Presets: this_month | last_3_months | this_year | all_time | custom
-  type RangePreset = 'this_month' | 'last_3_months' | 'this_year' | 'all_time' | 'custom'
-  const activeRange = (fromParam || toParam) ? 'custom' : (range as RangePreset)
-
+  // ── Date range resolution ─────────────────────────────────────────────────
+  const activeRange = (fromParam || toParam) ? 'custom' : range
   let finFrom: string | null = null
   let finTo:   string | null = null
   if (activeRange === 'custom') {
@@ -68,40 +56,302 @@ export default async function ReportsPage({
     finTo   = toParam   ?? null
   } else if (activeRange === 'this_month') {
     finFrom = thisMonthStart
-    finTo   = null
   } else if (activeRange === 'last_3_months') {
     const d3 = new Date(year, month - 4, 1)
     finFrom = `${d3.getFullYear()}-${String(d3.getMonth() + 1).padStart(2, '0')}-01`
-    finTo   = null
   } else if (activeRange === 'this_year') {
     finFrom = `${year}-01-01`
-    finTo   = null
   }
-  // all_time → no date filter (finFrom = finTo = null)
 
-  const PRESETS: { value: string; label: string }[] = [
-    { value: 'this_month',    label: 'This month' },
-    { value: 'last_3_months', label: 'Last 3 months' },
-    { value: 'this_year',     label: 'This year' },
-    { value: 'all_time',      label: 'All time' },
-  ]
+  // Cancellation status values
+  const cancelValues = config.bookingStatuses.filter(s => s.is_cancellation).map(s => s.value)
+  const terminalValues = config.bookingStatuses.filter(s => s.is_terminal && !s.is_cancellation).map(s => s.value)
+  const cancelIn = cancelValues.length > 0 ? `(${cancelValues.map(v => `"${v}"`).join(',')})` : '("__none__")'
 
-  // Cancellation status values — exclude from pipeline
-  const cancelValues = config.bookingStatuses
-    .filter(s => s.is_cancellation)
-    .map(s => s.value)
+  // ── Phase 1: Invoice IDs scoped to this studio ─────────────────────────────
+  const { data: invoiceIdRows } = await admin
+    .from('invoices')
+    .select('invoice_id, bookings!inner(studio_id)')
+    .eq('bookings.studio_id', studioId)
+  const invoiceIds = (invoiceIdRows ?? []).map((r: any) => r.invoice_id as string)
 
-  // End-of-day markers (match the pattern used across the rest of the app)
-  const todayEnd   = `${todayISO}T23:59:59`
-  const next30End  = `${next30ISO}T23:59:59`
+  // ── Phase 2: All queries in parallel ──────────────────────────────────────
+  const [
+    { data: allBookingsRaw },
+    { data: todayBookingsRaw },
+    { data: upcomingBookingsRaw },
+    { data: weekBookingsRaw },
+    { data: allInvoicesRaw },
+    { data: allPaymentsRaw },
+    { data: weekPaymentsRaw },
+    { data: allClientsRaw },
+    { data: allStaffRaw },
+    { data: bookingStaffRaw },
+    { data: checkinsRaw },
+    { data: allPackagesRaw },
+    { data: contractsRaw },
+  ] = await Promise.all([
 
-  // Week calculations — Monday of current week through today
-  const dayOfWeek  = now.getDay()                            // 0=Sun, 1=Mon, …
-  const daysBack   = dayOfWeek === 0 ? 6 : dayOfWeek - 1    // steps back to Monday
-  const monday     = new Date(now.getTime() - daysBack * 86_400_000)
-  const mondayISO  = monday.toISOString().slice(0, 10)
+    // All bookings (including cancelled for stats)
+    admin.from('bookings')
+      .select('booking_id, booking_ref, session_date, status, session_type, service_type, shoot_type, package_id, client_id, clients(full_name), packages(name)')
+      .eq('studio_id', studioId)
+      .order('session_date', { ascending: true }),
 
-  // Build ordered list of days Mon → today
+    // Today
+    admin.from('bookings')
+      .select('booking_id, booking_ref, session_date, status, session_type, service_type, shoot_type, clients(full_name), packages(name)')
+      .eq('studio_id', studioId)
+      .gte('session_date', todayISO)
+      .lte('session_date', todayEnd)
+      .not('status', 'in', cancelIn)
+      .order('session_date'),
+
+    // Upcoming — tomorrow to +30 days
+    admin.from('bookings')
+      .select('booking_id, booking_ref, session_date, status, session_type, service_type, shoot_type, clients(full_name), packages(name)')
+      .eq('studio_id', studioId)
+      .gt('session_date', todayEnd)
+      .lte('session_date', next30End)
+      .not('status', 'in', cancelIn)
+      .order('session_date'),
+
+    // This week (Mon → today)
+    admin.from('bookings')
+      .select('booking_id, session_date, status')
+      .eq('studio_id', studioId)
+      .gte('session_date', mondayISO)
+      .lte('session_date', todayEnd)
+      .not('status', 'in', cancelIn),
+
+    // All invoices with booking join for session context
+    admin.from('invoices')
+      .select('invoice_id, total, status, issued_at, due_date, booking_id, bookings!inner(studio_id, session_type, service_type, client_id)')
+      .eq('bookings.studio_id', studioId),
+
+    // All payments (all-time) with method
+    invoiceIds.length > 0
+      ? admin.from('payments')
+          .select('amount, paid_at, method, invoice_id')
+          .in('invoice_id', invoiceIds)
+      : Promise.resolve({ data: [] }),
+
+    // Payments this week
+    invoiceIds.length > 0
+      ? admin.from('payments')
+          .select('amount, paid_at')
+          .in('invoice_id', invoiceIds)
+          .gte('paid_at', mondayISO)
+          .lte('paid_at', todayEnd)
+      : Promise.resolve({ data: [] }),
+
+    // All clients
+    admin.from('clients')
+      .select('client_id, full_name, created_at')
+      .eq('studio_id', studioId)
+      .order('created_at', { ascending: false }),
+
+    // All staff
+    admin.from('staff')
+      .select('staff_id, full_name, role, roles, working_days')
+      .eq('studio_id', studioId)
+      .order('full_name'),
+
+    // Booking staff — join through bookings to scope to this studio
+    admin.from('booking_staff')
+      .select('staff_id, role, booking_id, bookings!inner(studio_id, session_date, status)')
+      .eq('bookings.studio_id', studioId),
+
+    // Staff check-ins in range (or last 90 days if no range)
+    admin.from('staff_checkins')
+      .select('staff_id, date, checked_in_at, checked_out_at')
+      .eq('studio_id', studioId)
+      .gte('date', finFrom ?? new Date(now.getTime() - 90 * 86_400_000).toISOString().slice(0, 10))
+      .lte('date', finTo ?? todayISO),
+
+    // All packages
+    admin.from('packages')
+      .select('package_id, name, base_price')
+      .eq('studio_id', studioId)
+      .order('name'),
+
+    // Contracts — just booking_id to detect coverage
+    admin.from('contracts')
+      .select('booking_id, bookings!inner(studio_id)')
+      .eq('bookings.studio_id', studioId),
+  ])
+
+  // ── Type assertions ────────────────────────────────────────────────────────
+  type BRow = {
+    booking_id: string; booking_ref?: number | null
+    session_date?: string | null; status: string
+    session_type?: string | null; service_type?: string | null
+    shoot_type?: string | null; package_id?: string | null; client_id?: string | null
+    clients?: { full_name?: string | null } | null
+    packages?: { name?: string | null } | null
+  }
+  type InvoiceRow = {
+    invoice_id: string; total: number | string; status: string
+    issued_at?: string | null; due_date?: string | null; booking_id?: string | null
+    bookings?: { studio_id: string; session_type?: string | null; service_type?: string | null; client_id?: string | null } | null
+  }
+  type PaymentRow = { amount: number | string; paid_at: string; method?: string; invoice_id?: string }
+  type ClientRow  = { client_id: string; full_name: string; created_at?: string | null }
+  type StaffRow   = { staff_id: string; full_name: string; role?: string | null; roles?: string[] | null; working_days?: string[] | null }
+  type BStaffRow  = { staff_id: string; role: string; booking_id: string; bookings?: { studio_id: string; session_date?: string | null; status?: string } | null }
+  type CheckinRow = { staff_id: string; date: string; checked_in_at: string; checked_out_at?: string | null }
+  type PackageRow = { package_id: string; name: string; base_price?: number | string | null }
+
+  const allBookings     = (allBookingsRaw     ?? []) as unknown as BRow[]
+  const todayBookings   = (todayBookingsRaw   ?? []) as unknown as BRow[]
+  const upcomingBookings= (upcomingBookingsRaw?? []) as unknown as BRow[]
+  const weekBookings    = (weekBookingsRaw    ?? []) as unknown as { booking_id: string; session_date?: string | null; status: string }[]
+  const allInvoices     = (allInvoicesRaw     ?? []) as unknown as InvoiceRow[]
+  const allPayments     = (allPaymentsRaw     ?? []) as unknown as PaymentRow[]
+  const weekPayments    = (weekPaymentsRaw    ?? []) as unknown as { amount: number | string; paid_at: string }[]
+  const allClients      = (allClientsRaw      ?? []) as unknown as ClientRow[]
+  const allStaff        = (allStaffRaw        ?? []) as unknown as StaffRow[]
+  const bookingStaff    = (bookingStaffRaw    ?? []) as unknown as BStaffRow[]
+  const checkins        = (checkinsRaw        ?? []) as unknown as CheckinRow[]
+  const allPackages     = (allPackagesRaw     ?? []) as unknown as PackageRow[]
+  const contracts       = (contractsRaw       ?? []) as unknown as { booking_id: string }[]
+
+  // ── Payment range filter ───────────────────────────────────────────────────
+  function payInRange(p: PaymentRow) {
+    if (finFrom && p.paid_at < finFrom) return false
+    if (finTo   && p.paid_at > finTo + 'T23:59:59') return false
+    return true
+  }
+  const rangePayments = allPayments.filter(payInRange)
+
+  // ── Booking range filter (by session_date) ────────────────────────────────
+  function bookingInRange(b: BRow) {
+    if (!b.session_date) return false
+    const d = b.session_date.slice(0, 10)
+    if (finFrom && d < finFrom) return false
+    if (finTo   && d > finTo)   return false
+    return true
+  }
+  const rangeBookings = allBookings.filter(bookingInRange)
+
+  // ── REVENUE computations ───────────────────────────────────────────────────
+  const revenueInRange   = rangePayments.reduce((s, p) => s + Number(p.amount), 0)
+  const revenueAllTime   = allPayments.reduce((s, p) => s + Number(p.amount), 0)
+  const revenueThisMonth = allPayments.filter(p => p.paid_at >= thisMonthStart).reduce((s, p) => s + Number(p.amount), 0)
+  const revenueLastMonth = allPayments.filter(p => p.paid_at >= lastMonthStart && p.paid_at < thisMonthStart).reduce((s, p) => s + Number(p.amount), 0)
+
+  const outstanding = allInvoices.filter(i => i.status === 'sent' || i.status === 'draft').reduce((s, i) => s + Number(i.total), 0)
+  const overdue     = allInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0)
+
+  // Payment method breakdown (range payments)
+  const methodMap: Record<string, { amount: number; count: number }> = {}
+  for (const p of rangePayments) {
+    const m = p.method ?? 'other'
+    if (!methodMap[m]) methodMap[m] = { amount: 0, count: 0 }
+    methodMap[m].amount += Number(p.amount)
+    methodMap[m].count  += 1
+  }
+  const paymentsByMethod = Object.entries(methodMap)
+    .map(([method, v]) => ({ method, ...v }))
+    .sort((a, b) => b.amount - a.amount)
+
+  // Invoice lookup maps (for joining payments → session type)
+  const invoiceToBooking: Record<string, string> = {}
+  const bookingToSessionType: Record<string, string> = {}
+  const bookingToServiceType: Record<string, string> = {}
+  for (const inv of allInvoices) {
+    if (inv.invoice_id && inv.booking_id) invoiceToBooking[inv.invoice_id] = inv.booking_id
+    if (inv.booking_id && inv.bookings?.session_type) bookingToSessionType[inv.booking_id] = inv.bookings.session_type
+    if (inv.booking_id && inv.bookings?.service_type) bookingToServiceType[inv.booking_id] = inv.bookings.service_type
+  }
+
+  // Revenue by session type (range payments)
+  const revByType: Record<string, number> = {}
+  for (const p of rangePayments) {
+    if (!p.invoice_id) continue
+    const bId = invoiceToBooking[p.invoice_id]
+    if (!bId) continue
+    const t = bookingToSessionType[bId] ?? 'other'
+    revByType[t] = (revByType[t] ?? 0) + Number(p.amount)
+  }
+  const revenueBySessionType = config.sessionTypes.map(t => ({
+    type: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
+    amount: revByType[t.value] ?? 0,
+    count: rangeBookings.filter(b => b.session_type === t.value && !cancelValues.includes(b.status)).length,
+  })).filter(t => t.amount > 0 || t.count > 0)
+
+  // Revenue by service type (range payments)
+  const revByService: Record<string, number> = {}
+  for (const p of rangePayments) {
+    if (!p.invoice_id) continue
+    const bId = invoiceToBooking[p.invoice_id]
+    if (!bId) continue
+    const t = bookingToServiceType[bId] ?? 'other'
+    revByService[t] = (revByService[t] ?? 0) + Number(p.amount)
+  }
+  const revenueByServiceType = config.serviceTypes.map(t => ({
+    type: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
+    amount: revByService[t.value] ?? 0,
+    count: rangeBookings.filter(b => b.service_type === t.value && !cancelValues.includes(b.status)).length,
+  })).filter(t => t.amount > 0 || t.count > 0)
+
+  // Monthly revenue bar chart (last 6 months, always all-time payments)
+  const monthlyRevenue: { label: string; amount: number; monthKey: string }[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d    = new Date(year, month - 1 - i, 1)
+    const y    = d.getFullYear()
+    const m    = d.getMonth() + 1
+    const from = `${y}-${String(m).padStart(2, '0')}-01`
+    const toD  = new Date(y, m, 1)
+    const to   = `${toD.getFullYear()}-${String(toD.getMonth() + 1).padStart(2, '0')}-01`
+    const amt  = allPayments.filter(p => p.paid_at >= from && p.paid_at < to).reduce((s, p) => s + Number(p.amount), 0)
+    monthlyRevenue.push({ label: monthLabel(y, m), amount: amt, monthKey: from.slice(0, 7) })
+  }
+
+  // ── SESSIONS computations ──────────────────────────────────────────────────
+  const activeBookings   = allBookings.filter(b => !cancelValues.includes(b.status))
+  const cancelledInRange = rangeBookings.filter(b => cancelValues.includes(b.status)).length
+  const completedInRange = rangeBookings.filter(b => terminalValues.includes(b.status)).length
+
+  // Breakdown by session type (in range, non-cancelled)
+  const sessionsByType = config.sessionTypes.map(t => ({
+    type: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
+    count: rangeBookings.filter(b => b.session_type === t.value && !cancelValues.includes(b.status)).length,
+  })).filter(t => t.count > 0)
+
+  // Breakdown by service type (in range, non-cancelled)
+  const sessionsByService = config.serviceTypes.map(t => ({
+    type: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
+    count: rangeBookings.filter(b => b.service_type === t.value && !cancelValues.includes(b.status)).length,
+  })).filter(t => t.count > 0)
+
+  // Breakdown by shoot category (in range, non-cancelled, non-empty)
+  const categoryMap: Record<string, number> = {}
+  for (const b of rangeBookings) {
+    if (cancelValues.includes(b.status)) continue
+    const cat = (b.shoot_type ?? '').trim()
+    if (!cat) continue
+    categoryMap[cat] = (categoryMap[cat] ?? 0) + 1
+  }
+  const sessionsByCategory = Object.entries(categoryMap)
+    .map(([category, count]) => ({ category, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+
+  // Monthly session counts (last 6 months)
+  const monthlySessionCounts: { label: string; count: number; monthKey: string }[] = []
+  for (let i = 5; i >= 0; i--) {
+    const d    = new Date(year, month - 1 - i, 1)
+    const y    = d.getFullYear()
+    const m2   = d.getMonth() + 1
+    const from = `${y}-${String(m2).padStart(2, '0')}-01`
+    const toD  = new Date(y, m2, 1)
+    const to   = `${toD.getFullYear()}-${String(toD.getMonth() + 1).padStart(2, '0')}-01`
+    const cnt  = allBookings.filter(b => b.session_date && b.session_date >= from && b.session_date < to && !cancelValues.includes(b.status)).length
+    monthlySessionCounts.push({ label: monthLabel(y, m2), count: cnt, monthKey: from.slice(0, 7) })
+  }
+
+  // Weekly strip (Mon → today)
   const weekDays: { iso: string; label: string; isToday: boolean }[] = []
   for (
     let d = new Date(monday);
@@ -115,547 +365,178 @@ export default async function ReportsPage({
       isToday: iso === todayISO,
     })
   }
+  const weekStrip = weekDays.map(day => ({
+    ...day,
+    sessions: weekBookings.filter(b => b.session_date?.startsWith(day.iso)).length,
+    revenue:  weekPayments.filter(p => p.paid_at?.startsWith(day.iso)).reduce((s, p) => s + Number(p.amount), 0),
+  }))
 
-  // ── Phase 1: get invoice IDs so we can filter payments by studio ───────────
-  // Invoices have no direct studio_id — must join through bookings
-  const { data: invoiceIdRows } = await admin
-    .from('invoices')
-    .select('invoice_id, bookings!inner(studio_id)')
-    .eq('bookings.studio_id', studioId)
-  const invoiceIds = (invoiceIdRows ?? []).map((r: any) => r.invoice_id as string)
+  // ── PIPELINE computations ─────────────────────────────────────────────────
+  const nonCancelStatuses = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)
+  const pipelineByStatus = nonCancelStatuses.map(s => ({
+    value: s.value, label: s.label, color_bg: s.color_bg, color_fg: s.color_fg,
+    sessions: activeBookings
+      .filter(b => b.status === s.value)
+      .map(b => ({
+        booking_id: b.booking_id, booking_ref: b.booking_ref ?? null,
+        session_date: b.session_date ?? null, status: b.status,
+        session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
+        client_name: b.clients?.full_name ?? null,
+      })),
+  })).filter(s => s.sessions.length > 0)
 
-  // ── Phase 2: all remaining queries in parallel ─────────────────────────────
-  // Helper — build a bookings base query and apply cancellation exclusion safely
-  function bookingsBase() {
-    let q = admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
-      .eq('studio_id', studioId)
-    if (cancelValues.length > 0) {
-      q = q.not('status', 'in', `(${cancelValues.join(',')})`)
-    }
-    return q
-  }
+  // Sessions missing invoice (active, non-terminal)
+  const invoicedBookingIds = new Set(allInvoices.map(i => i.booking_id).filter(Boolean))
+  const contractedBookingIds = new Set(contracts.map(c => c.booking_id))
+  const activeNonTerminal = activeBookings.filter(b => !terminalValues.includes(b.status))
+  const noInvoiceCount  = activeNonTerminal.filter(b => !invoicedBookingIds.has(b.booking_id)).length
+  const noContractCount = activeNonTerminal.filter(b => !contractedBookingIds.has(b.booking_id)).length
 
-  const [
-    { data: allBookingsRaw },
-    { data: todayBookingsRaw },
-    { data: upcomingBookingsRaw },
-    { data: allInvoicesRaw },
-    { data: todayPaymentsRaw },
-    { data: todayInvoicesRaw },
-    { data: weekBookingsRaw },
-    { data: weekPaymentsRaw },
-    { data: allPaymentsRaw },
-  ] = await Promise.all([
-    // All active sessions (pipeline)
-    bookingsBase().order('session_date', { ascending: true }),
+  // ── CLIENTS computations ──────────────────────────────────────────────────
+  const totalClients = allClients.length
 
-    // Today's sessions
-    admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name)')
-      .eq('studio_id', studioId)
-      .gte('session_date', todayISO)
-      .lte('session_date', todayEnd)
-      .order('session_date', { ascending: true }),
-
-    // Upcoming sessions — tomorrow to +30 days
-    bookingsBase()
-      .gte('session_date', tomorrowISO)
-      .lte('session_date', next30End)
-      .order('session_date', { ascending: true }),
-
-    // All invoices (join through bookings — invoices have no direct studio_id)
-    // Still needed for outstanding + overdue amounts
-    admin
-      .from('invoices')
-      .select('total, status, issued_at, bookings!inner(studio_id)')
-      .eq('bookings.studio_id', studioId),
-
-    // Payments received today — filtered via invoice IDs (avoids broken join)
-    invoiceIds.length > 0
-      ? admin
-          .from('payments')
-          .select('amount, method')
-          .in('invoice_id', invoiceIds)
-          .gte('paid_at', todayISO)
-          .lte('paid_at', todayEnd)
-      : Promise.resolve({ data: [] }),
-
-    // Invoices issued today
-    admin
-      .from('invoices')
-      .select('total, status, bookings!inner(studio_id)')
-      .eq('bookings.studio_id', studioId)
-      .gte('issued_at', todayISO)
-      .lte('issued_at', todayEnd),
-
-    // Sessions this week (Mon → today)
-    bookingsBase()
-      .gte('session_date', mondayISO)
-      .lte('session_date', todayEnd)
-      .order('session_date', { ascending: true }),
-
-    // Payments this week
-    invoiceIds.length > 0
-      ? admin
-          .from('payments')
-          .select('amount, paid_at')
-          .in('invoice_id', invoiceIds)
-          .gte('paid_at', mondayISO)
-          .lte('paid_at', todayEnd)
-      : Promise.resolve({ data: [] }),
-
-    // All-time payments — for accurate revenue figures (use paid_at not issued_at)
-    invoiceIds.length > 0
-      ? admin
-          .from('payments')
-          .select('amount, paid_at')
-          .in('invoice_id', invoiceIds)
-      : Promise.resolve({ data: [] }),
-  ])
-
-  const allBookings     = (allBookingsRaw     ?? []) as unknown as BookingRow[]
-  const todayBookings   = (todayBookingsRaw   ?? []) as unknown as BookingRow[]
-  const upcomingBookings= (upcomingBookingsRaw?? []) as unknown as BookingRow[]
-  const allInvoices     = (allInvoicesRaw     ?? []) as { total: number | string; status: string; issued_at: string }[]
-  const todayPayments   = (todayPaymentsRaw   ?? []) as { amount: number | string; method: string }[]
-  const todayInvoices   = (todayInvoicesRaw   ?? []) as { total: number | string; status: string }[]
-  const weekBookings    = (weekBookingsRaw    ?? []) as unknown as BookingRow[]
-  const weekPayments    = (weekPaymentsRaw    ?? []) as { amount: number | string; paid_at: string }[]
-  const allPayments     = (allPaymentsRaw     ?? []) as { amount: number | string; paid_at: string }[]
-
-  // Per-day stats for the week strip
-  const dayStats = weekDays.map(day => {
-    const sessions = weekBookings.filter(b => b.session_date?.startsWith(day.iso)).length
-    const revenue  = weekPayments
-      .filter(p => p.paid_at?.startsWith(day.iso))
-      .reduce((s, p) => s + Number(p.amount), 0)
-    return { ...day, sessions, revenue }
-  })
-
-  // ── Status helpers ─────────────────────────────────────────────────────────
-  function typeStyle(v: string | null | undefined) {
-    const t = getSessionTypeConfig(config, v ?? '')
-    return { bg: t.color_bg, color: t.color_fg, label: t.label }
-  }
-
-  // ── Today's status breakdown ───────────────────────────────────────────────
-  const todayByStatus: Record<string, number> = {}
-  for (const b of todayBookings) {
-    todayByStatus[b.status] = (todayByStatus[b.status] ?? 0) + 1
-  }
-
-  // ── Active pipeline by status (all, not just today) ───────────────────────
-  const pipelineByStatus: Record<string, BookingRow[]> = {}
+  // New clients in range: clients whose first booking falls within the range
+  const clientFirstBooking: Record<string, string> = {}
   for (const b of allBookings) {
-    if (!pipelineByStatus[b.status]) pipelineByStatus[b.status] = []
-    pipelineByStatus[b.status].push(b)
+    if (!b.client_id || !b.session_date) continue
+    const d = b.session_date.slice(0, 10)
+    if (!clientFirstBooking[b.client_id] || d < clientFirstBooking[b.client_id]) {
+      clientFirstBooking[b.client_id] = d
+    }
   }
 
-  // ── Upcoming grouped by session_type ──────────────────────────────────────
-  const upcomingByType: Record<string, BookingRow[]> = {}
-  for (const b of upcomingBookings) {
-    const t = b.session_type ?? 'other'
-    if (!upcomingByType[t]) upcomingByType[t] = []
-    upcomingByType[t].push(b)
-  }
-
-  // ── Financial — use payment receipt dates (paid_at), not invoice issue dates ──
-  // Filter payments by the selected date range
-  function filterPaymentsByRange(payments: { amount: number | string; paid_at: string }[]) {
-    return payments.filter(p => {
-      if (finFrom && p.paid_at < finFrom) return false
-      if (finTo   && p.paid_at > finTo + 'T23:59:59') return false
-      return true
-    })
-  }
-
-  const rangePayments       = filterPaymentsByRange(allPayments)
-  const revenueInRange      = rangePayments.reduce((s, p) => s + Number(p.amount), 0)
-
-  // For MoM comparison: always compare this month vs last month (independent of range)
-  const thisMonthPayments   = allPayments.filter(p => p.paid_at >= thisMonthStart)
-  const lastMonthPayments   = allPayments.filter(p => p.paid_at >= lastMonthStart && p.paid_at < thisMonthStart)
-  const revenueThisMonth    = thisMonthPayments.reduce((s, p) => s + Number(p.amount), 0)
-  const revenueLastMonth    = lastMonthPayments.reduce((s, p) => s + Number(p.amount), 0)
-  const revenueTotal        = allPayments.reduce((s, p) => s + Number(p.amount), 0)
-
-  const outstanding         = allInvoices.filter(i => i.status === 'sent' || i.status === 'draft').reduce((s, i) => s + Number(i.total), 0)
-  const overdue             = allInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0)
-
-  // MoM shown only for "this month" range
-  const showMoM    = activeRange === 'this_month'
-  const momDiff    = revenueThisMonth - revenueLastMonth
-  const momPercent = revenueLastMonth > 0 ? Math.round((momDiff / revenueLastMonth) * 100) : null
-
-  const todayPaymentsTotal  = todayPayments.reduce((s, p) => s + Number(p.amount), 0)
-  const todayInvoicesTotal  = todayInvoices.reduce((s, i) => s + Number(i.total), 0)
-
-  // ── Revenue bar chart (last 6 months, always uses payment dates) ──────────
-  const monthlyRevenue: { label: string; amount: number }[] = []
-  for (let i = 5; i >= 0; i--) {
-    const d    = new Date(year, month - 1 - i, 1)
-    const y    = d.getFullYear()
-    const m    = d.getMonth() + 1
-    const from = `${y}-${String(m).padStart(2, '0')}-01`
-    const toD  = new Date(y, m, 1)
-    const to   = `${toD.getFullYear()}-${String(toD.getMonth() + 1).padStart(2, '0')}-01`
-    const amt  = allPayments.filter(p => p.paid_at >= from && p.paid_at < to).reduce((s, p) => s + Number(p.amount), 0)
-    monthlyRevenue.push({ label: monthLabel(y, m), amount: amt })
-  }
-  const maxMonthly = Math.max(...monthlyRevenue.map(m => m.amount), 1)
-
-  // ── UI helpers ────────────────────────────────────────────────────────────
-  const card   = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' } as const
-  const cardPad= { ...card, padding: 0, overflow: 'hidden' } as const
-  const lbl    = { fontSize: '12px', color: 'var(--text-4)', margin: '0 0 4px' } as const
-  const val    = { fontSize: '22px', fontWeight: '600', margin: 0 } as const
-  const sxn    = { fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' } as const
-
-  const todayLabel = now.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-
-  // ── Ordered statuses for pipeline (non-cancellation) ─────────────────────
-  const orderedStatuses = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)
-
-  return (
-    <div style={{ maxWidth: '860px' }}>
-
-      {/* ── Header ── */}
-      <div style={{ marginBottom: '1.75rem' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Reports</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{todayLabel}</p>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 1 — TODAY'S SNAPSHOT
-      ════════════════════════════════════════════════════════════════════ */}
-      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Today</p>
-
-      {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
-        <div style={card}>
-          <p style={lbl}>Sessions today</p>
-          <p style={val}>{todayBookings.length}</p>
-        </div>
-        <div style={card}>
-          <p style={lbl}>Payments received</p>
-          <p style={{ ...val, fontSize: todayPaymentsTotal > 0 ? '18px' : '22px', color: todayPaymentsTotal > 0 ? '#3b6d11' : 'var(--text)' }}>
-            {todayPaymentsTotal > 0 ? fmt(todayPaymentsTotal) : '—'}
-          </p>
-          {todayPayments.length > 0 && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>{todayPayments.length} payment{todayPayments.length !== 1 ? 's' : ''}</p>}
-        </div>
-        <div style={card}>
-          <p style={lbl}>Invoices raised today</p>
-          <p style={{ ...val, fontSize: todayInvoicesTotal > 0 ? '18px' : '22px' }}>
-            {todayInvoicesTotal > 0 ? fmt(todayInvoicesTotal) : '—'}
-          </p>
-          {todayInvoices.length > 0 && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>{todayInvoices.length} invoice{todayInvoices.length !== 1 ? 's' : ''}</p>}
-        </div>
-        {overdue > 0 && (
-          <div style={card}>
-            <p style={lbl}>Overdue invoices</p>
-            <p style={{ ...val, fontSize: '18px', color: '#a32d2d' }}>{fmt(overdue)}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Today's status breakdown */}
-      {todayBookings.length > 0 && (
-        <div style={{ ...card, marginBottom: '10px' }}>
-          <p style={sxn}>TODAY BY STATUS</p>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {orderedStatuses.map(s => {
-              const count = todayByStatus[s.value] ?? 0
-              if (!count) return null
-              return (
-                <div key={s.value} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: s.color_bg, borderRadius: '20px', padding: '5px 12px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '600', color: s.color_fg }}>{count}</span>
-                  <span style={{ fontSize: '12px', color: s.color_fg }}>{s.label}</span>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Today's session list */}
-      {todayBookings.length > 0 ? (
-        <div style={{ ...cardPad, marginBottom: '28px' }}>
-          {todayBookings.map((s, i) => {
-            const ty = typeStyle(s.session_type)
-            return (
-              <div key={s.booking_id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '0.875rem 1.25rem',
-                borderBottom: i < todayBookings.length - 1 ? '1px solid var(--line-inner)' : 'none',
-              }}>
-                <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                    {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
-                    {s.packages?.name ? ` · ${s.packages.name}` : ''}
-                    {s.shoot_type ? ` · ${s.shoot_type}` : ''}
-                  </p>
-                </Link>
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0, marginLeft: '12px', alignItems: 'center' }}>
-                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: ty.bg, color: ty.color, fontWeight: '500' }}>{ty.label}</span>
-                  <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      ) : (
-        <div style={{ ...card, textAlign: 'center', marginBottom: '28px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions scheduled for today</p>
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 1.5 — THIS WEEK
-      ════════════════════════════════════════════════════════════════════ */}
-      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>This week</p>
-      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${weekDays.length}, 1fr)`, gap: '8px', marginBottom: '28px' }}>
-        {dayStats.map(day => (
-          <div key={day.iso} style={{
-            background: day.isToday ? 'var(--btn)' : 'var(--surface)',
-            border: `1px solid ${day.isToday ? 'var(--btn)' : 'var(--line)'}`,
-            borderRadius: '10px', padding: '0.875rem', textAlign: 'center',
-          }}>
-            <p style={{ fontSize: '11px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '0 0 6px', fontWeight: '500' }}>
-              {day.label}
-            </p>
-            <p style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 2px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text)' }}>
-              {day.sessions}
-            </p>
-            <p style={{ fontSize: '11px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: 0, opacity: 0.85 }}>
-              {day.sessions === 1 ? 'session' : 'sessions'}
-            </p>
-            {day.revenue > 0 && (
-              <p style={{ fontSize: '11px', fontWeight: '600', margin: '6px 0 0', color: day.isToday ? 'var(--btn-fg)' : '#3b6d11' }}>
-                {fmt(day.revenue)}
-              </p>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 2 — UPCOMING BY CATEGORY (next 30 days)
-      ════════════════════════════════════════════════════════════════════ */}
-      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>
-        Upcoming — next 30 days
-      </p>
-
-      {upcomingBookings.length === 0 ? (
-        <div style={{ ...card, textAlign: 'center', marginBottom: '28px' }}>
-          <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions in the next 30 days</p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px', marginBottom: '28px' }}>
-          {config.sessionTypes.map(type => {
-            const sessions = upcomingByType[type.value] ?? []
-            return (
-              <div key={type.value} style={cardPad}>
-                <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p style={{ ...sxn, margin: 0 }}>{type.label.toUpperCase()}</p>
-                  <span style={{ fontSize: '12px', fontWeight: '600', background: type.color_bg, color: type.color_fg, padding: '2px 10px', borderRadius: '20px' }}>
-                    {sessions.length}
-                  </span>
-                </div>
-                {sessions.length === 0 ? (
-                  <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '0.875rem 1.25rem' }}>None scheduled</p>
-                ) : (
-                  sessions.slice(0, 6).map((s, i) => {
-                    return (
-                      <div key={s.booking_id} style={{
-                        padding: '0.75rem 1.25rem',
-                        borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px',
-                      }}>
-                        <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
-                          <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                            {s.clients?.full_name ?? '—'}
-                          </p>
-                          <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
-                            {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
-                            {s.shoot_type ? ` · ${s.shoot_type}` : ''}
-                          </p>
-                        </Link>
-                        <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
-                      </div>
-                    )
-                  })
-                )}
-                {sessions.length > 6 && (
-                  <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
-                    <Link href="/dashboard/sessions" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
-                      +{sessions.length - 6} more →
-                    </Link>
-                  </div>
-                )}
-              </div>
-            )
-          })}
-
-          {/* Any session types not in config (edge case) */}
-          {Object.entries(upcomingByType)
-            .filter(([k]) => !config.sessionTypes.find(t => t.value === k))
-            .map(([type, sessions]) => (
-              <div key={type} style={cardPad}>
-                <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <p style={{ ...sxn, margin: 0 }}>{type.toUpperCase()}</p>
-                  <span style={{ fontSize: '12px', fontWeight: '600', background: 'var(--line)', color: 'var(--text-2)', padding: '2px 10px', borderRadius: '20px' }}>
-                    {sessions.length}
-                  </span>
-                </div>
-                {sessions.slice(0, 6).map((s, i) => {
-                  return (
-                    <div key={s.booking_id} style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 6) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                      <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
-                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{s.clients?.full_name ?? '—'}</p>
-                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
-                          {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }) : '—'}
-                        </p>
-                      </Link>
-                      <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
-                    </div>
-                  )
-                })}
-              </div>
-            ))}
-        </div>
-      )}
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 3 — ACTIVE PIPELINE BY STATUS
-      ════════════════════════════════════════════════════════════════════ */}
-      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: '0 0 10px' }}>Active pipeline</p>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px', marginBottom: '28px' }}>
-        {orderedStatuses.map(s => {
-          const sessions = pipelineByStatus[s.value] ?? []
-          if (!sessions.length) return null
-          return (
-            <div key={s.value} style={cardPad}>
-              <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '12px', fontWeight: '600', background: s.color_bg, color: s.color_fg, padding: '3px 12px', borderRadius: '20px' }}>{s.label}</span>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)' }}>{sessions.length}</span>
-              </div>
-              {sessions.slice(0, 5).map((b, i) => (
-                <div key={b.booking_id} style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(sessions.length, 5) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                  <Link href={`/dashboard/sessions/${b.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0, flex: 1 }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {b.clients?.full_name ?? '—'}
-                    </p>
-                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                      {sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date)}
-                    </p>
-                  </Link>
-                  <InlineStatusSelect sessionId={b.booking_id} currentStatus={b.status} />
-                </div>
-              ))}
-              {sessions.length > 5 && (
-                <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
-                  <Link href={`/dashboard/sessions?status=${s.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
-                    +{sessions.length - 5} more →
-                  </Link>
-                </div>
-              )}
-            </div>
-          )
-        })}
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════
-          SECTION 4 — FINANCIAL OVERVIEW
-      ════════════════════════════════════════════════════════════════════ */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-        <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase', margin: 0 }}>Financial overview</p>
-        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {PRESETS.map(p => (
-            <Link
-              key={p.value}
-              href={`/dashboard/reports?range=${p.value}`}
-              style={{
-                fontSize: '12px', padding: '4px 10px', borderRadius: '20px', textDecoration: 'none',
-                border: `1px solid ${activeRange === p.value ? 'var(--btn)' : 'var(--line)'}`,
-                background: activeRange === p.value ? 'var(--btn)' : 'var(--surface)',
-                color:      activeRange === p.value ? 'var(--btn-fg)' : 'var(--text-3)',
-                fontWeight: activeRange === p.value ? '600' : '400',
-              }}
-            >
-              {p.label}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px', marginBottom: '12px' }}>
-        <div style={card}>
-          <p style={lbl}>
-            {activeRange === 'this_month' ? 'Revenue this month' :
-             activeRange === 'last_3_months' ? 'Revenue (3 months)' :
-             activeRange === 'this_year' ? `Revenue ${year}` :
-             'All-time paid'}
-          </p>
-          <p style={val}>{fmt(activeRange === 'all_time' ? revenueTotal : revenueInRange)}</p>
-          {showMoM && momPercent !== null && (
-            <p style={{ fontSize: '12px', margin: '4px 0 0', color: momDiff >= 0 ? '#3b6d11' : '#a32d2d' }}>
-              {momDiff >= 0 ? '↑' : '↓'} {Math.abs(momPercent)}% vs last month
-            </p>
-          )}
-        </div>
-        {activeRange !== 'all_time' && (
-          <div style={card}>
-            <p style={lbl}>All-time paid</p>
-            <p style={val}>{fmt(revenueTotal)}</p>
-          </div>
-        )}
-        <div style={card}>
-          <p style={lbl}>Outstanding</p>
-          <p style={{ ...val, color: outstanding > 0 ? '#854f0b' : 'var(--text)' }}>{fmt(outstanding)}</p>
-          <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>unpaid invoices</p>
-        </div>
-        {overdue > 0 && (
-          <div style={card}>
-            <p style={lbl}>Overdue</p>
-            <p style={{ ...val, color: '#a32d2d' }}>{fmt(overdue)}</p>
-            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '4px 0 0' }}>chasing needed</p>
-          </div>
-        )}
-      </div>
-
-      {/* Revenue bar chart */}
-      <div style={{ ...card, marginBottom: '12px' }}>
-        <p style={sxn}>REVENUE — LAST 6 MONTHS</p>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px', height: '120px' }}>
-          {monthlyRevenue.map(({ label, amount }) => {
-            const heightPct    = maxMonthly > 0 ? (amount / maxMonthly) * 100 : 0
-            const isCurrent    = label === monthLabel(year, month)
-            return (
-              <div key={label} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', height: '100%', justifyContent: 'flex-end' }}>
-                <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: 0, whiteSpace: 'nowrap' }}>
-                  {amount > 0 ? fmt(amount) : ''}
-                </p>
-                <div style={{
-                  width: '100%',
-                  height: `${Math.max(heightPct, amount > 0 ? 4 : 0)}%`,
-                  background: isCurrent ? 'var(--btn)' : 'var(--line)',
-                  borderRadius: '4px 4px 0 0',
-                  minHeight: amount > 0 ? '4px' : '0',
-                }} />
-                <p style={{ fontSize: '10px', color: isCurrent ? 'var(--text)' : 'var(--text-4)', margin: 0, fontWeight: isCurrent ? '600' : '400' }}>
-                  {label}
-                </p>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-    </div>
+  const clientsInRange = new Set(
+    rangeBookings.filter(b => b.client_id && !cancelValues.includes(b.status)).map(b => b.client_id as string)
   )
+  let newInRange = 0, returningInRange = 0
+  for (const cid of clientsInRange) {
+    const first = clientFirstBooking[cid]
+    const isNew = first && (!finFrom || first >= finFrom)
+    if (isNew) newInRange++; else returningInRange++
+  }
+
+  // Top clients by session count (in range)
+  const clientSessionCount: Record<string, number> = {}
+  const clientLastSession: Record<string, string>  = {}
+  for (const b of rangeBookings) {
+    if (!b.client_id || cancelValues.includes(b.status)) continue
+    clientSessionCount[b.client_id] = (clientSessionCount[b.client_id] ?? 0) + 1
+    const d = b.session_date?.slice(0, 10) ?? ''
+    if (!clientLastSession[b.client_id] || d > clientLastSession[b.client_id]) clientLastSession[b.client_id] = d
+  }
+  const clientMap: Record<string, string> = {}
+  for (const c of allClients) clientMap[c.client_id] = c.full_name
+  const topClients = Object.entries(clientSessionCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([cid, count]) => ({
+      client_id: cid, name: clientMap[cid] ?? '—',
+      sessions: count, lastSession: clientLastSession[cid] ?? null,
+    }))
+
+  // ── STAFF computations ────────────────────────────────────────────────────
+  const staffMap: Record<string, { name: string; role: string | null }> = {}
+  for (const s of allStaff) staffMap[s.staff_id] = { name: s.full_name, role: s.role ?? null }
+
+  // Filter booking_staff to range (via booking session_date)
+  const rangeBookingIds = new Set(rangeBookings.map(b => b.booking_id))
+  const rangeBookingStaff = bookingStaff.filter(bs => rangeBookingIds.has(bs.booking_id))
+
+  const staffSessionMap: Record<string, Record<string, number>> = {}
+  for (const bs of rangeBookingStaff) {
+    if (!staffSessionMap[bs.staff_id]) staffSessionMap[bs.staff_id] = {}
+    staffSessionMap[bs.staff_id][bs.role] = (staffSessionMap[bs.staff_id][bs.role] ?? 0) + 1
+  }
+  const staffSessions = Object.entries(staffSessionMap).map(([staffId, roles]) => {
+    const total = Object.values(roles).reduce((s, n) => s + n, 0)
+    return {
+      staff_id: staffId,
+      name:     staffMap[staffId]?.name ?? '—',
+      role:     staffMap[staffId]?.role ?? null,
+      total,
+      asPhotographer:  roles['photographer']   ?? 0,
+      asEditor:        roles['editor']         ?? 0,
+      asVideographer:  roles['videographer']   ?? 0,
+      asVideoEditor:   roles['video_editor']   ?? 0,
+      asColourGrader:  roles['colour_grader']  ?? 0,
+    }
+  }).sort((a, b) => b.total - a.total)
+
+  // Attendance in range
+  const staffAttendance = allStaff.map(s => {
+    const myCheckins = checkins.filter(c => c.staff_id === s.staff_id)
+    const daysPresent = myCheckins.length
+    const totalMinutes = myCheckins.reduce((sum, c) => {
+      if (!c.checked_out_at) return sum
+      const inMs  = new Date(c.checked_in_at).getTime()
+      const outMs = new Date(c.checked_out_at).getTime()
+      return sum + (outMs - inMs) / 60000
+    }, 0)
+    return { staff_id: s.staff_id, name: s.full_name, daysPresent, totalHours: Math.round(totalMinutes / 60) }
+  }).filter(s => s.daysPresent > 0).sort((a, b) => b.daysPresent - a.daysPresent)
+
+  // ── PACKAGES computations ─────────────────────────────────────────────────
+  const packageBookingCount: Record<string, number> = {}
+  let noPackageCount = 0
+  for (const b of rangeBookings) {
+    if (cancelValues.includes(b.status)) continue
+    if (!b.package_id) { noPackageCount++; continue }
+    packageBookingCount[b.package_id] = (packageBookingCount[b.package_id] ?? 0) + 1
+  }
+  const packageStats = allPackages
+    .map(p => ({ package_id: p.package_id, name: p.name, bookings: packageBookingCount[p.package_id] ?? 0 }))
+    .sort((a, b) => b.bookings - a.bookings)
+
+  // ── KPI summary ───────────────────────────────────────────────────────────
+  const sessionsInRange = rangeBookings.filter(b => !cancelValues.includes(b.status)).length
+  const todayLabel      = now.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+
+  const props: ReportsViewProps = {
+    activeRange, activeTab: tab, finFrom, finTo, todayISO, todayLabel,
+    config: {
+      bookingStatuses: config.bookingStatuses,
+      sessionTypes:    config.sessionTypes,
+      serviceTypes:    config.serviceTypes,
+    },
+    // Revenue
+    revenueInRange, revenueAllTime, revenueThisMonth, revenueLastMonth,
+    outstanding, overdue,
+    paymentsByMethod,
+    revenueBySessionType,
+    revenueByServiceType,
+    monthlyRevenue,
+    // Sessions
+    sessionsInRange,
+    todayBookings: todayBookings.map(b => ({
+      booking_id: b.booking_id, booking_ref: b.booking_ref ?? null,
+      session_date: b.session_date ?? null, status: b.status,
+      session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
+      service_type: b.service_type ?? null,
+      client_name: b.clients?.full_name ?? null, package_name: b.packages?.name ?? null,
+    })),
+    sessionsThisWeek: weekBookings.length,
+    cancelledInRange, completedInRange,
+    sessionsByType, sessionsByService, sessionsByCategory,
+    monthlySessionCounts,
+    upcomingBookings: upcomingBookings.map(b => ({
+      booking_id: b.booking_id, booking_ref: b.booking_ref ?? null,
+      session_date: b.session_date ?? null, status: b.status,
+      session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
+      service_type: b.service_type ?? null,
+      client_name: b.clients?.full_name ?? null, package_name: b.packages?.name ?? null,
+    })),
+    weekStrip,
+    // Pipeline
+    pipelineByStatus,
+    noInvoiceCount, noContractCount,
+    // Clients
+    totalClients, newClientsInRange: newInRange, returningClientsInRange: returningInRange,
+    topClients,
+    // Staff
+    staffSessions, staffAttendance,
+    // Packages
+    packageStats, noPackageCount,
+  }
+
+  return <ReportsView {...props} />
 }
