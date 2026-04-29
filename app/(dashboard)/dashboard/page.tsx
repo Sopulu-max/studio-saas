@@ -24,6 +24,16 @@ export default async function DashboardPage() {
   })
   const todayDay   = DAY_NAMES[now.getDay()]
 
+  const year           = now.getFullYear()
+  const month          = now.getMonth() + 1
+  const thisMonthStart = `${year}-${String(month).padStart(2, '0')}-01`
+  const dayOfWeek      = now.getDay()
+  const daysBack       = dayOfWeek === 0 ? 6 : dayOfWeek - 1
+  const monday         = new Date(now.getTime() - daysBack * 86_400_000)
+  const mondayISO      = monday.toISOString().slice(0, 10)
+  // Fetch payments from the earlier of week-start or month-start
+  const paymentFrom    = mondayISO < thisMonthStart ? mondayISO : thisMonthStart
+
   // ── Status configuration ──────────────────────────────────────────────────────
   const activeStatuses = config.bookingStatuses
     .filter(s => !s.is_terminal && !s.is_cancellation)
@@ -36,6 +46,13 @@ export default async function DashboardPage() {
     .filter(s => s.is_cancellation || s.is_terminal)
     .map(s => `"${s.value}"`).join(',') || '"__none__"'
 
+  // ── Phase 1: invoice IDs needed to scope payment queries to this studio ────────
+  const { data: invoiceIdRows } = await admin
+    .from('invoices')
+    .select('invoice_id, bookings!inner(studio_id)')
+    .eq('bookings.studio_id', studioId)
+  const invoiceIds = (invoiceIdRows ?? []).map((r: any) => r.invoice_id as string)
+
   // ── All queries in parallel ───────────────────────────────────────────────────
   const [
     { count: pendingCount },
@@ -45,6 +62,9 @@ export default async function DashboardPage() {
     { data: pipelineRaw },
     { data: allStaff },
     { data: todayCheckins },
+    { data: weekBookingsRaw },
+    { data: recentPaymentsRaw },
+    { data: outstandingRaw },
   ] = await Promise.all([
     // Pending booking requests
     admin.from('bookings')
@@ -78,7 +98,7 @@ export default async function DashboardPage() {
 
     // Full active pipeline — all non-terminal, non-cancelled (no date cap)
     admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, status, clients(full_name)')
+      .select('booking_id, booking_ref, session_date, session_type, shoot_type, status, clients(full_name)')
       .eq('studio_id', studioId)
       .not('status', 'in', `(${excludeIn})`)
       .order('session_date', { ascending: false })
@@ -95,6 +115,30 @@ export default async function DashboardPage() {
       .select('staff_id, checked_in_at, checked_out_at')
       .eq('studio_id', studioId)
       .eq('date', todayStr),
+
+    // Sessions this week (Mon → today) — for weekly strip counts
+    admin.from('bookings')
+      .select('booking_id, session_date')
+      .eq('studio_id', studioId)
+      .gte('session_date', mondayISO)
+      .lte('session_date', todayEnd)
+      .not('status', 'in', `(${excludeIn})`),
+
+    // Payments this week / this month window
+    invoiceIds.length > 0
+      ? admin.from('payments')
+          .select('amount, paid_at')
+          .in('invoice_id', invoiceIds)
+          .gte('paid_at', paymentFrom)
+          .lte('paid_at', todayEnd)
+      : Promise.resolve({ data: [] as { amount: number; paid_at: string }[] }),
+
+    // Outstanding invoices (draft / sent / overdue) with session + client detail
+    admin.from('invoices')
+      .select('invoice_id, total, status, due_date, issued_at, bookings!inner(studio_id, booking_ref, session_date, clients(full_name))')
+      .eq('bookings.studio_id', studioId)
+      .in('status', ['draft', 'sent', 'overdue'])
+      .limit(15),
   ])
 
   // ── Types ─────────────────────────────────────────────────────────────────────
@@ -107,12 +151,22 @@ export default async function DashboardPage() {
   }
   type StaffRow    = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
   type CheckinRow  = { staff_id: string; checked_in_at: string; checked_out_at: string | null }
+  type WeekBooking = { booking_id: string; session_date: string | null }
+  type RecentPayment = { amount: number | string; paid_at: string }
+  type OutstandingInvoiceRow = {
+    invoice_id: string; total: number | string | null; status: string
+    due_date: string | null; issued_at: string | null
+    bookings: { booking_ref: number | null; session_date: string | null; clients: { full_name: string | null } | null } | null
+  }
 
   const todaySessions    = (todayRaw      ?? []) as unknown as SessionRow[]
   const next3Sessions    = (next3Raw      ?? []) as unknown as SessionRow[]
   const pipelineSessions = (pipelineRaw   ?? []) as unknown as SessionRow[]
   const typedStaff       = (allStaff      ?? []) as unknown as StaffRow[]
   const typedCheckins    = (todayCheckins ?? []) as unknown as CheckinRow[]
+  const weekBookingsList = (weekBookingsRaw  ?? []) as unknown as WeekBooking[]
+  const recentPayments   = (recentPaymentsRaw ?? []) as RecentPayment[]
+  const outstandingInvoices = (outstandingRaw ?? []) as unknown as OutstandingInvoiceRow[]
 
   // ── Staff today ───────────────────────────────────────────────────────────────
   const checkinMap: Record<string, CheckinRow> = {}
@@ -130,6 +184,36 @@ export default async function DashboardPage() {
   for (const t of config.sessionTypes) {
     sessionTypeStyles[t.value] = { label: t.label, color_bg: t.color_bg, color_fg: t.color_fg }
   }
+
+  // ── Revenue figures ───────────────────────────────────────────────────────────
+  const revenueToday = recentPayments
+    .filter(p => p.paid_at.startsWith(todayStr))
+    .reduce((s, p) => s + Number(p.amount), 0)
+  const revenueWeek  = recentPayments
+    .filter(p => p.paid_at >= mondayISO)
+    .reduce((s, p) => s + Number(p.amount), 0)
+  const revenueMonth = recentPayments
+    .filter(p => p.paid_at >= thisMonthStart)
+    .reduce((s, p) => s + Number(p.amount), 0)
+
+  // ── Weekly day strip (Mon → today) ────────────────────────────────────────────
+  const weekDays: { iso: string; label: string; isToday: boolean; sessions: number; revenue: number }[] = []
+  for (
+    let d = new Date(monday);
+    d.toISOString().slice(0, 10) <= todayStr;
+    d = new Date(d.getTime() + 86_400_000)
+  ) {
+    const iso = d.toISOString().slice(0, 10)
+    weekDays.push({
+      iso,
+      label:    d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }),
+      isToday:  iso === todayStr,
+      sessions: weekBookingsList.filter(b => b.session_date?.startsWith(iso)).length,
+      revenue:  recentPayments.filter(p => p.paid_at.startsWith(iso)).reduce((s, p) => s + Number(p.amount), 0),
+    })
+  }
+
+  const draftCount = outstandingInvoices.filter(i => i.status === 'draft').length
 
   const pendingCfg = config.bookingStatuses.find(s => s.value === pendingStatus)
 
@@ -155,6 +239,15 @@ export default async function DashboardPage() {
     staffToday:     staffToday as DashboardProps['staffToday'],
     statusStyles,
     sessionTypeStyles,
+    sessionTypeValues: config.sessionTypes.map(t => ({
+      value: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
+    })),
+    revenueToday,
+    revenueWeek,
+    revenueMonth,
+    weekDays,
+    outstandingInvoices: outstandingInvoices as DashboardProps['outstandingInvoices'],
+    draftCount,
   }
 
   return <DashboardWidgets {...props} />
