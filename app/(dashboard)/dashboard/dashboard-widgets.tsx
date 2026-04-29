@@ -60,8 +60,6 @@ export type DashboardProps = {
   sessionTypeValues: { value: string; label: string; color_bg: string; color_fg: string }[]
   // Revenue
   revenueToday:      number
-  revenueWeek:       number
-  revenueMonth:      number
   weekDays:          { iso: string; label: string; isToday: boolean; sessions: number; revenue: number }[]
   // Invoices
   outstandingInvoices: OutstandingInvoice[]
@@ -233,19 +231,24 @@ export default function DashboardWidgets(props: DashboardProps) {
         ) : (
           <>
             {/* Type + status summary strip */}
-            <div style={{ padding: '0.6rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-              {props.sessionTypeValues.map(t => {
-                const count = todayByType[t.value] ?? 0
-                if (!count) return null
-                return <span key={t.value} style={badge(t.color_bg, t.color_fg)}>{t.label}: {count}</span>
-              })}
-              <span style={{ width: '1px', height: '14px', background: 'var(--line-inner)', display: 'inline-block', margin: '0 2px' }} />
-              {props.activeStatuses.map(st => {
-                const count = todayByStatus[st.value] ?? 0
-                if (!count) return null
-                return <span key={st.value} style={badge(st.color_bg, st.color_fg)}>{st.label}: {count}</span>
-              })}
-            </div>
+            {(() => {
+              const typePills   = props.sessionTypeValues.filter(t => (todayByType[t.value] ?? 0) > 0)
+              const statusPills = props.activeStatuses.filter(st => (todayByStatus[st.value] ?? 0) > 0)
+              if (!typePills.length && !statusPills.length) return null
+              return (
+                <div style={{ padding: '0.6rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                  {typePills.map(t => (
+                    <span key={t.value} style={badge(t.color_bg, t.color_fg)}>{t.label}: {todayByType[t.value]}</span>
+                  ))}
+                  {typePills.length > 0 && statusPills.length > 0 && (
+                    <span style={{ width: '1px', height: '14px', background: 'var(--line-inner)', display: 'inline-block', margin: '0 2px' }} />
+                  )}
+                  {statusPills.map(st => (
+                    <span key={st.value} style={badge(st.color_bg, st.color_fg)}>{st.label}: {todayByStatus[st.value]}</span>
+                  ))}
+                </div>
+              )
+            })()}
 
             {/* Sessions grouped by type */}
             {typeGroups.map((group, gi) => (
@@ -288,34 +291,28 @@ export default function DashboardWidgets(props: DashboardProps) {
 
   function renderRevenue() {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {/* KPI cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: '10px' }}>
-          {[
-            { label: "Today's revenue",  value: props.revenueToday,  color: '#3b6d11' },
-            { label: 'This week',         value: props.revenueWeek,   color: 'var(--text)' },
-            { label: 'This month',        value: props.revenueMonth,  color: 'var(--text)' },
-          ].map(kpi => (
-            <div key={kpi.label} style={{ ...card, padding: '1rem 1.25rem' }}>
-              <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 4px', fontWeight: 500 }}>{kpi.label}</p>
-              <p style={{ fontSize: '20px', fontWeight: 600, margin: 0, color: kpi.value > 0 && kpi.color === '#3b6d11' ? kpi.color : 'var(--text)' }}>
-                {kpi.value > 0 ? fmt(kpi.value) : '—'}
-              </p>
-            </div>
-          ))}
+      <div style={{ ...card, overflow: 'hidden' }}>
+        {/* Header — section label + today's revenue */}
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={sxn}>This week</p>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 1px', fontWeight: 500 }}>Today's revenue</p>
+            <p style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: props.revenueToday > 0 ? '#3b6d11' : 'var(--text-3)' }}>
+              {props.revenueToday > 0 ? fmt(props.revenueToday) : '—'}
+            </p>
+          </div>
         </div>
 
         {/* Weekly day strip */}
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.weekDays.length}, 1fr)`, gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.weekDays.length}, 1fr)`, padding: '0.875rem 1.25rem', gap: '8px' }}>
           {props.weekDays.map(day => (
             <div key={day.iso} style={{
-              ...card,
-              padding: '0.875rem',
+              padding: '0.75rem 0.5rem',
               textAlign: 'center',
-              background: day.isToday ? 'var(--btn)' : 'var(--surface)',
-              border: day.isToday ? '1px solid var(--btn)' : '1px solid var(--line)',
+              borderRadius: '10px',
+              background: day.isToday ? 'var(--btn)' : 'var(--hover)',
             }}>
-              <p style={{ fontSize: '11px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '0 0 4px', fontWeight: 500 }}>
+              <p style={{ fontSize: '10px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '0 0 4px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                 {day.label}
               </p>
               <p style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 1px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text)' }}>
@@ -325,7 +322,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                 {day.sessions === 1 ? 'session' : 'sessions'}
               </p>
               {day.revenue > 0 && (
-                <p style={{ fontSize: '11px', fontWeight: 600, margin: '4px 0 0', color: day.isToday ? 'var(--btn-fg)' : '#3b6d11' }}>
+                <p style={{ fontSize: '10px', fontWeight: 600, margin: '4px 0 0', color: day.isToday ? 'var(--btn-fg)' : '#3b6d11' }}>
                   {fmt(day.revenue)}
                 </p>
               )}

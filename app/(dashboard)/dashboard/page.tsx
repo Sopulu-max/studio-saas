@@ -243,8 +243,6 @@ export default async function DashboardPage() {
       value: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
     })),
     revenueToday,
-    revenueWeek,
-    revenueMonth,
     weekDays,
     outstandingInvoices: outstandingInvoices as DashboardProps['outstandingInvoices'],
     draftCount,
