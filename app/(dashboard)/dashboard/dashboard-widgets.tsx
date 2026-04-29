@@ -55,13 +55,10 @@ export type DashboardProps = {
   pipelineSessions:  Session[]
   activeStatuses:    (Style & { value: string })[]
   staffToday:        Staff[]
-  statusStyles:      Record<string, Style>
   sessionTypeStyles: Record<string, Style>
   sessionTypeValues: { value: string; label: string; color_bg: string; color_fg: string }[]
-  // Revenue
   revenueToday:      number
   weekDays:          { iso: string; label: string; isToday: boolean; sessions: number; revenue: number }[]
-  // Invoices
   outstandingInvoices: OutstandingInvoice[]
   draftCount:        number
 }
@@ -86,27 +83,41 @@ function daysOverdue(dueDateISO: string | null): number | null {
   const diff = Math.floor((Date.now() - new Date(dueDateISO).getTime()) / 86_400_000)
   return diff > 0 ? diff : null
 }
-
 const LATE_H = 8, LATE_M = 30
 function isLate(iso: string) {
   const d = new Date(iso)
   return d.getHours() > LATE_H || (d.getHours() === LATE_H && d.getMinutes() > LATE_M)
 }
 
-// ─── Block layout ─────────────────────────────────────────────────────────────
+// ─── Layout system ────────────────────────────────────────────────────────────
+// Each widget has an id and a span: 1 = half width, 2 = full width.
+// The entire dashboard is a 2-column CSS grid; span-2 items use grid-column: span 2.
+// alignItems: start on the grid means cards never stretch to match their neighbour.
 
-type BlockId = 'today' | 'revenue' | 'middle' | 'invoices' | 'bottom'
-const BLOCK_DEFAULT: BlockId[] = ['today', 'revenue', 'middle', 'invoices', 'bottom']
+type BlockId = 'today' | 'revenue' | 'schedule' | 'pipeline' | 'invoices' | 'actions' | 'staff'
+type LayoutItem = { id: BlockId; span: 1 | 2 }
+
+const LAYOUT_DEFAULT: LayoutItem[] = [
+  { id: 'today',    span: 2 },
+  { id: 'revenue',  span: 1 },
+  { id: 'schedule', span: 1 },
+  { id: 'pipeline', span: 1 },
+  { id: 'invoices', span: 1 },
+  { id: 'actions',  span: 1 },
+  { id: 'staff',    span: 1 },
+]
+
 const BLOCK_LABEL: Record<BlockId, string> = {
   today:    "Today's sessions",
   revenue:  'Revenue & weekly stats',
-  middle:   'Next 3 days & pipeline',
+  schedule: 'Next 3 days',
+  pipeline: 'Active pipeline',
   invoices: 'Outstanding invoices',
-  bottom:   'Quick actions & staff',
+  actions:  'Quick actions',
+  staff:    'Staff today',
 }
-function moveItem<T>(arr: T[], from: number, to: number): T[] {
-  const r = [...arr]; const [x] = r.splice(from, 1); r.splice(to, 0, x); return r
-}
+
+const STORAGE_KEY = 'dashboard-layout-v5'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -116,9 +127,6 @@ const badge = (bg: string, fg: string): React.CSSProperties => ({
   display: 'inline-block', fontSize: '11px', padding: '2px 8px',
   borderRadius: '20px', background: bg, color: fg, fontWeight: 500, whiteSpace: 'nowrap',
 })
-
-// ─── Invoice status colours (fixed domain — not workflow statuses) ─────────────
-
 const INV_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
   overdue: { bg: '#fcebeb', fg: '#a32d2d', label: 'Overdue' },
   sent:    { bg: '#e8f0fb', fg: '#185fa5', label: 'Sent'    },
@@ -129,53 +137,103 @@ const INV_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
 
 export default function DashboardWidgets(props: DashboardProps) {
   const [editMode, setEditMode] = useState(false)
-  const [order, setOrder]       = useState<BlockId[]>(BLOCK_DEFAULT)
+  const [layout, setLayout]     = useState<LayoutItem[]>(LAYOUT_DEFAULT)
   const [dragging, setDragging] = useState<BlockId | null>(null)
   const [dragOver, setDragOver] = useState<BlockId | null>(null)
 
+  // Restore saved layout
   useEffect(() => {
     try {
-      const saved = localStorage.getItem('dashboard-block-order-v4')
+      const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
-        const p: BlockId[] = JSON.parse(saved)
-        if (p.length === BLOCK_DEFAULT.length && p.every(id => (BLOCK_DEFAULT as string[]).includes(id))) setOrder(p)
+        const parsed: LayoutItem[] = JSON.parse(saved)
+        const ids = LAYOUT_DEFAULT.map(l => l.id)
+        // Accept only if it contains exactly the right set of block ids
+        if (
+          parsed.length === ids.length &&
+          ids.every(id => parsed.find(p => p.id === id)) &&
+          parsed.every(p => ids.includes(p.id) && (p.span === 1 || p.span === 2))
+        ) {
+          setLayout(parsed)
+        }
       }
     } catch {}
   }, [])
 
-  function saveOrder(next: BlockId[]) {
-    setOrder(next)
-    localStorage.setItem('dashboard-block-order-v4', JSON.stringify(next))
+  function saveLayout(next: LayoutItem[]) {
+    setLayout(next)
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
   }
 
-  function wrap(id: BlockId, content: React.ReactNode) {
-    const isGhost = dragging === id
-    const isOver  = dragOver === id && dragging !== id
+  function toggleSpan(id: BlockId) {
+    saveLayout(layout.map(item => item.id === id ? { ...item, span: item.span === 2 ? 1 : 2 } as LayoutItem : item))
+  }
+
+  function handleDrop(targetId: BlockId) {
+    if (!dragging || dragging === targetId) { setDragging(null); setDragOver(null); return }
+    const from = layout.findIndex(l => l.id === dragging)
+    const to   = layout.findIndex(l => l.id === targetId)
+    const next = [...layout]
+    const [moved] = next.splice(from, 1)
+    next.splice(to, 0, moved)
+    saveLayout(next)
+    setDragging(null); setDragOver(null)
+  }
+
+  // ── Block wrapper: handles drag, span, edit-mode handle bar ─────────────────
+
+  function wrap(item: LayoutItem, content: React.ReactNode) {
+    const isGhost = dragging === item.id
+    const isOver  = dragOver === item.id && dragging !== item.id
     return (
       <div
-        key={id}
+        key={item.id}
+        className={item.span === 2 ? 'dash-col-2' : 'dash-col-1'}
         draggable={editMode}
-        onDragStart={() => setDragging(id)}
-        onDragOver={e => { e.preventDefault(); setDragOver(id) }}
-        onDrop={() => {
-          if (dragging && dragging !== id) saveOrder(moveItem(order, order.indexOf(dragging), order.indexOf(id)))
-          setDragging(null); setDragOver(null)
-        }}
+        onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragging(item.id) }}
+        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOver(item.id) }}
+        onDrop={e => { e.preventDefault(); handleDrop(item.id) }}
         onDragEnd={() => { setDragging(null); setDragOver(null) }}
         style={{
-          opacity: isGhost ? 0.3 : 1, transition: 'opacity .15s',
-          borderTop: isOver ? '3px solid var(--btn)' : '3px solid transparent',
-          marginBottom: '12px',
+          gridColumn: item.span === 2 ? 'span 2' : 'span 1',
+          opacity:    isGhost ? 0.25 : 1,
+          transition: 'opacity .15s',
+          outline:    isOver ? '2px solid var(--btn)' : '2px solid transparent',
+          outlineOffset: '3px',
+          borderRadius: '14px',
         }}
       >
         {editMode && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 8px', marginBottom: '4px', background: 'color-mix(in srgb, var(--btn) 7%, transparent)', borderRadius: '8px', cursor: 'grab', userSelect: 'none' }}>
-            <svg width="10" height="10" viewBox="0 0 12 12">
-              {[0, 4, 8].map(y => (
-                <g key={y}><circle cx="3" cy={y + 2} r="1" fill="var(--text-3)" /><circle cx="9" cy={y + 2} r="1" fill="var(--text-3)" /></g>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '5px 10px', marginBottom: '4px',
+            background: 'color-mix(in srgb, var(--btn) 8%, transparent)',
+            borderRadius: '8px', cursor: 'grab', userSelect: 'none',
+          }}>
+            {/* Grip icon */}
+            <svg width="10" height="14" viewBox="0 0 10 14" style={{ flexShrink: 0 }}>
+              {[0, 5, 10].map(y => (
+                <g key={y}>
+                  <circle cx="2" cy={y + 2} r="1.2" fill="var(--text-3)" />
+                  <circle cx="8" cy={y + 2} r="1.2" fill="var(--text-3)" />
+                </g>
               ))}
             </svg>
-            <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.04em' }}>{BLOCK_LABEL[id].toUpperCase()}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.04em', flex: 1 }}>
+              {BLOCK_LABEL[item.id].toUpperCase()}
+            </span>
+            {/* Span toggle */}
+            <button
+              onClick={e => { e.stopPropagation(); toggleSpan(item.id) }}
+              title={item.span === 2 ? 'Switch to half width' : 'Switch to full width'}
+              style={{
+                fontSize: '11px', padding: '2px 8px', borderRadius: '6px', cursor: 'pointer',
+                background: 'var(--surface)', border: '1px solid var(--line)',
+                color: 'var(--text-2)', fontWeight: 500, whiteSpace: 'nowrap',
+              }}
+            >
+              {item.span === 2 ? '⊟ Split' : '⊞ Full'}
+            </button>
           </div>
         )}
         {content}
@@ -186,7 +244,6 @@ export default function DashboardWidgets(props: DashboardProps) {
   // ── Today's sessions ────────────────────────────────────────────────────────
 
   function renderToday() {
-    // Summary counts
     const todayByStatus: Record<string, number> = {}
     const todayByType:   Record<string, number> = {}
     for (const s of props.todaySessions) {
@@ -194,14 +251,12 @@ export default function DashboardWidgets(props: DashboardProps) {
       todayByType[s.session_type ?? '__other'] = (todayByType[s.session_type ?? '__other'] ?? 0) + 1
     }
 
-    // Group sessions by type (config order first, then unknowns)
     type TypeGroup = { value: string; label: string; color_bg: string; color_fg: string; sessions: Session[] }
     const typeGroups: TypeGroup[] = []
     for (const t of props.sessionTypeValues) {
       const sessions = props.todaySessions.filter(s => (s.session_type ?? '') === t.value)
       if (sessions.length) typeGroups.push({ ...t, sessions })
     }
-    // Unknown types not in config
     for (const s of props.todaySessions) {
       const k = s.session_type ?? '__other'
       if (!props.sessionTypeValues.find(t => t.value === k) && !typeGroups.find(g => g.value === k)) {
@@ -213,9 +268,11 @@ export default function DashboardWidgets(props: DashboardProps) {
       }
     }
 
+    const typePills   = props.sessionTypeValues.filter(t => (todayByType[t.value]   ?? 0) > 0)
+    const statusPills = props.activeStatuses.filter(st  => (todayByStatus[st.value] ?? 0) > 0)
+
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
-        {/* Header */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>Today</p>
           <span style={{ fontSize: '13px', color: 'var(--text-4)' }}>
@@ -230,27 +287,19 @@ export default function DashboardWidgets(props: DashboardProps) {
           </div>
         ) : (
           <>
-            {/* Type + status summary strip */}
-            {(() => {
-              const typePills   = props.sessionTypeValues.filter(t => (todayByType[t.value] ?? 0) > 0)
-              const statusPills = props.activeStatuses.filter(st => (todayByStatus[st.value] ?? 0) > 0)
-              if (!typePills.length && !statusPills.length) return null
-              return (
-                <div style={{ padding: '0.6rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
-                  {typePills.map(t => (
-                    <span key={t.value} style={badge(t.color_bg, t.color_fg)}>{t.label}: {todayByType[t.value]}</span>
-                  ))}
-                  {typePills.length > 0 && statusPills.length > 0 && (
-                    <span style={{ width: '1px', height: '14px', background: 'var(--line-inner)', display: 'inline-block', margin: '0 2px' }} />
-                  )}
-                  {statusPills.map(st => (
-                    <span key={st.value} style={badge(st.color_bg, st.color_fg)}>{st.label}: {todayByStatus[st.value]}</span>
-                  ))}
-                </div>
-              )
-            })()}
-
-            {/* Sessions grouped by type */}
+            {(typePills.length > 0 || statusPills.length > 0) && (
+              <div style={{ padding: '0.6rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px' }}>
+                {typePills.map(t => (
+                  <span key={t.value} style={badge(t.color_bg, t.color_fg)}>{t.label}: {todayByType[t.value]}</span>
+                ))}
+                {typePills.length > 0 && statusPills.length > 0 && (
+                  <span style={{ width: '1px', height: '14px', background: 'var(--line-inner)', display: 'inline-block', margin: '0 2px' }} />
+                )}
+                {statusPills.map(st => (
+                  <span key={st.value} style={badge(st.color_bg, st.color_fg)}>{st.label}: {todayByStatus[st.value]}</span>
+                ))}
+              </div>
+            )}
             {typeGroups.map((group, gi) => (
               <div key={group.value}>
                 <div style={{ padding: '0.55rem 1.25rem', background: 'var(--hover)', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -259,8 +308,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                 </div>
                 {group.sessions.map((s, i) => (
                   <div key={s.booking_id} style={{
-                    display: 'flex', alignItems: 'center', gap: '12px',
-                    padding: '0.875rem 1.25rem',
+                    display: 'flex', alignItems: 'center', gap: '12px', padding: '0.875rem 1.25rem',
                     borderBottom: (gi < typeGroups.length - 1 || i < group.sessions.length - 1) ? '1px solid var(--line-inner)' : 'none',
                   }}>
                     <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-2)', flexShrink: 0, minWidth: '54px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
@@ -287,12 +335,11 @@ export default function DashboardWidgets(props: DashboardProps) {
     )
   }
 
-  // ── Revenue & weekly stats ───────────────────────────────────────────────────
+  // ── Revenue & weekly strip ───────────────────────────────────────────────────
 
   function renderRevenue() {
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
-        {/* Header — section label + today's revenue */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>This week</p>
           <div style={{ textAlign: 'right' }}>
@@ -302,17 +349,13 @@ export default function DashboardWidgets(props: DashboardProps) {
             </p>
           </div>
         </div>
-
-        {/* Weekly day strip */}
         <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.weekDays.length}, 1fr)`, padding: '0.875rem 1.25rem', gap: '8px' }}>
           {props.weekDays.map(day => (
             <div key={day.iso} style={{
-              padding: '0.75rem 0.5rem',
-              textAlign: 'center',
-              borderRadius: '10px',
+              padding: '0.75rem 0.5rem', textAlign: 'center', borderRadius: '10px',
               background: day.isToday ? 'var(--btn)' : 'var(--hover)',
             }}>
-              <p style={{ fontSize: '10px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '0 0 4px', fontWeight: 500, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              <p style={{ fontSize: '10px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '0 0 4px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                 {day.label}
               </p>
               <p style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 1px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text)' }}>
@@ -343,7 +386,6 @@ export default function DashboardWidgets(props: DashboardProps) {
       if (!g) { g = { iso, label: fmtDate(iso), sessions: [] }; dayGroups.push(g) }
       g.sessions.push(s)
     }
-
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -375,9 +417,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                       <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.clients?.full_name ?? '—'}
                       </p>
-                      {s.shoot_type && (
-                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{s.shoot_type}</p>
-                      )}
+                      {s.shoot_type && <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{s.shoot_type}</p>}
                     </Link>
                     <span style={{ ...badge(ty.color_bg, ty.color_fg), flexShrink: 0 }}>{ty.label}</span>
                     <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
@@ -415,17 +455,13 @@ export default function DashboardWidgets(props: DashboardProps) {
           </div>
         ) : (
           groups.map((g, gi) => {
-            const MAX    = 5
-            const shown  = g.sessions.slice(0, MAX)
-            const extras = g.sessions.length - MAX
+            const MAX = 5; const shown = g.sessions.slice(0, MAX); const extras = g.sessions.length - MAX
             return (
               <div key={g.value} style={{ borderBottom: gi < groups.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
-                {/* Status group header */}
                 <div style={{ padding: '0.65rem 1.25rem', background: 'var(--hover)', borderBottom: '1px solid var(--line-inner)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={badge(g.color_bg, g.color_fg)}>{g.label}</span>
                   <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-2)' }}>{g.sessions.length}</span>
                 </div>
-                {/* Session rows */}
                 {shown.map((s, i) => {
                   const ty = styleFor(props.sessionTypeStyles, s.session_type)
                   return (
@@ -451,9 +487,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                 })}
                 {extras > 0 && (
                   <div style={{ padding: '0.6rem 1.25rem' }}>
-                    <Link href={`/dashboard/sessions?status=${g.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
-                      +{extras} more →
-                    </Link>
+                    <Link href={`/dashboard/sessions?status=${g.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>+{extras} more →</Link>
                   </div>
                 )}
               </div>
@@ -471,7 +505,6 @@ export default function DashboardWidgets(props: DashboardProps) {
     const sent    = props.outstandingInvoices.filter(i => i.status === 'sent')
     const draft   = props.outstandingInvoices.filter(i => i.status === 'draft')
     const all     = [...overdue, ...sent, ...draft]
-
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
@@ -480,10 +513,9 @@ export default function DashboardWidgets(props: DashboardProps) {
             {overdue.length > 0 && <span style={badge('#fcebeb', '#a32d2d')}>Overdue: {overdue.length}</span>}
             {sent.length   > 0 && <span style={badge('#e8f0fb', '#185fa5')}>Sent: {sent.length}</span>}
             {draft.length  > 0 && <span style={badge('#f0f0ee', '#5f5e5a')}>Draft: {draft.length}</span>}
-            <Link href="/dashboard/invoices" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>All invoices →</Link>
+            <Link href="/dashboard/invoices" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>All →</Link>
           </div>
         </div>
-
         {all.length === 0 ? (
           <div style={{ padding: '1.5rem 1.25rem', textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No outstanding invoices 🎉</p>
@@ -503,14 +535,12 @@ export default function DashboardWidgets(props: DashboardProps) {
                   borderBottom: i < Math.min(all.length, 10) - 1 ? '1px solid var(--line-inner)' : 'none',
                 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
-                    <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {clientName}
-                    </p>
+                    <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clientName}</p>
                     <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
                       {ref ? `#${ref}` : inv.invoice_id.slice(-6)}
                       {sessionDate ? ` · ${fmtDateShort(sessionDate)}` : ''}
                       {overdueDays != null
-                        ? ` · ${overdueDays} day${overdueDays !== 1 ? 's' : ''} overdue`
+                        ? ` · ${overdueDays}d overdue`
                         : inv.due_date ? ` · Due ${fmtDateShort(inv.due_date)}` : ''}
                     </p>
                   </div>
@@ -536,109 +566,102 @@ export default function DashboardWidgets(props: DashboardProps) {
     )
   }
 
-  // ── Middle: next 3 days + pipeline side by side ──────────────────────────────
+  // ── Quick actions ────────────────────────────────────────────────────────────
 
-  function renderMiddle() {
+  function renderActions() {
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }} className="dash-middle-grid">
-        {renderSchedule()}
-        {renderPipeline()}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ ...card, padding: '1.25rem' }}>
+          <p style={{ ...sxn, marginBottom: '12px' }}>Quick actions</p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {[
+              { label: 'New session', href: '/dashboard/sessions/new' },
+              { label: 'New invoice', href: '/dashboard/invoices/new' },
+              { label: 'Add client',  href: '/dashboard/clients/new' },
+              { label: 'Print order', href: '/dashboard/print-orders/new' },
+            ].map(a => (
+              <Link key={a.href} href={a.href} style={{
+                padding: '7px 14px', borderRadius: '8px', fontSize: '13px',
+                border: '1px solid var(--line)', color: 'var(--text)',
+                textDecoration: 'none', background: 'var(--surface)',
+              }}>{a.label}</Link>
+            ))}
+          </div>
+        </div>
+        <div style={{ ...card, padding: '1.25rem' }}>
+          <p style={{ ...sxn, marginBottom: '8px' }}>Your booking link</p>
+          {!props.studioSlug ? (
+            <div>
+              <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 8px', lineHeight: '1.5' }}>
+                Set a URL slug in Settings to get your public booking link.
+              </p>
+              <Link href="/dashboard/settings" style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none', fontWeight: 500 }}>Go to Settings →</Link>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
+              <code style={{ fontSize: '11px', background: 'var(--hover)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--line)', flex: 1, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {props.siteUrl}/book/{props.studioSlug}
+              </code>
+              <Link href={`/book/${props.studioSlug}`} target="_blank" rel="noreferrer"
+                style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--btn)', color: 'var(--btn-fg)', borderRadius: '8px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
+                Open ↗
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     )
   }
 
-  // ── Bottom: quick actions + staff ────────────────────────────────────────────
+  // ── Staff today ──────────────────────────────────────────────────────────────
 
-  function renderBottom() {
-    const hasStaff = props.staffToday.length > 0
-    return (
-      <div style={{ display: 'grid', gridTemplateColumns: hasStaff ? '1fr 1fr' : '1fr', gap: '12px' }} className="dash-bottom-grid">
-        {/* Quick actions + booking link */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <div style={{ ...card, padding: '1.25rem' }}>
-            <p style={{ ...sxn, marginBottom: '12px' }}>Quick actions</p>
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[
-                { label: 'New session', href: '/dashboard/sessions/new' },
-                { label: 'New invoice', href: '/dashboard/invoices/new' },
-                { label: 'Add client',  href: '/dashboard/clients/new' },
-                { label: 'Print order', href: '/dashboard/print-orders/new' },
-              ].map(a => (
-                <Link key={a.href} href={a.href} style={{
-                  padding: '7px 14px', borderRadius: '8px', fontSize: '13px',
-                  border: '1px solid var(--line)', color: 'var(--text)',
-                  textDecoration: 'none', background: 'var(--surface)',
-                }}>
-                  {a.label}
-                </Link>
-              ))}
-            </div>
-          </div>
-
-          <div style={{ ...card, padding: '1.25rem' }}>
-            <p style={{ ...sxn, marginBottom: '8px' }}>Your booking link</p>
-            {!props.studioSlug ? (
-              <div>
-                <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 8px', lineHeight: '1.5' }}>
-                  Set a URL slug in Settings to get your public booking link.
-                </p>
-                <Link href="/dashboard/settings" style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none', fontWeight: 500 }}>Go to Settings →</Link>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '8px' }}>
-                <code style={{ fontSize: '11px', background: 'var(--hover)', padding: '6px 10px', borderRadius: '8px', border: '1px solid var(--line)', flex: 1, color: 'var(--text-2)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {props.siteUrl}/book/{props.studioSlug}
-                </code>
-                <Link href={`/book/${props.studioSlug}`} target="_blank" rel="noreferrer"
-                  style={{ padding: '6px 12px', fontSize: '12px', background: 'var(--btn)', color: 'var(--btn-fg)', borderRadius: '8px', textDecoration: 'none', whiteSpace: 'nowrap' }}>
-                  Open ↗
-                </Link>
-              </div>
-            )}
-          </div>
+  function renderStaff() {
+    if (!props.staffToday.length) {
+      return (
+        <div style={{ ...card, padding: '1.25rem' }}>
+          <p style={{ ...sxn, marginBottom: '8px' }}>Staff today</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No staff scheduled today</p>
         </div>
-
-        {/* Staff today */}
-        {hasStaff && (
-          <div style={{ ...card, overflow: 'hidden' }}>
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <p style={sxn}>Staff today</p>
-              <Link href="/dashboard/attendance" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>Full board →</Link>
-            </div>
-            {props.staffToday.slice(0, 8).map((m, i) => {
-              const checkedIn  = !!m.checkin
-              const checkedOut = !!m.checkin?.checked_out_at
-              const late       = checkedIn && isLate(m.checkin!.checked_in_at)
-              const roles      = m.roles?.length ? m.roles : m.role ? [m.role] : []
-              const dotColor   = checkedOut ? '#6abf69' : checkedIn ? '#4a90d9' : '#c8c8c4'
-              return (
-                <div key={m.staff_id} style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  padding: '0.75rem 1.25rem', gap: '8px',
-                  borderBottom: i < Math.min(props.staffToday.length, 8) - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize: '13px', fontWeight: 500, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name}</p>
-                      {roles.length > 0 && (
-                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {roles[0].replace(/_/g, ' ')}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <span style={{ fontSize: '11px', color: late ? '#a32d2d' : 'var(--text-4)', fontWeight: late ? 700 : 400, flexShrink: 0 }}>
-                    {checkedIn ? (late ? `${fmtTime(m.checkin!.checked_in_at)} LATE` : fmtTime(m.checkin!.checked_in_at)) : '—'}
-                  </span>
+      )
+    }
+    return (
+      <div style={{ ...card, overflow: 'hidden' }}>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={sxn}>Staff today</p>
+          <Link href="/dashboard/attendance" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>Full board →</Link>
+        </div>
+        {props.staffToday.slice(0, 8).map((m, i) => {
+          const checkedIn  = !!m.checkin
+          const checkedOut = !!m.checkin?.checked_out_at
+          const late       = checkedIn && isLate(m.checkin!.checked_in_at)
+          const roles      = m.roles?.length ? m.roles : m.role ? [m.role] : []
+          const dotColor   = checkedOut ? '#6abf69' : checkedIn ? '#4a90d9' : '#c8c8c4'
+          return (
+            <div key={m.staff_id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '0.75rem 1.25rem', gap: '8px',
+              borderBottom: i < Math.min(props.staffToday.length, 8) - 1 ? '1px solid var(--line-inner)' : 'none',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: '13px', fontWeight: 500, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{m.full_name}</p>
+                  {roles.length > 0 && (
+                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {roles[0].replace(/_/g, ' ')}
+                    </p>
+                  )}
                 </div>
-              )
-            })}
-            {props.staffToday.length > 8 && (
-              <div style={{ padding: '0.65rem 1.25rem' }}>
-                <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>+{props.staffToday.length - 8} more staff today</p>
               </div>
-            )}
+              <span style={{ fontSize: '11px', color: late ? '#a32d2d' : 'var(--text-4)', fontWeight: late ? 700 : 400, flexShrink: 0 }}>
+                {checkedIn ? (late ? `${fmtTime(m.checkin!.checked_in_at)} LATE` : fmtTime(m.checkin!.checked_in_at)) : '—'}
+              </span>
+            </div>
+          )
+        })}
+        {props.staffToday.length > 8 && (
+          <div style={{ padding: '0.65rem 1.25rem' }}>
+            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>+{props.staffToday.length - 8} more staff today</p>
           </div>
         )}
       </div>
@@ -650,17 +673,20 @@ export default function DashboardWidgets(props: DashboardProps) {
   const blockRenderers: Record<BlockId, () => React.ReactNode> = {
     today:    renderToday,
     revenue:  renderRevenue,
-    middle:   renderMiddle,
+    schedule: renderSchedule,
+    pipeline: renderPipeline,
     invoices: renderInvoices,
-    bottom:   renderBottom,
+    actions:  renderActions,
+    staff:    renderStaff,
   }
 
   return (
     <div>
       <style>{`
-        @media (max-width: 780px) {
-          .dash-middle-grid { grid-template-columns: 1fr !important; }
-          .dash-bottom-grid  { grid-template-columns: 1fr !important; }
+        /* On mobile collapse everything to 1 column */
+        @media (max-width: 680px) {
+          .dash-grid { grid-template-columns: 1fr !important; }
+          .dash-col-1, .dash-col-2 { grid-column: span 1 !important; }
         }
       `}</style>
 
@@ -688,10 +714,7 @@ export default function DashboardWidgets(props: DashboardProps) {
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           {props.pendingCount > 0 && (
             <Link href={`/dashboard/sessions?status=${props.pendingStatus}`} style={{ textDecoration: 'none', flex: '1 1 auto' }}>
-              <div style={{
-                background: props.pendingStyle.color_bg, border: `1px solid ${props.pendingStyle.color_fg}35`,
-                borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
+              <div style={{ background: props.pendingStyle.color_bg, border: `1px solid ${props.pendingStyle.color_fg}35`, borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', fontWeight: 500, color: props.pendingStyle.color_fg }}>
                   🔔 {props.pendingCount} booking request{props.pendingCount !== 1 ? 's' : ''} need{props.pendingCount === 1 ? 's' : ''} a response
                 </span>
@@ -701,26 +724,16 @@ export default function DashboardWidgets(props: DashboardProps) {
           )}
           {props.overdueCount > 0 && (
             <Link href="/dashboard/invoices?status=overdue" style={{ textDecoration: 'none', flex: '1 1 auto' }}>
-              <div style={{
-                background: '#fcebeb', border: '1px solid #f0a0a0',
-                borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <span style={{ fontSize: '13px', fontWeight: 500, color: '#a32d2d' }}>
-                  ⚠️ {props.overdueCount} overdue invoice{props.overdueCount !== 1 ? 's' : ''}
-                </span>
+              <div style={{ background: '#fcebeb', border: '1px solid #f0a0a0', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#a32d2d' }}>⚠️ {props.overdueCount} overdue invoice{props.overdueCount !== 1 ? 's' : ''}</span>
                 <span style={{ fontSize: '12px', color: '#a32d2d', flexShrink: 0, marginLeft: '8px' }}>Chase →</span>
               </div>
             </Link>
           )}
           {props.draftCount > 0 && (
             <Link href="/dashboard/invoices?status=draft" style={{ textDecoration: 'none', flex: '1 1 auto' }}>
-              <div style={{
-                background: '#f5f5f3', border: '1px solid #d5d5d0',
-                borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-              }}>
-                <span style={{ fontSize: '13px', fontWeight: 500, color: '#5f5e5a' }}>
-                  📋 {props.draftCount} unsent invoice{props.draftCount !== 1 ? 's' : ''}
-                </span>
+              <div style={{ background: '#f5f5f3', border: '1px solid #d5d5d0', borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', fontWeight: 500, color: '#5f5e5a' }}>📋 {props.draftCount} unsent invoice{props.draftCount !== 1 ? 's' : ''}</span>
                 <span style={{ fontSize: '12px', color: '#5f5e5a', flexShrink: 0, marginLeft: '8px' }}>Send →</span>
               </div>
             </Link>
@@ -728,12 +741,10 @@ export default function DashboardWidgets(props: DashboardProps) {
         </div>
       )}
 
-      {/* Draggable blocks */}
-      {order.map(id => (
-        <div key={id}>
-          {wrap(id, blockRenderers[id]())}
-        </div>
-      ))}
+      {/* 2-column grid — alignItems: start prevents height-matching between neighbours */}
+      <div className="dash-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'start' }}>
+        {layout.map(item => wrap(item, blockRenderers[item.id]()))}
+      </div>
     </div>
   )
 }

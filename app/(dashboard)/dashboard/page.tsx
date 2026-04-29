@@ -237,7 +237,6 @@ export default async function DashboardPage() {
       value: s.value, label: s.label, color_bg: s.color_bg, color_fg: s.color_fg,
     })),
     staffToday:     staffToday as DashboardProps['staffToday'],
-    statusStyles,
     sessionTypeStyles,
     sessionTypeValues: config.sessionTypes.map(t => ({
       value: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
