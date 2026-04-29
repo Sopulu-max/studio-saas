@@ -34,6 +34,7 @@ type OutstandingInvoice = {
   status:     string
   due_date:   string | null
   issued_at:  string | null
+  payments:   { amount: number | string }[] | null
   bookings:   {
     booking_ref:  number | null
     session_date: string | null
@@ -562,10 +563,26 @@ export default function DashboardWidgets(props: DashboardProps) {
     const sent    = props.outstandingInvoices.filter(i => i.status === 'sent')
     const draft   = props.outstandingInvoices.filter(i => i.status === 'draft')
     const all     = [...overdue, ...sent, ...draft]
+
+    // Total remaining across all outstanding invoices (balance, not invoice total)
+    const totalRemaining = all.reduce((sum, inv) => {
+      const paid    = inv.payments?.reduce((s, p) => s + Number(p.amount), 0) ?? 0
+      const balance = Math.max(Number(inv.total ?? 0) - paid, 0)
+      return sum + balance
+    }, 0)
+
+    const SHOW = 10
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-          <p style={sxn}>Outstanding invoices</p>
+          <div>
+            <p style={{ ...sxn, marginBottom: totalRemaining > 0 ? '3px' : 0 }}>Outstanding invoices</p>
+            {totalRemaining > 0 && (
+              <p style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: overdue.length > 0 ? '#a32d2d' : 'var(--text)' }}>
+                {fmt(totalRemaining)} remaining
+              </p>
+            )}
+          </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
             {overdue.length > 0 && <span style={badge('#fcebeb', '#a32d2d')}>Overdue: {overdue.length}</span>}
             {sent.length   > 0 && <span style={badge('#e8f0fb', '#185fa5')}>Sent: {sent.length}</span>}
@@ -578,7 +595,10 @@ export default function DashboardWidgets(props: DashboardProps) {
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No outstanding invoices 🎉</p>
           </div>
         ) : (
-          all.slice(0, 10).map((inv, i) => {
+          all.slice(0, SHOW).map((inv, i) => {
+            const paid        = inv.payments?.reduce((s, p) => s + Number(p.amount), 0) ?? 0
+            const balance     = Math.max(Number(inv.total ?? 0) - paid, 0)
+            const isPartial   = paid > 0
             const st          = INV_STATUS[inv.status] ?? { bg: '#f0f0f0', fg: '#555', label: inv.status }
             const overdueDays = inv.status === 'overdue' ? daysOverdue(inv.due_date) : null
             const clientName  = inv.bookings?.clients?.full_name ?? '—'
@@ -589,7 +609,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                 <div style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '0.875rem 1.25rem', gap: '12px',
-                  borderBottom: i < Math.min(all.length, 10) - 1 ? '1px solid var(--line-inner)' : 'none',
+                  borderBottom: i < Math.min(all.length, SHOW) - 1 ? '1px solid var(--line-inner)' : 'none',
                 }}>
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{clientName}</p>
@@ -601,21 +621,26 @@ export default function DashboardWidgets(props: DashboardProps) {
                         : inv.due_date ? ` · Due ${fmtDateShort(inv.due_date)}` : ''}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: inv.status === 'overdue' ? '#a32d2d' : 'var(--text)' }}>
-                      {fmt(Number(inv.total))}
-                    </span>
-                    <span style={badge(st.bg, st.fg)}>{st.label}</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: inv.status === 'overdue' ? '#a32d2d' : 'var(--text)' }}>
+                        {fmt(balance)}
+                      </span>
+                      <span style={badge(st.bg, st.fg)}>{st.label}</span>
+                    </div>
+                    {isPartial && (
+                      <span style={{ fontSize: '10px', color: '#3b6d11' }}>{fmt(paid)} paid · {fmt(Number(inv.total ?? 0))} total</span>
+                    )}
                   </div>
                 </div>
               </Link>
             )
           })
         )}
-        {all.length > 10 && (
+        {all.length > SHOW && (
           <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
             <Link href="/dashboard/invoices" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
-              +{all.length - 10} more outstanding invoices →
+              +{all.length - SHOW} more outstanding invoices →
             </Link>
           </div>
         )}

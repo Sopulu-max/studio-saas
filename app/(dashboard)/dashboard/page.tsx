@@ -133,12 +133,12 @@ export default async function DashboardPage() {
           .lte('paid_at', todayEnd)
       : Promise.resolve({ data: [] as { amount: number; paid_at: string }[] }),
 
-    // Outstanding invoices (draft / sent / overdue) with session + client detail
+    // Outstanding invoices (draft / sent / overdue) with session + client + payments detail
     admin.from('invoices')
-      .select('invoice_id, total, status, due_date, issued_at, bookings!inner(studio_id, booking_ref, session_date, clients(full_name))')
+      .select('invoice_id, total, status, due_date, issued_at, payments(amount), bookings!inner(studio_id, booking_ref, session_date, clients(full_name))')
       .eq('bookings.studio_id', studioId)
       .in('status', ['draft', 'sent', 'overdue'])
-      .limit(15),
+      .limit(20),
   ])
 
   // ── Types ─────────────────────────────────────────────────────────────────────
@@ -156,6 +156,7 @@ export default async function DashboardPage() {
   type OutstandingInvoiceRow = {
     invoice_id: string; total: number | string | null; status: string
     due_date: string | null; issued_at: string | null
+    payments: { amount: number | string }[] | null
     bookings: { booking_ref: number | null; session_date: string | null; clients: { full_name: string | null } | null } | null
   }
 
