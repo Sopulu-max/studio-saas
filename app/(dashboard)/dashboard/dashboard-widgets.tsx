@@ -420,15 +420,18 @@ export default function DashboardWidgets(props: DashboardProps) {
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <p style={sxn}>This week</p>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 1px', fontWeight: 500 }}>Collected today</p>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
+          <p style={sxn}>Revenue</p>
+        </div>
+
+        {/* Today's collection */}
+        <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: hasTodayPayments ? '10px' : 0 }}>
+            <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-3)', margin: 0, letterSpacing: '.03em' }}>Today</p>
             <p style={{ fontSize: '16px', fontWeight: 600, margin: 0, color: props.revenueToday > 0 ? '#3b6d11' : 'var(--text-3)' }}>
               {props.revenueToday > 0 ? fmt(props.revenueToday) : '—'}
             </p>
           </div>
-        </div>
 
         {/* Today's payment breakdown */}
         {hasTodayPayments && (
@@ -474,9 +477,13 @@ export default function DashboardWidgets(props: DashboardProps) {
             </div>
           </div>
         )}
+        </div>
 
         {/* Weekly day strip */}
-        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.weekDays.length}, 1fr)`, padding: '0.875rem 1.25rem', gap: '8px' }}>
+        <div style={{ padding: '0.875rem 1.25rem 0.25rem' }}>
+          <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-3)', margin: '0 0 8px', letterSpacing: '.03em' }}>This week</p>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.weekDays.length}, 1fr)`, padding: '0 1.25rem 0.875rem', gap: '8px' }}>
           {props.weekDays.map(day => (
             <div key={day.iso} style={{
               padding: '0.75rem 0.5rem', textAlign: 'center', borderRadius: '10px',
