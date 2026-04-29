@@ -36,10 +36,10 @@ export async function addClient(form: {
   address: string
 }) {
   const result = addClientSchema.safeParse(form)
-  if (!result.success) return { error: result.error.issues[0].message, existingClientId: null }
+  if (!result.success) return { error: result.error.issues[0].message, existingClientId: null, existingClientName: null, newClientId: null }
 
   const context = await getStudioContext()
-  if ('error' in context) return { error: context.error, existingClientId: null }
+  if ('error' in context) return { error: context.error, existingClientId: null, existingClientName: null, newClientId: null }
 
   // Duplicate check — email (hard block), then phone (hard block)
   if (form.email) {
@@ -53,6 +53,8 @@ export async function addClient(form: {
       return {
         error: `A client named "${byEmail.full_name}" is already registered with this email.`,
         existingClientId: byEmail.client_id,
+        existingClientName: byEmail.full_name,
+        newClientId: null,
       }
     }
   }
@@ -68,6 +70,8 @@ export async function addClient(form: {
       return {
         error: `A client named "${byPhone.full_name}" is already registered with this phone number.`,
         existingClientId: byPhone.client_id,
+        existingClientName: byPhone.full_name,
+        newClientId: null,
       }
     }
   }
@@ -81,7 +85,7 @@ export async function addClient(form: {
   }).select('client_id').single()
 
   if (!error) revalidatePath('/dashboard/clients')
-  return { error: error?.message ?? null, existingClientId: null, newClientId: inserted?.client_id ?? null }
+  return { error: error?.message ?? null, existingClientId: null, existingClientName: null, newClientId: inserted?.client_id ?? null }
 }
 
 export async function deleteClient(clientId: string) {

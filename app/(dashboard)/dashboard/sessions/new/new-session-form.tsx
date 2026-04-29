@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { addSession } from '@/app/actions/sessions'
 import { addPackage } from '@/app/actions/packages'
 import SearchableSelect from '@/components/searchable-select'
+import ClientField from '@/components/client-field'
 import { useStudioConfig } from '@/components/studio-config-provider'
 
 type Client = {
@@ -45,10 +46,11 @@ export default function NewSessionForm({ clients, packages, staff }: {
 }) {
   const router = useRouter()
   const config = useStudioConfig()
-  const [loading, setLoading]         = useState(false)
-  const [error, setError]             = useState('')
-  const [dupSessionId, setDupId]      = useState<string | null>(null)
+  const [loading, setLoading]               = useState(false)
+  const [error, setError]                   = useState('')
+  const [dupSessionId, setDupId]            = useState<string | null>(null)
   const [newPackageName, setNewPackageName] = useState('')
+  const [selectedClientName, setSelectedClientName] = useState('')
 
   const firstType    = config.sessionTypes[0]?.value ?? 'studio'
   const firstService = config.serviceTypes[0]?.value ?? 'photo'
@@ -264,23 +266,12 @@ export default function NewSessionForm({ clients, packages, staff }: {
       <div style={sectionStyle}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Client <span style={{ color: '#e24b4a' }}>*</span></label>
-          {clients.length === 0 ? (
-            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
-              No clients yet — <Link href="/dashboard/clients/new" style={{ color: 'var(--link)' }}>add one first</Link>
-            </p>
-          ) : (
-            <SearchableSelect
-              options={clients.map((c) => ({
-                value: c.client_id,
-                label: c.full_name,
-                sublabel: c.phone ?? undefined,
-              }))}
-              value={form.client_id}
-              onChange={v => update('client_id', v)}
-              placeholder="Search by name or phone…"
-              emptyMessage="No clients match"
-            />
-          )}
+          <ClientField
+            value={form.client_id}
+            selectedName={selectedClientName}
+            initialClients={clients}
+            onChange={(id, name) => { update('client_id', id); setSelectedClientName(name) }}
+          />
         </div>
 
         {isEvent && (
