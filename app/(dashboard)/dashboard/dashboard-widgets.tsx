@@ -90,21 +90,26 @@ function isLate(iso: string) {
 }
 
 // ─── Layout system ────────────────────────────────────────────────────────────
-// Each widget has an id and a span: 1 = half width, 2 = full width.
-// The entire dashboard is a 2-column CSS grid; span-2 items use grid-column: span 2.
-// alignItems: start on the grid means cards never stretch to match their neighbour.
+// Each widget has col: 'left' | 'right' | 'full'.
+// 'left' and 'right' items render in two INDEPENDENT flex columns — heights never
+// affect each other.  'full' items break both columns and span the full width.
+//
+// The layout array is a flat ordered list. Order within each column is the
+// relative order of same-col items in the array. Full items split the two-column
+// sections wherever they appear in the array.
 
-type BlockId = 'today' | 'revenue' | 'schedule' | 'pipeline' | 'invoices' | 'actions' | 'staff'
-type LayoutItem = { id: BlockId; span: 1 | 2 }
+type ColType   = 'left' | 'right' | 'full'
+type BlockId   = 'today' | 'revenue' | 'schedule' | 'pipeline' | 'invoices' | 'actions' | 'staff'
+type LayoutItem = { id: BlockId; col: ColType }
 
 const LAYOUT_DEFAULT: LayoutItem[] = [
-  { id: 'today',    span: 2 },
-  { id: 'revenue',  span: 1 },
-  { id: 'schedule', span: 1 },
-  { id: 'pipeline', span: 1 },
-  { id: 'invoices', span: 1 },
-  { id: 'actions',  span: 1 },
-  { id: 'staff',    span: 1 },
+  { id: 'today',    col: 'full'  },
+  { id: 'revenue',  col: 'left'  },
+  { id: 'schedule', col: 'right' },
+  { id: 'pipeline', col: 'left'  },
+  { id: 'invoices', col: 'right' },
+  { id: 'actions',  col: 'left'  },
+  { id: 'staff',    col: 'right' },
 ]
 
 const BLOCK_LABEL: Record<BlockId, string> = {
@@ -117,7 +122,7 @@ const BLOCK_LABEL: Record<BlockId, string> = {
   staff:    'Staff today',
 }
 
-const STORAGE_KEY = 'dashboard-layout-v5'
+const STORAGE_KEY = 'dashboard-layout-v6'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -138,8 +143,6 @@ const INV_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
 export default function DashboardWidgets(props: DashboardProps) {
   const [editMode, setEditMode] = useState(false)
   const [layout, setLayout]     = useState<LayoutItem[]>(LAYOUT_DEFAULT)
-  const [dragging, setDragging] = useState<BlockId | null>(null)
-  const [dragOver, setDragOver] = useState<BlockId | null>(null)
 
   // Restore saved layout
   useEffect(() => {
@@ -147,12 +150,12 @@ export default function DashboardWidgets(props: DashboardProps) {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
         const parsed: LayoutItem[] = JSON.parse(saved)
-        const ids = LAYOUT_DEFAULT.map(l => l.id)
-        // Accept only if it contains exactly the right set of block ids
+        const ids    = LAYOUT_DEFAULT.map(l => l.id)
+        const validC = new Set<string>(['left', 'right', 'full'])
         if (
           parsed.length === ids.length &&
           ids.every(id => parsed.find(p => p.id === id)) &&
-          parsed.every(p => ids.includes(p.id) && (p.span === 1 || p.span === 2))
+          parsed.every(p => ids.includes(p.id) && validC.has(p.col))
         ) {
           setLayout(parsed)
         }
@@ -165,85 +168,132 @@ export default function DashboardWidgets(props: DashboardProps) {
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(next)) } catch {}
   }
 
-  function toggleSpan(id: BlockId) {
-    saveLayout(layout.map(item => item.id === id ? { ...item, span: item.span === 2 ? 1 : 2 } as LayoutItem : item))
+  // Change which column a widget lives in
+  function setCol(id: BlockId, col: ColType) {
+    saveLayout(layout.map(item => item.id === id ? { ...item, col } : item))
   }
 
-  function handleDrop(targetId: BlockId) {
-    if (!dragging || dragging === targetId) { setDragging(null); setDragOver(null); return }
-    const from = layout.findIndex(l => l.id === dragging)
-    const to   = layout.findIndex(l => l.id === targetId)
-    const next = [...layout]
-    const [moved] = next.splice(from, 1)
-    next.splice(to, 0, moved)
-    saveLayout(next)
-    setDragging(null); setDragOver(null)
+  // Move a widget up (-1) or down (+1) within its column
+  function moveInCol(id: BlockId, dir: -1 | 1) {
+    const item = layout.find(l => l.id === id)!
+    if (item.col === 'full') {
+      // Full items: move in flat array (determines which col segment they appear between)
+      const fi = layout.findIndex(l => l.id === id)
+      const ti = fi + dir
+      if (ti < 0 || ti >= layout.length) return
+      const next = [...layout]; [next[fi], next[ti]] = [next[ti], next[fi]]
+      saveLayout(next)
+    } else {
+      // Column items: swap with adjacent item in the same column
+      const colItems = layout.map((l, i) => ({ l, i })).filter(({ l }) => l.col === item.col)
+      const ci = colItems.findIndex(({ l }) => l.id === id)
+      const ti = ci + dir
+      if (ti < 0 || ti >= colItems.length) return
+      const fFrom = colItems[ci].i
+      const fTo   = colItems[ti].i
+      const next  = [...layout]; [next[fFrom], next[fTo]] = [next[fTo], next[fFrom]]
+      saveLayout(next)
+    }
   }
 
-  // ── Block wrapper: handles drag, span, edit-mode handle bar ─────────────────
+  // ── Widget wrapper ──────────────────────────────────────────────────────────
+  // In arrange mode shows: column picker (← Half | ⊞ Full | Half →) + ↑/↓ buttons.
+  // Card content has pointer-events:none in edit mode so links can't intercept
+  // and controls remain clickable.
 
-  function wrap(item: LayoutItem, content: React.ReactNode) {
-    const isGhost = dragging === item.id
-    const isOver  = dragOver === item.id && dragging !== item.id
+  function renderWidget(item: LayoutItem) {
+    // Determine up/down availability
+    let canUp = false, canDown = false
+    if (item.col === 'full') {
+      const fi = layout.findIndex(l => l.id === item.id)
+      canUp   = fi > 0
+      canDown = fi < layout.length - 1
+    } else {
+      const col = layout.filter(l => l.col === item.col)
+      const ci  = col.findIndex(l => l.id === item.id)
+      canUp   = ci > 0
+      canDown = ci < col.length - 1
+    }
+
     return (
-      <div
-        key={item.id}
-        className={item.span === 2 ? 'dash-col-2' : 'dash-col-1'}
-        draggable={editMode}
-        onDragStart={e => { e.dataTransfer.effectAllowed = 'move'; setDragging(item.id) }}
-        onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; setDragOver(item.id) }}
-        onDrop={e => { e.preventDefault(); handleDrop(item.id) }}
-        onDragEnd={() => { setDragging(null); setDragOver(null) }}
-        style={{
-          gridColumn: item.span === 2 ? 'span 2' : 'span 1',
-          opacity:    isGhost ? 0.25 : 1,
-          transition: 'opacity .15s',
-          outline:    isOver ? '2px solid var(--btn)' : '2px solid transparent',
-          outlineOffset: '3px',
-          borderRadius: '14px',
-        }}
-      >
+      <div key={item.id}>
         {editMode && (
           <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            padding: '5px 10px', marginBottom: '4px',
+            display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap',
+            padding: '5px 8px', marginBottom: '5px',
             background: 'color-mix(in srgb, var(--btn) 8%, transparent)',
-            borderRadius: '8px', cursor: 'grab', userSelect: 'none',
+            borderRadius: '8px', userSelect: 'none',
           }}>
-            {/* Grip icon */}
-            <svg width="10" height="14" viewBox="0 0 10 14" style={{ flexShrink: 0 }}>
-              {[0, 5, 10].map(y => (
-                <g key={y}>
-                  <circle cx="2" cy={y + 2} r="1.2" fill="var(--text-3)" />
-                  <circle cx="8" cy={y + 2} r="1.2" fill="var(--text-3)" />
-                </g>
-              ))}
-            </svg>
-            <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.04em', flex: 1 }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-3)', fontWeight: 600, letterSpacing: '.05em', flex: 1, minWidth: '60px' }}>
               {BLOCK_LABEL[item.id].toUpperCase()}
             </span>
-            {/* Span toggle */}
-            <button
-              onClick={e => { e.stopPropagation(); toggleSpan(item.id) }}
-              title={item.span === 2 ? 'Switch to half width' : 'Switch to full width'}
-              style={{
-                fontSize: '11px', padding: '2px 8px', borderRadius: '6px', cursor: 'pointer',
-                background: 'var(--surface)', border: '1px solid var(--line)',
-                color: 'var(--text-2)', fontWeight: 500, whiteSpace: 'nowrap',
-              }}
-            >
-              {item.span === 2 ? '⊟ Split' : '⊞ Full'}
-            </button>
+
+            {/* Column picker */}
+            <div style={{ display: 'flex', gap: '3px' }}>
+              {(['left', 'full', 'right'] as ColType[]).map(c => (
+                <button key={c} onClick={() => setCol(item.id, c)}
+                  title={c === 'left' ? 'Left half' : c === 'full' ? 'Full width' : 'Right half'}
+                  style={{
+                    fontSize: '11px', padding: '2px 8px', borderRadius: '5px',
+                    cursor: 'pointer', border: '1px solid',
+                    background:  item.col === c ? 'var(--btn)' : 'var(--surface)',
+                    borderColor: item.col === c ? 'var(--btn)' : 'var(--line)',
+                    color:       item.col === c ? 'var(--btn-fg)' : 'var(--text-3)',
+                    fontWeight: 500,
+                  }}
+                >
+                  {c === 'left' ? '← Half' : c === 'full' ? '⊞ Full' : 'Half →'}
+                </button>
+              ))}
+            </div>
+
+            {/* Up / Down */}
+            <div style={{ display: 'flex', gap: '2px' }}>
+              {([[-1, '↑', canUp], [1, '↓', canDown]] as [number, string, boolean][]).map(([d, lbl, en]) => (
+                <button key={d} onClick={() => moveInCol(item.id, d as -1 | 1)} disabled={!en}
+                  style={{
+                    fontSize: '12px', padding: '1px 7px', borderRadius: '5px',
+                    cursor: en ? 'pointer' : 'default',
+                    background: 'var(--surface)', border: '1px solid var(--line)',
+                    color: en ? 'var(--text-2)' : 'var(--text-4)', fontWeight: 600,
+                  }}
+                >{lbl}</button>
+              ))}
+            </div>
           </div>
         )}
-        {/* In edit mode, block pointer events on card content so links/images
-            don't intercept the mousedown and start their own native drag,
-            which would prevent the widget drag from ever firing. */}
         <div style={{ pointerEvents: editMode ? 'none' : 'auto' }}>
-          {content}
+          {blockRenderers[item.id]()}
         </div>
       </div>
     )
+  }
+
+  // ── Parse layout into visual segments ──────────────────────────────────────
+  // Full items create their own segment row. Consecutive left/right items collect
+  // into a two-column segment. Each two-column segment is two INDEPENDENT flex
+  // columns — no grid rows, no height coupling between left and right.
+
+  type Seg =
+    | { type: 'full'; item: LayoutItem }
+    | { type: 'cols'; left: LayoutItem[]; right: LayoutItem[] }
+
+  function getSegments(): Seg[] {
+    const segs: Seg[] = []
+    let left: LayoutItem[] = [], right: LayoutItem[] = []
+    const flush = () => {
+      if (left.length || right.length) {
+        segs.push({ type: 'cols', left: [...left], right: [...right] })
+        left = []; right = []
+      }
+    }
+    for (const item of layout) {
+      if (item.col === 'full')      { flush(); segs.push({ type: 'full', item }) }
+      else if (item.col === 'left') left.push(item)
+      else                          right.push(item)
+    }
+    flush()
+    return segs
   }
 
   // ── Today's sessions ────────────────────────────────────────────────────────
@@ -688,10 +738,8 @@ export default function DashboardWidgets(props: DashboardProps) {
   return (
     <div>
       <style>{`
-        /* On mobile collapse everything to 1 column */
         @media (max-width: 680px) {
-          .dash-grid { grid-template-columns: 1fr !important; }
-          .dash-col-1, .dash-col-2 { grid-column: span 1 !important; }
+          .dash-two-col { flex-direction: column !important; }
         }
       `}</style>
 
@@ -746,9 +794,42 @@ export default function DashboardWidgets(props: DashboardProps) {
         </div>
       )}
 
-      {/* 2-column grid — alignItems: start prevents height-matching between neighbours */}
-      <div className="dash-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', alignItems: 'start' }}>
-        {layout.map(item => wrap(item, blockRenderers[item.id]()))}
+      {/* Segmented layout — two truly independent flex columns, no grid rows */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        {getSegments().map((seg, si) => {
+          if (seg.type === 'full') {
+            return <div key={seg.item.id}>{renderWidget(seg.item)}</div>
+          }
+
+          const { left, right } = seg
+          const hasLeft  = left.length > 0
+          const hasRight = right.length > 0
+          const segKey   = `cols-${(left[0] ?? right[0]).id}`
+
+          if (!hasLeft || !hasRight) {
+            // One column is empty — render items at full width
+            return (
+              <div key={segKey} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[...left, ...right].map(item => renderWidget(item))}
+              </div>
+            )
+          }
+
+          return (
+            <div key={segKey} className="dash-two-col"
+              style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}
+            >
+              {/* Left column — completely independent of right */}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {left.map(item => renderWidget(item))}
+              </div>
+              {/* Right column — completely independent of left */}
+              <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {right.map(item => renderWidget(item))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
   )
