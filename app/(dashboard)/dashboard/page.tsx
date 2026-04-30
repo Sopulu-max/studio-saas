@@ -162,13 +162,16 @@ export default async function DashboardPage() {
       .in('status', ['draft', 'sent', 'overdue'])
       .limit(20),
 
-    // Upcoming occasion deadlines — sessions with event_date in the next 14 days
+    // Upcoming category dates — sessions where the actual birthday/wedding/etc.
+    // falls in the next 14 days.  Include delivered sessions: the shoot is done
+    // but the date still matters — you may want to send wishes or confirm delivery.
+    // Only exclude cancellations.
     admin.from('bookings')
       .select('booking_id, booking_ref, event_date, event_name, shoot_type, session_type, session_date, status, clients(full_name)')
       .eq('studio_id', studioId)
       .gte('event_date', todayStr)
       .lte('event_date', in14DaysEnd)
-      .not('status', 'in', `(${excludeIn})`)
+      .not('status', 'in', `(${excludeCancelIn})`)
       .not('shoot_type', 'is', null)
       .order('event_date', { ascending: true })
       .limit(20),
