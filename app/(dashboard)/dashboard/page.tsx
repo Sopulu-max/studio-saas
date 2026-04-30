@@ -6,6 +6,18 @@ import type { DashboardProps } from './dashboard-widgets'
 
 const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
 
+type DashboardInvoiceIdRow = { invoice_id: string }
+type DashboardPaymentBooking = {
+  booking_ref?: number | null
+  clients?: { full_name?: string | null } | null
+}
+type DashboardRecentPayment = {
+  amount: number | string
+  paid_at: string
+  method?: string | null
+  invoices?: { bookings?: DashboardPaymentBooking | null } | null
+}
+
 export default async function DashboardPage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
@@ -18,7 +30,8 @@ export default async function DashboardPage() {
   const now        = new Date()
   const todayStr   = now.toISOString().slice(0, 10)         // "2026-04-28"
   const todayEnd   = `${todayStr}T23:59:59`
-  const in3DaysEnd = `${new Date(now.getTime() + 3 * 86_400_000).toISOString().slice(0, 10)}T23:59:59`
+  const in3DaysEnd  = `${new Date(now.getTime() +  3 * 86_400_000).toISOString().slice(0, 10)}T23:59:59`
+  const in14DaysEnd = `${new Date(now.getTime() + 14 * 86_400_000).toISOString().slice(0, 10)}T23:59:59`
   const todayLabel = now.toLocaleDateString('en-NG', {
     weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
@@ -51,7 +64,7 @@ export default async function DashboardPage() {
     .from('invoices')
     .select('invoice_id, bookings!inner(studio_id)')
     .eq('bookings.studio_id', studioId)
-  const invoiceIds = (invoiceIdRows ?? []).map((r: any) => r.invoice_id as string)
+  const invoiceIds = ((invoiceIdRows ?? []) as DashboardInvoiceIdRow[]).map((row) => row.invoice_id)
 
   // ── All queries in parallel ───────────────────────────────────────────────────
   const [
@@ -65,6 +78,7 @@ export default async function DashboardPage() {
     { data: weekBookingsRaw },
     { data: recentPaymentsRaw },
     { data: outstandingRaw },
+    { data: upcomingOccasionsRaw },
   ] = await Promise.all([
     // Pending booking requests
     admin.from('bookings')
@@ -80,7 +94,7 @@ export default async function DashboardPage() {
 
     // Today's sessions
     admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, shoot_type, status, clients(full_name), packages(name)')
+      .select('booking_id, booking_ref, session_date, session_type, shoot_type, event_date, event_name, status, clients(full_name), packages(name)')
       .eq('studio_id', studioId)
       .gte('session_date', todayStr)
       .lte('session_date', todayEnd)
@@ -89,7 +103,7 @@ export default async function DashboardPage() {
 
     // Next 3 days (tomorrow → +3)
     admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, shoot_type, status, clients(full_name)')
+      .select('booking_id, booking_ref, session_date, session_type, shoot_type, event_date, event_name, status, clients(full_name)')
       .eq('studio_id', studioId)
       .gt('session_date', todayEnd)
       .lte('session_date', in3DaysEnd)
@@ -98,7 +112,7 @@ export default async function DashboardPage() {
 
     // Full active pipeline — all non-terminal, non-cancelled (no date cap)
     admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, shoot_type, status, clients(full_name)')
+      .select('booking_id, booking_ref, session_date, session_type, shoot_type, event_date, event_name, status, clients(full_name)')
       .eq('studio_id', studioId)
       .not('status', 'in', `(${excludeIn})`)
       .order('session_date', { ascending: false })
@@ -131,7 +145,7 @@ export default async function DashboardPage() {
           .in('invoice_id', invoiceIds)
           .gte('paid_at', paymentFrom)
           .lte('paid_at', todayEnd)
-      : Promise.resolve({ data: [] as any[] }),
+      : Promise.resolve({ data: [] as DashboardRecentPayment[] }),
 
     // Outstanding invoices (draft / sent / overdue) with session + client + payments detail
     admin.from('invoices')
@@ -139,15 +153,33 @@ export default async function DashboardPage() {
       .eq('bookings.studio_id', studioId)
       .in('status', ['draft', 'sent', 'overdue'])
       .limit(20),
+
+    // Upcoming occasion deadlines — sessions with event_date in the next 14 days
+    admin.from('bookings')
+      .select('booking_id, booking_ref, event_date, event_name, shoot_type, session_type, session_date, status, clients(full_name)')
+      .eq('studio_id', studioId)
+      .gte('event_date', todayStr)
+      .lte('event_date', in14DaysEnd)
+      .not('status', 'in', `(${excludeIn})`)
+      .order('event_date', { ascending: true })
+      .limit(20),
   ])
 
   // ── Types ─────────────────────────────────────────────────────────────────────
   type SessionRow = {
     booking_id: string; booking_ref?: number | null
     session_date?: string | null; session_type?: string | null
-    shoot_type?: string | null; status: string
+    shoot_type?: string | null; event_date?: string | null; event_name?: string | null
+    status: string
     clients?: { full_name?: string | null } | null
     packages?: { name?: string | null } | null
+  }
+  type OccasionRow = {
+    booking_id: string; booking_ref?: number | null
+    event_date: string; event_name?: string | null
+    shoot_type?: string | null; session_type?: string | null
+    session_date?: string | null; status: string
+    clients?: { full_name?: string | null } | null
   }
   type StaffRow    = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
   type CheckinRow  = { staff_id: string; checked_in_at: string; checked_out_at: string | null }
@@ -171,8 +203,9 @@ export default async function DashboardPage() {
   const typedStaff       = (allStaff      ?? []) as unknown as StaffRow[]
   const typedCheckins    = (todayCheckins ?? []) as unknown as CheckinRow[]
   const weekBookingsList = (weekBookingsRaw  ?? []) as unknown as WeekBooking[]
-  const recentPayments   = (recentPaymentsRaw ?? []) as RecentPayment[]
-  const outstandingInvoices = (outstandingRaw ?? []) as unknown as OutstandingInvoiceRow[]
+  const recentPayments   = (recentPaymentsRaw ?? []) as DashboardRecentPayment[]
+  const outstandingInvoices  = (outstandingRaw        ?? []) as unknown as OutstandingInvoiceRow[]
+  const upcomingOccasions    = (upcomingOccasionsRaw  ?? []) as unknown as OccasionRow[]
 
   // ── Staff today ───────────────────────────────────────────────────────────────
   const checkinMap: Record<string, CheckinRow> = {}
@@ -198,9 +231,7 @@ export default async function DashboardPage() {
   const revenueWeek  = recentPayments
     .filter(p => p.paid_at >= mondayISO)
     .reduce((s, p) => s + Number(p.amount), 0)
-  const revenueMonth = recentPayments
-    .filter(p => p.paid_at >= thisMonthStart)
-    .reduce((s, p) => s + Number(p.amount), 0)
+  const sessionsThisWeek = weekBookingsList.length
 
   // ── Today's payment breakdown (per-payment + by method) ──────────────────────
   const todayPaymentsList = recentPayments
@@ -208,8 +239,8 @@ export default async function DashboardPage() {
     .map(p => ({
       amount:     Number(p.amount),
       method:     p.method ?? 'other',
-      clientName: (p as any).invoices?.bookings?.clients?.full_name ?? null as string | null,
-      bookingRef: (p as any).invoices?.bookings?.booking_ref ?? null  as number | null,
+      clientName: p.invoices?.bookings?.clients?.full_name ?? null,
+      bookingRef: p.invoices?.bookings?.booking_ref ?? null,
       paid_at:    p.paid_at,
     }))
 
@@ -264,9 +295,12 @@ export default async function DashboardPage() {
       value: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
     })),
     revenueToday,
+    revenueWeek,
+    sessionsThisWeek,
     todayPaymentsList,
     todayByMethod,
     weekDays,
+    upcomingOccasions,
     outstandingInvoices: outstandingInvoices as DashboardProps['outstandingInvoices'],
     draftCount,
   }
