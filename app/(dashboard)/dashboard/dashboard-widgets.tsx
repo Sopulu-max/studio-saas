@@ -426,8 +426,9 @@ export default function DashboardWidgets(props: DashboardProps) {
             const days  = daysUntil(occ.event_date) ?? 0
             const urg   = urgency(days)
             const stCfg = props.activeStatuses.find(s => s.value === occ.status)
-            // The shoot category (Birthday, Wedding, Graduation, etc.)
-            const category = occ.shoot_type ?? occ.session_type ?? 'Session'
+            // shoot_type is the shoot category: Birthday, Wedding, Graduation, etc.
+            // Never fall back to session_type (Studio/Outdoor/Event) — that is a different field entirely.
+            const category = occ.shoot_type || null
             return (
               <Link key={occ.booking_id} href={`/dashboard/sessions/${occ.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
@@ -450,21 +451,35 @@ export default function DashboardWidgets(props: DashboardProps) {
 
                   {/* Main content */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Row 1: category badge + client name */}
+                    {/* Row 1: category badge (shoot_type) + client name */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px', flexWrap: 'wrap' }}>
-                      <span style={{
-                        fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
-                        background: `${urg.color}18`, color: urg.color, whiteSpace: 'nowrap',
-                      }}>
-                        {category}
-                      </span>
+                      {category ? (
+                        <span style={{
+                          fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
+                          background: `${urg.color}18`, color: urg.color, whiteSpace: 'nowrap',
+                        }}>
+                          {category}
+                        </span>
+                      ) : (
+                        <span style={{
+                          fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '20px',
+                          background: 'var(--hover)', color: 'var(--text-4)', whiteSpace: 'nowrap',
+                        }}>
+                          No category set
+                        </span>
+                      )}
                       <span style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {occ.clients?.full_name ?? '—'}
                       </span>
                     </div>
-                    {/* Row 2: event name + shot date + ref */}
+                    {/* Row 2: event name / category date / plain date + shot date + ref */}
                     <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {occ.event_name ? `"${occ.event_name}"` : `${category} date: ${fmtDateMini(occ.event_date)}`}
+                      {occ.event_name
+                        ? `"${occ.event_name}"`
+                        : category
+                          ? `${category} date: ${fmtDateMini(occ.event_date)}`
+                          : `Date: ${fmtDateMini(occ.event_date)}`
+                      }
                       {occ.session_date ? ` · Shot ${fmtDateShort(occ.session_date)}` : ''}
                       {occ.booking_ref  ? ` · #${occ.booking_ref}` : ''}
                     </p>
