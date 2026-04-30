@@ -73,7 +73,7 @@ export default async function ReportsPage({
     .from('invoices')
     .select('invoice_id, bookings!inner(studio_id)')
     .eq('bookings.studio_id', studioId)
-  const invoiceIds = (invoiceIdRows ?? []).map((r: any) => r.invoice_id as string)
+  const invoiceIds = ((invoiceIdRows ?? []) as { invoice_id: string }[]).map((row) => row.invoice_id)
 
   // ── Phase 2: All queries in parallel ──────────────────────────────────────
   const [
@@ -240,8 +240,23 @@ export default async function ReportsPage({
   const revenueThisMonth = allPayments.filter(p => p.paid_at >= thisMonthStart).reduce((s, p) => s + Number(p.amount), 0)
   const revenueLastMonth = allPayments.filter(p => p.paid_at >= lastMonthStart && p.paid_at < thisMonthStart).reduce((s, p) => s + Number(p.amount), 0)
 
-  const outstanding = allInvoices.filter(i => i.status === 'sent' || i.status === 'draft').reduce((s, i) => s + Number(i.total), 0)
-  const overdue     = allInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + Number(i.total), 0)
+  // Build a map of how much has already been paid against each invoice
+  // so we can show the REMAINING balance, not the full invoice total.
+  const invoicePaidMap: Record<string, number> = {}
+  for (const p of allPayments) {
+    if (p.invoice_id) invoicePaidMap[p.invoice_id] = (invoicePaidMap[p.invoice_id] ?? 0) + Number(p.amount)
+  }
+  function invoiceBalance(inv: InvoiceRow) {
+    const paid = invoicePaidMap[inv.invoice_id] ?? 0
+    return Math.max(Number(inv.total ?? 0) - paid, 0)
+  }
+
+  const outstanding = allInvoices
+    .filter(i => i.status === 'sent' || i.status === 'draft')
+    .reduce((s, i) => s + invoiceBalance(i), 0)
+  const overdue = allInvoices
+    .filter(i => i.status === 'overdue')
+    .reduce((s, i) => s + invoiceBalance(i), 0)
 
   // Payment method breakdown (range payments)
   const methodMap: Record<string, { amount: number; count: number }> = {}
@@ -372,8 +387,12 @@ export default async function ReportsPage({
   }))
 
   // ── PIPELINE computations ─────────────────────────────────────────────────
-  const nonCancelStatuses = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)
-  const pipelineByStatus = nonCancelStatuses.map(s => ({
+  // Active pipeline = non-cancelled AND non-terminal (excludes delivered).
+  // Terminal sessions are completed work — they belong in history, not the pipeline.
+  const activeStatuses = config.bookingStatuses
+    .filter(s => !s.is_cancellation && !s.is_terminal)
+    .sort((a, b) => a.order - b.order)
+  const pipelineByStatus = activeStatuses.map(s => ({
     value: s.value, label: s.label, color_bg: s.color_bg, color_fg: s.color_fg,
     sessions: activeBookings
       .filter(b => b.status === s.value)
