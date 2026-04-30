@@ -142,7 +142,7 @@ const LAYOUT_DEFAULT: LayoutItem[] = [
 
 const BLOCK_LABEL: Record<BlockId, string> = {
   kpis:      'Key metrics',
-  occasions: 'Upcoming occasions',
+  occasions: 'Category dates',
   today:     "Today's sessions",
   clients:   'Clients',
   revenue:   'Revenue',
@@ -397,65 +397,74 @@ export default function DashboardWidgets(props: DashboardProps) {
     )
   }
 
-  // ── Upcoming occasions ──────────────────────────────────────────────────────
-  // Shows sessions where the shoot category date (birthday date, wedding date,
-  // graduation date, etc.) falls within the next 14 days — so the team knows
-  // which jobs to prioritise for delivery before the client's actual occasion.
+  // ── Category dates ────────────────────────────────────────────────────────────
+  // Sessions where the client's actual birthday / wedding / graduation / etc.
+  // falls within the next 14 days.  The date comes from the "Category date" field
+  // in the session form — the day the real-life event happens, not the shoot day.
+  // Use this to prioritise delivery so clients receive their photos in time.
+  // When the date is TODAY you can also reach out with wishes.
 
   function renderOccasions() {
     const occs = props.upcomingOccasions
     if (!occs.length && !editMode) return null
 
-    // Returns urgency colour + countdown label only — NO hardcoded backgrounds
-    // so dark mode is unaffected.
     function urgency(days: number): { color: string; label: string; ruleOpacity: number } {
-      if (days === 0) return { color: '#c0392b', label: 'Today',       ruleOpacity: 1    }
+      if (days === 0) return { color: '#c0392b', label: 'TODAY',       ruleOpacity: 1    }
       if (days === 1) return { color: '#d4600a', label: 'Tomorrow',    ruleOpacity: 1    }
       if (days <= 3)  return { color: '#d4600a', label: `In ${days}d`, ruleOpacity: 1    }
       if (days <= 7)  return { color: '#b45309', label: `In ${days}d`, ruleOpacity: 0.65 }
       return               { color: '#4a90d9', label: `In ${days}d`, ruleOpacity: 0.35 }
     }
 
+    const todayCount = occs.filter(o => daysUntil(o.event_date) === 0).length
+
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <p style={sxn}>Upcoming occasions</p>
+            <p style={sxn}>Category dates</p>
             <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '2px 0 0' }}>
-              Category dates in the next 14 days — prioritise accordingly
+              The actual birthday, wedding, graduation, etc. — deliver before these dates
             </p>
           </div>
-          <span style={{ fontSize: '12px', color: 'var(--text-4)', flexShrink: 0, marginLeft: '12px' }}>
-            {occs.length > 0 ? `${occs.length} coming up` : 'None due soon'}
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0, marginLeft: '12px' }}>
+            {todayCount > 0 && (
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#c0392b' }}>
+                🎉 {todayCount} today — send wishes!
+              </span>
+            )}
+            <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>
+              {occs.length} in the next 14 days
+            </span>
+          </div>
         </div>
 
         {occs.length === 0 ? (
           <div style={{ padding: '1.25rem', textAlign: 'center' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No category dates due in the next 14 days</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No category dates in the next 14 days</p>
           </div>
         ) : (
           occs.map((occ, i) => {
-            const days  = daysUntil(occ.event_date) ?? 0
-            const urg   = urgency(days)
-            const stCfg = props.activeStatuses.find(s => s.value === occ.status)
-            // shoot_type is the shoot category: Birthday, Wedding, Graduation, etc.
-            // Never fall back to session_type (Studio/Outdoor/Event) — that is a different field entirely.
+            const days     = daysUntil(occ.event_date) ?? 0
+            const urg      = urgency(days)
+            const stCfg    = props.activeStatuses.find(s => s.value === occ.status)
             const category = occ.shoot_type || null
+            const isToday  = days === 0
             return (
               <Link key={occ.booking_id} href={`/dashboard/sessions/${occ.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '14px',
                   padding: '0.875rem 1.25rem',
                   borderBottom: i < occs.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  background: isToday ? `${urg.color}08` : 'transparent',
                 }}>
                   {/* Coloured urgency rule */}
                   <div style={{ width: '3px', alignSelf: 'stretch', borderRadius: '2px', background: urg.color, flexShrink: 0, opacity: urg.ruleOpacity }} />
 
-                  {/* Urgency countdown */}
-                  <div style={{ flexShrink: 0, width: '56px' }}>
-                    <p style={{ fontSize: '12px', fontWeight: 700, color: urg.color, margin: '0 0 2px', letterSpacing: '.01em' }}>
+                  {/* Countdown column */}
+                  <div style={{ flexShrink: 0, width: '62px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 700, color: urg.color, margin: '0 0 1px', letterSpacing: '.01em' }}>
                       {urg.label}
                     </p>
                     <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: 0 }}>
@@ -465,34 +474,27 @@ export default function DashboardWidgets(props: DashboardProps) {
 
                   {/* Main content */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    {/* Row 1: category badge (shoot_type) + client name */}
+                    {/* Row 1: category badge + client name */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px', flexWrap: 'wrap' }}>
-                      {category ? (
+                      {category && (
                         <span style={{
                           fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
                           background: `${urg.color}18`, color: urg.color, whiteSpace: 'nowrap',
                         }}>
-                          {category}
-                        </span>
-                      ) : (
-                        <span style={{
-                          fontSize: '11px', fontWeight: 500, padding: '2px 8px', borderRadius: '20px',
-                          background: 'var(--hover)', color: 'var(--text-4)', whiteSpace: 'nowrap',
-                        }}>
-                          No category set
+                          {isToday ? `🎉 ${category}` : category}
                         </span>
                       )}
                       <span style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {occ.clients?.full_name ?? '—'}
                       </span>
                     </div>
-                    {/* Row 2: event name / category date / plain date + shot date + ref */}
+                    {/* Row 2: context — shot date + ref */}
                     <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {occ.event_name
-                        ? `"${occ.event_name}"`
-                        : category
-                          ? `${category} date: ${fmtDateMini(occ.event_date)}`
-                          : `Date: ${fmtDateMini(occ.event_date)}`
+                      {isToday
+                        ? `${category ?? 'Category date'} is today — consider reaching out with wishes`
+                        : occ.event_name
+                          ? `"${occ.event_name}"`
+                          : `${category ?? 'Category'} date: ${fmtDateMini(occ.event_date)}`
                       }
                       {occ.session_date ? ` · Shot ${fmtDateShort(occ.session_date)}` : ''}
                       {occ.booking_ref  ? ` · #${occ.booking_ref}` : ''}
@@ -600,10 +602,12 @@ export default function DashboardWidgets(props: DashboardProps) {
                           {s.shoot_type ? ` · ${s.shoot_type}` : ''}
                         </p>
                       </Link>
-                      {/* Occasion deadline chip — only shown when shoot_type is set */}
-                      {hasUrgentOccasion && s.shoot_type && (() => {
+                      {/* Category date chip — shows actual birthday/wedding/etc. date */}
+                      {hasUrgentOccasion && s.shoot_type && s.event_date && (() => {
                         const color = days === 0 ? '#c0392b' : days! <= 2 ? '#d4600a' : '#b45309'
-                        const txt   = days === 0 ? `${s.shoot_type} today` : `${s.shoot_type} in ${days}d`
+                        const txt   = days === 0
+                          ? `🎉 ${s.shoot_type} is today!`
+                          : `${s.shoot_type}: ${fmtDateMini(s.event_date)}`
                         return <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', background: `${color}18`, color, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{txt}</span>
                       })()}
                       <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
@@ -773,9 +777,11 @@ export default function DashboardWidgets(props: DashboardProps) {
                       </p>
                       {s.shoot_type && <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{s.shoot_type}</p>}
                     </Link>
-                    {hasOccasion && s.shoot_type && (() => {
+                    {hasOccasion && s.shoot_type && s.event_date && (() => {
                       const color = days === 0 ? '#c0392b' : days! <= 3 ? '#d4600a' : '#b45309'
-                      const txt   = days === 0 ? `${s.shoot_type} today` : `${s.shoot_type} in ${days}d`
+                      const txt   = days === 0
+                        ? `🎉 ${s.shoot_type} is today!`
+                        : `${s.shoot_type}: ${fmtDateMini(s.event_date)}`
                       return (
                         <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', background: `${color}18`, color, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
                           {txt}
@@ -871,13 +877,15 @@ export default function DashboardWidgets(props: DashboardProps) {
                           {s.shoot_type ? ` · ${s.shoot_type}` : ''}
                         </p>
                       </Link>
-                      {/* Occasion deadline chip */}
-                      {hasOccasion && (() => {
+                      {/* Category date chip */}
+                      {hasOccasion && s.shoot_type && s.event_date && (() => {
                         const color = days === 0 ? '#c0392b' : days! <= 3 ? '#d4600a' : '#b45309'
-                        const bg    = days === 0 ? '#fdf0ee' : days! <= 3 ? '#fef3e4' : '#fefde7'
+                        const txt   = days === 0
+                          ? `🎉 ${s.shoot_type} is today!`
+                          : `${s.shoot_type}: ${fmtDateMini(s.event_date)}`
                         return (
-                          <span style={{ ...badge(bg, color), flexShrink: 0, fontSize: '10px' }}>
-                            {s.shoot_type ?? 'Occasion'} {days === 0 ? 'today' : `in ${days}d`}
+                          <span style={{ ...badge(`${color}18`, color), flexShrink: 0, fontSize: '10px' }}>
+                            {txt}
                           </span>
                         )
                       })()}
