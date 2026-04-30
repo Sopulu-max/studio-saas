@@ -157,7 +157,7 @@ const STORAGE_KEY = 'dashboard-layout-v9'
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const card  = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px' } as const
-const sxn   = { fontSize: '11px', fontWeight: '600' as const, color: 'var(--text-4)', letterSpacing: '.08em', textTransform: 'uppercase' as const, margin: 0 }
+const sxn   = { fontSize: '12px', fontWeight: '700' as const, color: 'var(--text-2)', letterSpacing: '.06em', textTransform: 'uppercase' as const, margin: 0 }
 const badge = (bg: string, fg: string): React.CSSProperties => ({
   display: 'inline-block', fontSize: '11px', padding: '2px 8px',
   borderRadius: '20px', background: bg, color: fg, fontWeight: 500, whiteSpace: 'nowrap',
