@@ -383,91 +383,103 @@ export default function DashboardWidgets(props: DashboardProps) {
     )
   }
 
-  // ── Upcoming occasion deadlines ──────────────────────────────────────────────
+  // ── Upcoming occasions ──────────────────────────────────────────────────────
+  // Shows sessions where the shoot category date (birthday date, wedding date,
+  // graduation date, etc.) falls within the next 14 days — so the team knows
+  // which jobs to prioritise for delivery before the client's actual occasion.
 
   function renderOccasions() {
     const occs = props.upcomingOccasions
     if (!occs.length && !editMode) return null
 
-    function urgency(days: number): { color: string; bg: string; label: string } {
-      if (days === 0) return { color: '#c0392b', bg: '#fdf0ee', label: 'Today'     }
-      if (days === 1) return { color: '#d4600a', bg: '#fef3e4', label: 'Tomorrow'  }
-      if (days <= 3)  return { color: '#d4600a', bg: '#fef7e0', label: `In ${days}d` }
-      if (days <= 7)  return { color: '#b45309', bg: '#fefde7', label: `In ${days}d` }
-      return               { color: '#4a90d9', bg: 'var(--surface)', label: `In ${days}d` }
+    // Returns urgency colour + countdown label only — NO hardcoded backgrounds
+    // so dark mode is unaffected.
+    function urgency(days: number): { color: string; label: string; ruleOpacity: number } {
+      if (days === 0) return { color: '#c0392b', label: 'Today',       ruleOpacity: 1    }
+      if (days === 1) return { color: '#d4600a', label: 'Tomorrow',    ruleOpacity: 1    }
+      if (days <= 3)  return { color: '#d4600a', label: `In ${days}d`, ruleOpacity: 1    }
+      if (days <= 7)  return { color: '#b45309', label: `In ${days}d`, ruleOpacity: 0.65 }
+      return               { color: '#4a90d9', label: `In ${days}d`, ruleOpacity: 0.35 }
     }
 
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
+        {/* Header */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <p style={sxn}>Upcoming occasion deadlines</p>
+            <p style={sxn}>Upcoming occasions</p>
+            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '2px 0 0' }}>
+              Category dates in the next 14 days — prioritise accordingly
+            </p>
           </div>
-          <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>
-            {occs.length > 0 ? `${occs.length} in the next 14 days` : 'Nothing due soon'}
+          <span style={{ fontSize: '12px', color: 'var(--text-4)', flexShrink: 0, marginLeft: '12px' }}>
+            {occs.length > 0 ? `${occs.length} coming up` : 'None due soon'}
           </span>
         </div>
 
         {occs.length === 0 ? (
           <div style={{ padding: '1.25rem', textAlign: 'center' }}>
-            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No occasion dates due in the next 14 days</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No category dates due in the next 14 days</p>
           </div>
         ) : (
-          <div>
-            {occs.map((occ, i) => {
-              const days  = daysUntil(occ.event_date) ?? 0
-              const urg   = urgency(days)
-              const stCfg = props.activeStatuses.find(s => s.value === occ.status)
-              const isUrgent = days <= 3
-              return (
-                <Link key={occ.booking_id} href={`/dashboard/sessions/${occ.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{
-                    display: 'flex', alignItems: 'center', gap: '14px',
-                    padding: '0.8rem 1.25rem',
-                    background: isUrgent ? urg.bg : undefined,
-                    borderBottom: i < occs.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  }}>
-                    {/* Urgency counter */}
-                    <div style={{ flexShrink: 0, width: '52px', textAlign: 'center' }}>
-                      <p style={{ fontSize: '12px', fontWeight: 700, color: urg.color, margin: '0 0 1px', letterSpacing: '.02em' }}>
-                        {urg.label}
-                      </p>
-                      <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: 0 }}>
-                        {fmtDateMini(occ.event_date)}
-                      </p>
-                    </div>
+          occs.map((occ, i) => {
+            const days  = daysUntil(occ.event_date) ?? 0
+            const urg   = urgency(days)
+            const stCfg = props.activeStatuses.find(s => s.value === occ.status)
+            // The shoot category (Birthday, Wedding, Graduation, etc.)
+            const category = occ.shoot_type ?? occ.session_type ?? 'Session'
+            return (
+              <Link key={occ.booking_id} href={`/dashboard/sessions/${occ.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <div style={{
+                  display: 'flex', alignItems: 'center', gap: '14px',
+                  padding: '0.875rem 1.25rem',
+                  borderBottom: i < occs.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                }}>
+                  {/* Coloured urgency rule */}
+                  <div style={{ width: '3px', alignSelf: 'stretch', borderRadius: '2px', background: urg.color, flexShrink: 0, opacity: urg.ruleOpacity }} />
 
-                    {/* Coloured left rule */}
-                    <div style={{ width: '3px', height: '36px', borderRadius: '2px', background: urg.color, flexShrink: 0, opacity: isUrgent ? 1 : 0.35 }} />
-
-                    {/* Details */}
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {occ.clients?.full_name ?? '—'}
-                        {occ.event_name && (
-                          <span style={{ fontWeight: 400, color: 'var(--text-4)', marginLeft: '5px' }}>
-                            · {occ.event_name}
-                          </span>
-                        )}
-                      </p>
-                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
-                        {occ.shoot_type ?? occ.session_type ?? '—'}
-                        {occ.session_date ? ` · Shot ${fmtDateShort(occ.session_date)}` : ''}
-                        {occ.booking_ref ? ` · #${occ.booking_ref}` : ''}
-                      </p>
-                    </div>
-
-                    {/* Status */}
-                    {stCfg && (
-                      <span style={{ ...badge(stCfg.color_bg, stCfg.color_fg), flexShrink: 0 }}>
-                        {stCfg.label}
-                      </span>
-                    )}
+                  {/* Urgency countdown */}
+                  <div style={{ flexShrink: 0, width: '56px' }}>
+                    <p style={{ fontSize: '12px', fontWeight: 700, color: urg.color, margin: '0 0 2px', letterSpacing: '.01em' }}>
+                      {urg.label}
+                    </p>
+                    <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: 0 }}>
+                      {fmtDateMini(occ.event_date)}
+                    </p>
                   </div>
-                </Link>
-              )
-            })}
-          </div>
+
+                  {/* Main content */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    {/* Row 1: category badge + client name */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '3px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px',
+                        background: `${urg.color}18`, color: urg.color, whiteSpace: 'nowrap',
+                      }}>
+                        {category}
+                      </span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {occ.clients?.full_name ?? '—'}
+                      </span>
+                    </div>
+                    {/* Row 2: event name + shot date + ref */}
+                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {occ.event_name ? `"${occ.event_name}"` : `${category} date: ${fmtDateMini(occ.event_date)}`}
+                      {occ.session_date ? ` · Shot ${fmtDateShort(occ.session_date)}` : ''}
+                      {occ.booking_ref  ? ` · #${occ.booking_ref}` : ''}
+                    </p>
+                  </div>
+
+                  {/* Status badge */}
+                  {stCfg && (
+                    <span style={{ ...badge(stCfg.color_bg, stCfg.color_fg), flexShrink: 0 }}>
+                      {stCfg.label}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            )
+          })
         )}
       </div>
     )
@@ -559,14 +571,11 @@ export default function DashboardWidgets(props: DashboardProps) {
                           {s.shoot_type ? ` · ${s.shoot_type}` : ''}
                         </p>
                       </Link>
-                      {/* Occasion deadline chip */}
-                      {hasUrgentOccasion && (() => {
+                      {/* Occasion deadline chip — only shown when shoot_type is set */}
+                      {hasUrgentOccasion && s.shoot_type && (() => {
                         const color = days === 0 ? '#c0392b' : days! <= 2 ? '#d4600a' : '#b45309'
-                        const bg    = days === 0 ? '#fdf0ee' : days! <= 2 ? '#fef3e4' : '#fefde7'
-                        const txt   = days === 0
-                          ? `${s.shoot_type ?? 'Occasion'} today`
-                          : `${s.shoot_type ?? 'Occasion'} in ${days}d`
-                        return <span style={{ ...badge(bg, color), flexShrink: 0, fontSize: '10px' }}>{txt}</span>
+                        const txt   = days === 0 ? `${s.shoot_type} today` : `${s.shoot_type} in ${days}d`
+                        return <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', background: `${color}18`, color, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{txt}</span>
                       })()}
                       <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
                     </div>
@@ -735,12 +744,12 @@ export default function DashboardWidgets(props: DashboardProps) {
                       </p>
                       {s.shoot_type && <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{s.shoot_type}</p>}
                     </Link>
-                    {hasOccasion && (() => {
+                    {hasOccasion && s.shoot_type && (() => {
                       const color = days === 0 ? '#c0392b' : days! <= 3 ? '#d4600a' : '#b45309'
-                      const bg    = days === 0 ? '#fdf0ee' : days! <= 3 ? '#fef3e4' : '#fefde7'
+                      const txt   = days === 0 ? `${s.shoot_type} today` : `${s.shoot_type} in ${days}d`
                       return (
-                        <span style={{ ...badge(bg, color), flexShrink: 0, fontSize: '10px' }}>
-                          {s.shoot_type ?? 'Occasion'} {days === 0 ? 'today' : `in ${days}d`}
+                        <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', background: `${color}18`, color, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {txt}
                         </span>
                       )
                     })()}
