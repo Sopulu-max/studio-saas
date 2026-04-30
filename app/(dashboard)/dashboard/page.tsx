@@ -54,9 +54,17 @@ export default async function DashboardPage() {
 
   const pendingStatus = activeStatuses[0]?.value ?? 'pending_confirmation'
 
-  // Build the SQL NOT IN list for terminal + cancelled statuses
+  // excludeIn       — terminal + cancelled: used for active/forward-looking queries
+  //                   (pipeline, next 3 days, occasions)
+  // excludeCancelIn — cancelled only: used for historical counts
+  //                   (today's sessions, sessions this week) so that
+  //                   delivered/completed sessions are still counted as real work
   const excludeIn = config.bookingStatuses
     .filter(s => s.is_cancellation || s.is_terminal)
+    .map(s => `"${s.value}"`).join(',') || '"__none__"'
+
+  const excludeCancelIn = config.bookingStatuses
+    .filter(s => s.is_cancellation)
     .map(s => `"${s.value}"`).join(',') || '"__none__"'
 
   // ── Phase 1: invoice IDs needed to scope payment queries to this studio ────────
@@ -92,13 +100,13 @@ export default async function DashboardPage() {
       .eq('bookings.studio_id', studioId)
       .eq('status', 'overdue'),
 
-    // Today's sessions
+    // Today's sessions — include terminal (delivered) so completed jobs are still shown
     admin.from('bookings')
       .select('booking_id, booking_ref, session_date, session_type, shoot_type, event_date, event_name, status, clients(full_name), packages(name)')
       .eq('studio_id', studioId)
       .gte('session_date', todayStr)
       .lte('session_date', todayEnd)
-      .not('status', 'in', `(${excludeIn})`)
+      .not('status', 'in', `(${excludeCancelIn})`)
       .order('session_date', { ascending: true }),
 
     // Next 3 days (tomorrow → +3)
@@ -130,13 +138,13 @@ export default async function DashboardPage() {
       .eq('studio_id', studioId)
       .eq('date', todayStr),
 
-    // Sessions this week (Mon → today) — for weekly strip + type/category breakdowns
+    // Sessions this week (Mon → today) — include terminal (delivered) for accurate counts
     admin.from('bookings')
       .select('booking_id, session_date, session_type, shoot_type, clients(client_id, full_name)')
       .eq('studio_id', studioId)
       .gte('session_date', mondayISO)
       .lte('session_date', todayEnd)
-      .not('status', 'in', `(${excludeIn})`),
+      .not('status', 'in', `(${excludeCancelIn})`),
 
     // Payments this week / this month window — with method + client info for today's breakdown
     invoiceIds.length > 0
