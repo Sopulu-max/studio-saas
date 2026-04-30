@@ -130,9 +130,9 @@ export default async function DashboardPage() {
       .eq('studio_id', studioId)
       .eq('date', todayStr),
 
-    // Sessions this week (Mon → today) — for weekly strip counts
+    // Sessions this week (Mon → today) — for weekly strip + type/category breakdowns
     admin.from('bookings')
-      .select('booking_id, session_date')
+      .select('booking_id, session_date, session_type, shoot_type, clients(client_id, full_name)')
       .eq('studio_id', studioId)
       .gte('session_date', mondayISO)
       .lte('session_date', todayEnd)
@@ -161,6 +161,7 @@ export default async function DashboardPage() {
       .gte('event_date', todayStr)
       .lte('event_date', in14DaysEnd)
       .not('status', 'in', `(${excludeIn})`)
+      .not('shoot_type', 'is', null)
       .order('event_date', { ascending: true })
       .limit(20),
   ])
@@ -183,7 +184,13 @@ export default async function DashboardPage() {
   }
   type StaffRow    = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
   type CheckinRow  = { staff_id: string; checked_in_at: string; checked_out_at: string | null }
-  type WeekBooking = { booking_id: string; session_date: string | null }
+  type WeekBooking = {
+    booking_id: string
+    session_date: string | null
+    session_type: string | null
+    shoot_type: string | null
+    clients: { client_id: string; full_name: string | null } | null
+  }
   type RecentPayment = {
     amount:   number | string
     paid_at:  string
@@ -250,20 +257,50 @@ export default async function DashboardPage() {
   }
 
   // ── Weekly day strip (Mon → today) ────────────────────────────────────────────
-  const weekDays: { iso: string; label: string; isToday: boolean; sessions: number; revenue: number }[] = []
+  const weekDays: {
+    iso: string; label: string; isToday: boolean
+    sessions: number; revenue: number
+    byType: Record<string, number>; uniqueClients: number
+  }[] = []
   for (
     let d = new Date(monday);
     d.toISOString().slice(0, 10) <= todayStr;
     d = new Date(d.getTime() + 86_400_000)
   ) {
-    const iso = d.toISOString().slice(0, 10)
+    const iso      = d.toISOString().slice(0, 10)
+    const dayBooks = weekBookingsList.filter(b => b.session_date?.startsWith(iso))
+    const byType: Record<string, number> = {}
+    for (const b of dayBooks) {
+      const t = b.session_type ?? 'other'
+      byType[t] = (byType[t] ?? 0) + 1
+    }
+    const clientIds = new Set(dayBooks.map(b => b.clients?.client_id).filter(Boolean))
     weekDays.push({
       iso,
-      label:    d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }),
-      isToday:  iso === todayStr,
-      sessions: weekBookingsList.filter(b => b.session_date?.startsWith(iso)).length,
-      revenue:  recentPayments.filter(p => p.paid_at.startsWith(iso)).reduce((s, p) => s + Number(p.amount), 0),
+      label:         d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }),
+      isToday:       iso === todayStr,
+      sessions:      dayBooks.length,
+      revenue:       recentPayments.filter(p => p.paid_at.startsWith(iso)).reduce((s, p) => s + Number(p.amount), 0),
+      byType,
+      uniqueClients: clientIds.size,
     })
+  }
+
+  // ── Client list for today ─────────────────────────────────────────────────────
+  const todayClientList = weekBookingsList
+    .filter(b => b.session_date?.startsWith(todayStr) && b.clients?.full_name)
+    .map(b => ({
+      clientId:    b.clients!.client_id,
+      clientName:  b.clients!.full_name!,
+      sessionType: b.session_type ?? null,
+      shootType:   b.shoot_type   ?? null,
+      sessionDate: b.session_date ?? null,
+    }))
+
+  // ── Week-level shoot category breakdown ───────────────────────────────────────
+  const weekByCategory: Record<string, number> = {}
+  for (const b of weekBookingsList) {
+    if (b.shoot_type) weekByCategory[b.shoot_type] = (weekByCategory[b.shoot_type] ?? 0) + 1
   }
 
   const draftCount = outstandingInvoices.filter(i => i.status === 'draft').length
@@ -300,6 +337,8 @@ export default async function DashboardPage() {
     todayPaymentsList,
     todayByMethod,
     weekDays,
+    weekByCategory,
+    todayClientList,
     upcomingOccasions,
     outstandingInvoices: outstandingInvoices as DashboardProps['outstandingInvoices'],
     draftCount,

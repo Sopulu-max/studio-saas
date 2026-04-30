@@ -78,7 +78,9 @@ export type DashboardProps = {
   sessionsThisWeek:  number
   todayPaymentsList: { amount: number; method: string; clientName: string | null; bookingRef: number | null; paid_at: string }[]
   todayByMethod:     Record<string, number>
-  weekDays:          { iso: string; label: string; isToday: boolean; sessions: number; revenue: number }[]
+  weekDays:          { iso: string; label: string; isToday: boolean; sessions: number; revenue: number; byType: Record<string, number>; uniqueClients: number }[]
+  weekByCategory:    Record<string, number>
+  todayClientList:   { clientId: string; clientName: string; sessionType: string | null; shootType: string | null; sessionDate: string | null }[]
   outstandingInvoices: OutstandingInvoice[]
   draftCount:        number
 }
@@ -123,24 +125,26 @@ function isLate(iso: string) {
 // ─── Layout system ────────────────────────────────────────────────────────────
 
 type ColType   = 'left' | 'right' | 'full'
-type BlockId   = 'kpis' | 'occasions' | 'today' | 'revenue' | 'schedule' | 'pipeline' | 'invoices' | 'staff'
+type BlockId   = 'kpis' | 'occasions' | 'today' | 'clients' | 'revenue' | 'schedule' | 'pipeline' | 'invoices' | 'staff'
 type LayoutItem = { id: BlockId; col: ColType }
 
 const LAYOUT_DEFAULT: LayoutItem[] = [
   { id: 'kpis',      col: 'full'  },
   { id: 'occasions', col: 'full'  },
-  { id: 'today',     col: 'full'  },
-  { id: 'revenue',   col: 'left'  },
-  { id: 'schedule',  col: 'left'  },
+  { id: 'today',     col: 'left'  },
   { id: 'pipeline',  col: 'right' },
+  { id: 'clients',   col: 'left'  },
+  { id: 'revenue',   col: 'right' },
+  { id: 'schedule',  col: 'left'  },
   { id: 'invoices',  col: 'right' },
   { id: 'staff',     col: 'right' },
 ]
 
 const BLOCK_LABEL: Record<BlockId, string> = {
   kpis:      'Key metrics',
-  occasions: 'Upcoming deadlines',
+  occasions: 'Upcoming occasions',
   today:     "Today's sessions",
+  clients:   'Clients',
   revenue:   'Revenue',
   schedule:  'Next 3 days',
   pipeline:  'Active pipeline',
@@ -148,7 +152,7 @@ const BLOCK_LABEL: Record<BlockId, string> = {
   staff:     'Staff today',
 }
 
-const STORAGE_KEY = 'dashboard-layout-v8'
+const STORAGE_KEY = 'dashboard-layout-v9'
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
@@ -340,8 +344,18 @@ export default function DashboardWidgets(props: DashboardProps) {
         label:   'This week',
         primary: String(props.sessionsThisWeek),
         unit:    props.sessionsThisWeek === 1 ? 'session' : 'sessions',
-        sub:     props.revenueWeek > 0 ? `${fmt(props.revenueWeek)} collected` : 'No payments yet',
-        subColor: props.revenueWeek > 0 ? '#3b6d11' : undefined,
+        sub: (() => {
+          // Build a session-type breakdown from weekDays
+          const totals: Record<string, number> = {}
+          for (const d of props.weekDays) {
+            for (const [t, n] of Object.entries(d.byType)) totals[t] = (totals[t] ?? 0) + n
+          }
+          const parts = props.sessionTypeValues
+            .filter(t => (totals[t.value] ?? 0) > 0)
+            .map(t => `${totals[t.value]} ${t.label}`)
+          return parts.length ? parts.join(' · ') : (props.revenueWeek > 0 ? `${fmt(props.revenueWeek)} collected` : 'No sessions yet')
+        })(),
+        subColor: undefined,
       },
       {
         label:   'Active pipeline',
@@ -1033,12 +1047,182 @@ export default function DashboardWidgets(props: DashboardProps) {
     )
   }
 
+  // ── Clients block ────────────────────────────────────────────────────────────
+  // Domain: Who are this week's clients? How does activity break down by type/category?
+
+  function renderClients() {
+    const totalClientsThisWeek = (() => {
+      const ids = new Set<string>()
+      for (const d of props.weekDays) {
+        // We don't have per-day client IDs here; uniqueClients is per-day, sum them
+        // as an approximation — but to avoid double-counting across days we use
+        // todayClientList for today and the weekDays sum for the full-week figure.
+        // The accurate unique count comes from page.tsx; here use sum(uniqueClients)
+        // as a reasonable proxy (per-day unique, not cross-week unique).
+        ids.add(String(d.uniqueClients))
+      }
+      return props.weekDays.reduce((s, d) => s + d.uniqueClients, 0)
+    })()
+
+    // Weekly session type totals (from weekDays.byType)
+    const weekTypeTotals: Record<string, number> = {}
+    for (const d of props.weekDays) {
+      for (const [t, n] of Object.entries(d.byType)) weekTypeTotals[t] = (weekTypeTotals[t] ?? 0) + n
+    }
+
+    // Shoot category totals this week
+    const categoryEntries = Object.entries(props.weekByCategory).sort((a, b) => b[1] - a[1])
+
+    // Today's client list
+    const todayClients = props.todayClientList
+
+    return (
+      <div style={{ ...card, overflow: 'hidden' }}>
+        {/* Header */}
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={sxn}>Clients</p>
+          <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>
+            {props.sessionsThisWeek} session{props.sessionsThisWeek !== 1 ? 's' : ''} this week
+          </span>
+        </div>
+
+        {/* Weekly day strip */}
+        <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
+          <p style={{ ...sxn, marginBottom: '8px' }}>Day by day</p>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${props.weekDays.length}, 1fr)`, gap: '6px' }}>
+            {props.weekDays.map(day => {
+              const typeEntries = Object.entries(day.byType)
+              return (
+                <div key={day.iso} style={{
+                  padding: '0.65rem 0.4rem', textAlign: 'center', borderRadius: '10px',
+                  background: day.isToday ? 'var(--btn)' : 'var(--hover)',
+                }}>
+                  <p style={{ fontSize: '10px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '0 0 4px', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {day.label}
+                  </p>
+                  <p style={{ fontSize: '18px', fontWeight: 700, margin: '0 0 1px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text)' }}>
+                    {day.sessions}
+                  </p>
+                  {/* Session type mini-dots */}
+                  {typeEntries.length > 0 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '2px', marginTop: '4px', flexWrap: 'wrap' }}>
+                      {typeEntries.map(([t, n]) => {
+                        const style = props.sessionTypeStyles[t]
+                        return (
+                          <span key={t} title={`${style?.label ?? t}: ${n}`} style={{
+                            fontSize: '9px', padding: '1px 5px', borderRadius: '8px',
+                            background: day.isToday ? 'rgba(255,255,255,0.25)' : (style?.color_bg ?? '#eee'),
+                            color:      day.isToday ? 'var(--btn-fg)'           : (style?.color_fg ?? '#555'),
+                            fontWeight: 600,
+                          }}>
+                            {n}
+                          </span>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {day.uniqueClients > 0 && (
+                    <p style={{ fontSize: '9px', color: day.isToday ? 'var(--btn-fg)' : 'var(--text-4)', margin: '3px 0 0', opacity: 0.75 }}>
+                      {day.uniqueClients}c
+                    </p>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Session type breakdown this week */}
+        {Object.keys(weekTypeTotals).length > 0 && (
+          <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
+            <p style={{ ...sxn, marginBottom: '8px' }}>By session type</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {props.sessionTypeValues
+                .filter(t => (weekTypeTotals[t.value] ?? 0) > 0)
+                .map(t => (
+                  <span key={t.value} style={badge(t.color_bg, t.color_fg)}>
+                    {t.label} · {weekTypeTotals[t.value]}
+                  </span>
+                ))
+              }
+              {/* Any types not in sessionTypeValues */}
+              {Object.entries(weekTypeTotals)
+                .filter(([t]) => !props.sessionTypeValues.find(s => s.value === t))
+                .map(([t, n]) => (
+                  <span key={t} style={badge('#f0f0f0', '#555')}>{t} · {n}</span>
+                ))
+              }
+            </div>
+          </div>
+        )}
+
+        {/* Shoot category breakdown this week */}
+        {categoryEntries.length > 0 && (
+          <div style={{ padding: '0.875rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
+            <p style={{ ...sxn, marginBottom: '8px' }}>By category</p>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {categoryEntries.map(([cat, n]) => (
+                <span key={cat} style={{
+                  fontSize: '11px', padding: '3px 10px', borderRadius: '20px',
+                  background: 'var(--hover)', color: 'var(--text-2)',
+                  fontWeight: 500, display: 'inline-flex', gap: '5px',
+                }}>
+                  <span>{cat}</span>
+                  <span style={{ fontWeight: 700, color: 'var(--text)' }}>{n}</span>
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Today's client list */}
+        <div style={{ padding: '0.875rem 1.25rem 0.25rem' }}>
+          <p style={{ ...sxn, marginBottom: todayClients.length ? '0' : '8px' }}>Today's clients</p>
+        </div>
+        {todayClients.length === 0 ? (
+          <div style={{ padding: '0.5rem 1.25rem 1rem' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No clients scheduled today</p>
+          </div>
+        ) : (
+          todayClients.map((c, i) => {
+            const ty  = c.sessionType ? (props.sessionTypeStyles[c.sessionType] ?? null) : null
+            return (
+              <div key={`${c.clientId}-${i}`} style={{
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '0.7rem 1.25rem',
+                borderTop: '1px solid var(--line-inner)',
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {c.clientName}
+                  </p>
+                  {c.shootType && (
+                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{c.shootType}</p>
+                  )}
+                </div>
+                {ty && (
+                  <span style={{ ...badge(ty.color_bg, ty.color_fg), flexShrink: 0 }}>{ty.label}</span>
+                )}
+                {c.sessionDate && (
+                  <span style={{ fontSize: '11px', color: 'var(--text-4)', flexShrink: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                    {fmtTime(c.sessionDate)}
+                  </span>
+                )}
+              </div>
+            )
+          })
+        )}
+      </div>
+    )
+  }
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   const blockRenderers: Record<BlockId, () => React.ReactNode> = {
     kpis:      renderKpis,
     occasions: renderOccasions,
     today:     renderToday,
+    clients:   renderClients,
     revenue:   renderRevenue,
     schedule:  renderSchedule,
     pipeline:  renderPipeline,
