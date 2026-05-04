@@ -1,7 +1,9 @@
 'use server'
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { getStudioContext, ownsBooking, ownsGallery, ownsGalleryPhoto } from '@/lib/studio'
+import { sendGalleryEmail } from '@/lib/email'
 
 const addGallerySchema = z.object({
   booking_id: z.string().min(1, 'Booking is required'),
@@ -72,6 +74,77 @@ export async function deletePhoto(photoId: string, fileUrl: string) {
     .delete()
     .eq('photo_id', photoId)
   return { error: error?.message ?? null }
+}
+
+export async function deliverGallery(galleryId: string, driveLink?: string) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsGallery(context.admin, context.studioId, galleryId))) {
+    return { error: 'Gallery not found' }
+  }
+
+  type GalleryDeliveryRow = {
+    shared_link: string
+    bookings: {
+      booking_id: string
+      session_date: string | null
+      drive_link: string | null
+      clients: { full_name: string | null; email: string | null } | null
+    } | null
+  }
+
+  const { data: galleryRaw } = await context.admin
+    .from('galleries')
+    .select('shared_link, bookings(booking_id, session_date, drive_link, clients(full_name, email))')
+    .eq('gallery_id', galleryId)
+    .single()
+  const gallery = galleryRaw as unknown as GalleryDeliveryRow | null
+
+  if (!gallery) return { error: 'Gallery not found' }
+
+  const clientEmail = gallery.bookings?.clients?.email
+  if (!clientEmail) return { error: 'Client has no email address' }
+
+  const { data: studio } = await context.admin
+    .from('studios')
+    .select('name')
+    .eq('studio_id', context.studioId)
+    .single()
+
+  const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  const galleryUrl = `${siteUrl}/gallery/${gallery.shared_link}`
+
+  const { error: emailError } = await sendGalleryEmail({
+    to: clientEmail,
+    clientName: gallery.bookings?.clients?.full_name ?? 'Client',
+    studioName: studio?.name ?? '',
+    galleryUrl,
+    driveLink: driveLink || gallery.bookings?.drive_link || undefined,
+    sessionDate: gallery.bookings?.session_date ?? undefined,
+  })
+
+  if (emailError) return { error: emailError }
+
+  // Mark gallery as delivered
+  const { error: galleryError } = await context.admin
+    .from('galleries')
+    .update({ status: 'delivered' })
+    .eq('gallery_id', galleryId)
+
+  if (galleryError) return { error: galleryError.message }
+
+  // Persist drive link on the booking if a new one was supplied
+  if (driveLink && gallery.bookings?.booking_id) {
+    await context.admin
+      .from('bookings')
+      .update({ drive_link: driveLink })
+      .eq('booking_id', gallery.bookings.booking_id)
+  }
+
+  revalidatePath(`/dashboard/galleries/${galleryId}`)
+  revalidatePath('/dashboard/galleries')
+  return { error: null }
 }
 
 export async function toggleFavourite(photoId: string, current: boolean) {

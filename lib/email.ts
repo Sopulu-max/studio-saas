@@ -285,6 +285,75 @@ export async function sendStaffInviteEmail({
   return { error: error?.message ?? null }
 }
 
+export async function sendGalleryEmail({
+  to,
+  clientName,
+  studioName,
+  galleryUrl,
+  driveLink,
+  sessionDate,
+}: {
+  to: string
+  clientName: string
+  studioName: string
+  galleryUrl: string
+  driveLink?: string
+  sessionDate?: string
+}) {
+  const sessionLine = sessionDate
+    ? `<p style="margin:0 0 6px;font-size:14px;color:#555;">Session date: <strong>${new Date(sessionDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>`
+    : ''
+
+  const driveLine = driveLink
+    ? `<a href="${driveLink}" style="display:inline-block;margin-top:12px;padding:10px 20px;background:#1a73e8;color:white;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;">Open Google Drive folder →</a>`
+    : ''
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family:system-ui,sans-serif;background:#f9f9f9;margin:0;padding:32px 16px;">
+  <div style="max-width:520px;margin:0 auto;background:white;border-radius:12px;border:1px solid #e5e5e5;padding:32px;">
+    <p style="margin:0 0 4px;font-size:18px;font-weight:600;color:#111;">${studioName}</p>
+    <p style="margin:0 0 28px;font-size:13px;color:#888;">Your photos are ready</p>
+
+    <p style="margin:0 0 16px;font-size:15px;color:#111;">Hi ${clientName},</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#555;line-height:1.6;">
+      Your photos from <strong>${studioName}</strong> are ready to view.
+      Click below to browse your gallery online.
+    </p>
+
+    ${sessionLine ? `<div style="background:#f4f4f4;border-radius:8px;padding:16px;margin-bottom:24px;">${sessionLine}</div>` : ''}
+
+    <a href="${galleryUrl}"
+      style="display:block;text-align:center;padding:13px 24px;background:#111;color:white;border-radius:8px;text-decoration:none;font-size:14px;font-weight:600;margin-bottom:8px;">
+      View your gallery →
+    </a>
+
+    ${driveLine}
+
+    <p style="margin:20px 0 0;font-size:13px;color:#aaa;line-height:1.6;">
+      If the button doesn't work, copy and paste this link into your browser:<br/>
+      <span style="color:#555;word-break:break-all;">${galleryUrl}</span>
+    </p>
+
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:20px 0;" />
+    <p style="margin:0;font-size:12px;color:#bbb;">
+      Please reply to this email with any questions.
+    </p>
+  </div>
+</body>
+</html>`
+
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `Your photos are ready — ${studioName}`,
+    html,
+  })
+
+  return { error: error?.message ?? null }
+}
+
 export async function sendStudioBookingNotification({
   studioEmail,
   studioName,

@@ -4,23 +4,34 @@ import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
-import { updateGalleryStatus, deletePhoto, toggleFavourite } from '@/app/actions/galleries'
+import { updateGalleryStatus, deletePhoto, toggleFavourite, deliverGallery } from '@/app/actions/galleries'
+
+type GalleryPhoto = {
+  photo_id: string
+  file_url: string
+  thumbnail_url: string
+  is_favourite: boolean
+  is_edited?: boolean | null
+}
 
 export default function GalleryUploader({
   galleryId, currentStatus, photos, clientLink, selectionOpen
 }: {
   galleryId: string
   currentStatus: string
-  photos: any[]
+  photos: GalleryPhoto[]
   clientLink: string
   selectionOpen: boolean
 }) {
   const router = useRouter()
   const supabase = createClient()
   const fileRef = useRef<HTMLInputElement>(null)
-  const [uploading, setUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
+  const [uploading, setUploading]         = useState(false)
+  const [progress, setProgress]           = useState(0)
   const [statusLoading, setStatusLoading] = useState(false)
+  const [showDeliverForm, setShowDeliverForm] = useState(false)
+  const [deliverDriveLink, setDeliverDriveLink] = useState('')
+  const [delivering, setDelivering]       = useState(false)
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -66,6 +77,19 @@ export default function GalleryUploader({
       await updateGalleryStatus(galleryId, 'ready')
     }
     router.refresh()
+  }
+
+  async function handleDeliver() {
+    setDelivering(true)
+    const { error } = await deliverGallery(galleryId, deliverDriveLink.trim() || undefined)
+    if (error) toast.error(error)
+    else {
+      toast.success('Gallery delivered — client notified by email')
+      setShowDeliverForm(false)
+      setDeliverDriveLink('')
+      router.refresh()
+    }
+    setDelivering(false)
   }
 
   async function handleStatusChange(status: string) {
@@ -163,11 +187,13 @@ export default function GalleryUploader({
           </p>
         )}
 
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, alignItems: 'center' }}>
           {currentStatus === 'ready' && (
-            <button onClick={() => handleStatusChange('delivered')} disabled={statusLoading}
+            <button
+              onClick={() => setShowDeliverForm(v => !v)}
+              disabled={delivering}
               style={{ padding: '8px 16px', fontSize: '13px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-              Mark as delivered
+              {showDeliverForm ? 'Cancel' : 'Deliver to client'}
             </button>
           )}
           {currentStatus === 'delivered' && (
@@ -177,6 +203,33 @@ export default function GalleryUploader({
             </button>
           )}
         </div>
+
+        {/* Delivery form */}
+        {showDeliverForm && currentStatus === 'ready' && (
+          <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '16px', paddingTop: '16px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
+              An email with the gallery link will be sent to the client.
+            </p>
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>
+                Google Drive link <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span>
+              </label>
+              <input
+                type="url"
+                value={deliverDriveLink}
+                onChange={e => setDeliverDriveLink(e.target.value)}
+                placeholder="https://drive.google.com/drive/folders/..."
+                style={{ width: '100%', boxSizing: 'border-box' as const, fontSize: '13px' }}
+              />
+            </div>
+            <button
+              onClick={handleDeliver}
+              disabled={delivering}
+              style={{ width: '100%', padding: '10px', fontSize: '14px', borderRadius: '8px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', cursor: 'pointer', fontWeight: '500' }}>
+              {delivering ? 'Sending…' : 'Send gallery to client'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -1,6 +1,7 @@
 'use server'
 
 import { z } from 'zod'
+import { revalidatePath } from 'next/cache'
 import { sendInvoiceEmail } from '@/lib/email'
 import { getStudioContext, fetchStudio, ownsBooking, ownsInvoice, ownsPackage } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
@@ -151,7 +152,29 @@ export async function addPayment(form: {
     reference: form.reference || null,
     paid_at: new Date().toISOString(),
   })
-  return { error: error?.message ?? null }
+  if (error) return { error: error.message }
+
+  // Auto-flip to 'paid' when cumulative payments reach the invoice total
+  const { data: inv } = await context.admin
+    .from('invoices')
+    .select('total, status, payments(amount)')
+    .eq('invoice_id', form.invoice_id)
+    .single()
+
+  if (inv && inv.status !== 'paid' && inv.status !== 'cancelled') {
+    const totalPaid = ((inv.payments as unknown as { amount: number }[]) ?? [])
+      .reduce((s, p) => s + Number(p.amount), 0)
+    if (totalPaid >= Number(inv.total)) {
+      await context.admin
+        .from('invoices')
+        .update({ status: 'paid' })
+        .eq('invoice_id', form.invoice_id)
+    }
+  }
+
+  revalidatePath(`/dashboard/invoices/${form.invoice_id}`)
+  revalidatePath('/dashboard/invoices')
+  return { error: null }
 }
 
 export async function sendInvoiceToClient(invoiceId: string) {
