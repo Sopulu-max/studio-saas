@@ -1,9 +1,18 @@
-// Using `any` for the query chain return so that the real Supabase
-// PostgrestQueryBuilder (whose chained methods don't satisfy a strict
-// self-referential type) is assignable to AdminLike.
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+// What .select() returns — supports chaining eq/maybeSingle etc.
+type FilterLike = {
+  eq(column: string, value: unknown): FilterLike
+  maybeSingle(): Promise<{ data: unknown }>
+}
+
+// What .from() returns — only exposes select() before filtering.
+// Splitting the two types mirrors the real PostgrestQueryBuilder shape and
+// keeps SupabaseClient<PermissiveDB> assignable to AdminLike.
+type SelectLike = {
+  select(columns: string): FilterLike
+}
+
 type AdminLike = {
-  from(table: string): any
+  from(table: string): SelectLike
 }
 
 async function hasStudioRecordAccess(
