@@ -133,7 +133,6 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       <ContractActions
         contractId={id}
         currentStatus={contract.status ?? ''}
-        clientEmail={contract.bookings?.clients?.email ?? ''}
         clientName={contract.bookings?.clients?.full_name ?? ''}
       />
     </div>
