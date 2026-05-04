@@ -29,14 +29,19 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
   const [isPending, startTransition] = useTransition()
 
   function toggleAll() {
-    if (selected.size === sessions.length) setSelected(new Set())
-    else setSelected(new Set(sessions.map(s => s.booking_id)))
+    if (selected.size === sessions.length) {
+      setSelected(new Set())
+      return
+    }
+
+    setSelected(new Set(sessions.map(s => s.booking_id)))
   }
 
   function toggle(id: string) {
-    setSelected(prev => {
+    setSelected((prev) => {
       const next = new Set(prev)
-      next.has(id) ? next.delete(id) : next.add(id)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
       return next
     })
   }
@@ -60,10 +65,10 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
     <div style={{ position: 'relative' }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
           <input type="checkbox" checked={allChecked} onChange={toggleAll}
             style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
-          <span>Client</span><span>Type</span><span>Date</span><span>Package</span><span>Status</span>
+          <span>Client</span><span>Type</span><span>Category</span><span>Date</span><span>Package</span><span>Status</span>
         </div>
 
         {/* Rows */}
@@ -73,7 +78,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
           const name       = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
           return (
             <div key={s.booking_id} style={{
-              display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr',
+              display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr 1fr',
               padding: '0.875rem 1.25rem', alignItems: 'center',
               borderBottom: i < sessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
               background: isSelected ? 'var(--active)' : 'transparent',
@@ -82,19 +87,26 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               <input type="checkbox" checked={isSelected} onChange={() => toggle(s.booking_id)}
                 style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
 
-              {/* Client — ref + category as sub-line */}
+              {/* Client — ref as sub-line */}
               <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
                 <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.clients?.full_name ?? '—'}
                 </p>
                 <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {name}{s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                  {name}
                 </p>
               </Link>
 
+              {/* Session type badge */}
               <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500' }}>
                 {typeCfg.label}
               </span>
+
+              {/* Shoot category */}
+              <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {s.shoot_type ?? <span style={{ color: 'var(--text-4)' }}>—</span>}
+              </p>
+
               <p style={{ fontSize: '13px', margin: 0 }}>
                 {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </p>

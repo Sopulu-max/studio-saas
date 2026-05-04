@@ -211,13 +211,14 @@ export default async function SessionsPage({
   // ── "By category" view data ────────────────────────────────────
   let catSessions: SessionListRow[] = []
   if (view === 'by-category') {
-    const { data } = await context.admin
+    let catQ = context.admin
       .from('bookings')
-      .select('booking_id, booking_ref, session_type, shoot_type, session_date, status, clients(full_name)')
+      .select('booking_id, booking_ref, session_type, shoot_type, session_date, status, clients(full_name), packages(name)')
       .eq('studio_id', context.studioId)
       .not('status', 'in', cancelIn)
-      .order('session_date', { ascending: false })
-      .limit(500)
+    if (date_from) catQ = catQ.gte('session_date', date_from)
+    if (date_to)   catQ = catQ.lte('session_date', date_to + 'T23:59:59')
+    const { data } = await catQ.order('session_date', { ascending: false }).limit(500)
     catSessions = (data ?? []) as unknown as SessionListRow[]
   }
 
@@ -438,13 +439,27 @@ export default async function SessionsPage({
           ══════════════════════════════════════════════════════ */}
       {view === 'by-category' && (
         <>
+          {/* Date range filter */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+            <DateRangeFilter defaultFrom={date_from} defaultTo={date_to} />
+            {(date_from || date_to) && (
+              <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>
+                {date_from && date_to
+                  ? `${sDate(date_from)} – ${sDate(date_to)}`
+                  : date_from ? `From ${sDate(date_from)}` : `Until ${sDate(date_to)}`}
+              </span>
+            )}
+          </div>
+
           <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 1.25rem' }}>
             Sessions grouped by shoot category — {catSessions.length} total (excl. cancelled)
           </p>
 
           {catSessions.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '4rem', border: '1px dashed var(--line)', borderRadius: '12px', color: 'var(--text-3)' }}>
-              <p style={{ fontSize: '15px', margin: '0 0 4px' }}>No sessions yet</p>
+              <p style={{ fontSize: '15px', margin: '0 0 4px' }}>
+                {date_from || date_to ? 'No sessions in this date range' : 'No sessions yet'}
+              </p>
             </div>
           ) : (
             (() => {
@@ -462,41 +477,61 @@ export default async function SessionsPage({
               if (noCat.length) sorted.push(['No category', noCat])
 
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {sorted.map(([cat, group]) => (
-                    <div key={cat}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                        <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)' }}>{cat}</span>
-                        <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>{group.length}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                  {sorted.map(([cat, group]) => {
+                    // Date range for this category group
+                    const dates = group.map(s => s.session_date).filter(Boolean) as string[]
+                    const earliest = dates.length ? dates[dates.length - 1] : null
+                    const latest   = dates.length ? dates[0] : null
+                    const dateRange = earliest && latest && earliest !== latest
+                      ? `${sDate(earliest)} – ${sDate(latest)}`
+                      : earliest ? sDate(earliest) : null
+
+                    return (
+                      <div key={cat}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)' }}>{cat}</span>
+                          <span style={{ fontSize: '12px', padding: '1px 8px', borderRadius: '20px', background: 'var(--active)', color: 'var(--text-3)', fontWeight: '500' }}>{group.length}</span>
+                          {dateRange && (
+                            <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{dateRange}</span>
+                          )}
+                        </div>
+                        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                          {group.map((s, i) => {
+                            const sc = getStatusConfig(config, s.status)
+                            const tc = s.session_type ? getSessionTypeConfig(config, s.session_type) : null
+                            return (
+                              <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`}
+                                style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < group.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {s.clients?.full_name ?? '—'}
+                                  </p>
+                                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.01em' }}>
+                                    {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                                    {s.packages?.name ? ` · ${s.packages.name}` : ''}
+                                  </p>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                                  {tc && (
+                                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: tc.color_bg, color: tc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
+                                      {tc.label}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: sc.color_bg, color: sc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
+                                    {sc.label}
+                                  </span>
+                                  <span style={{ fontSize: '12px', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
+                                    {sDate(s.session_date)}
+                                  </span>
+                                </div>
+                              </Link>
+                            )
+                          })}
+                        </div>
                       </div>
-                      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
-                        {group.map((s, i) => {
-                          const sc = getStatusConfig(config, s.status)
-                          return (
-                            <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`}
-                              style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < group.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
-                              <div style={{ minWidth: 0, flex: 1 }}>
-                                <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {s.clients?.full_name ?? '—'}
-                                </p>
-                                <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-                                  {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
-                                </p>
-                              </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: sc.color_bg, color: sc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
-                                  {sc.label}
-                                </span>
-                                <span style={{ fontSize: '12px', color: 'var(--text-3)', whiteSpace: 'nowrap' }}>
-                                  {sDate(s.session_date)}
-                                </span>
-                              </div>
-                            </Link>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  ))}
+                    )
+                  })}
                 </div>
               )
             })()
