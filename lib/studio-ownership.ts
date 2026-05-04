@@ -1,19 +1,10 @@
-// What .select() returns — supports chaining eq/maybeSingle etc.
-type FilterLike = {
-  eq(column: string, value: unknown): FilterLike
-  maybeSingle(): Promise<{ data: unknown }>
-}
-
-// What .from() returns — only exposes select() before filtering.
-// Splitting the two types mirrors the real PostgrestQueryBuilder shape and
-// keeps SupabaseClient<PermissiveDB> assignable to AdminLike.
-type SelectLike = {
-  select(columns: string): FilterLike
-}
-
-type AdminLike = {
-  from(table: string): SelectLike
-}
+// Typed as `any` intentionally — a tighter self-referential FilterLike
+// (eq → FilterLike → eq → …) triggers TS2589 "excessively deep and possibly
+// infinite" when TypeScript tries to verify SupabaseClient<PermissiveDB>
+// against it. Returning `any` from `from()` breaks the recursion while still
+// letting all the chained calls inside these functions type-check fine.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AdminLike = { from(table: string): any }
 
 async function hasStudioRecordAccess(
   admin: AdminLike,
