@@ -5,21 +5,20 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { updateContractStatus, markContractSigned, deleteContract, sendContractToClient } from '@/app/actions/contracts'
 
+// 'signed' is intentionally excluded — use the "Record signature" button below
+// to ensure signed_by and signed_at are always captured alongside the status change
 const CONTRACT_STATUSES = [
-  { value: 'draft',  label: 'Draft' },
-  { value: 'sent',   label: 'Sent to client' },
-  { value: 'signed', label: 'Signed' },
+  { value: 'draft', label: 'Draft' },
+  { value: 'sent',  label: 'Sent to client' },
 ]
 
 export default function ContractActions({
   contractId,
   currentStatus,
-  clientEmail,
   clientName,
 }: {
   contractId: string
   currentStatus: string
-  clientEmail: string
   clientName: string
 }) {
   const router = useRouter()

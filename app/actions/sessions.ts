@@ -21,6 +21,7 @@ const addSessionSchema = z.object({
   editor_id: z.string().optional().default(''),
   edited_photos: z.string().optional().default(''),
   shoot_type: z.string().optional().default(''),
+  base_price: z.string().optional().default(''),
   force_duplicate: z.boolean().optional().default(false),
 })
 
@@ -40,6 +41,7 @@ export async function addSession(form: {
   editor_id: string
   edited_photos: string
   shoot_type: string
+  base_price: string
   force_duplicate?: boolean
 }) {
   const result = addSessionSchema.safeParse(form)

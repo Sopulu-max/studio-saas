@@ -45,6 +45,7 @@ export async function addContract(form: {
     .single()
 
   if (error || !contract) return { error: error?.message ?? 'Failed to create contract' }
+  revalidatePath('/dashboard/contracts')
   return { error: null, contractId: contract.contract_id }
 }
 
@@ -74,7 +75,10 @@ export async function updateContract(contractId: string, content: string) {
     .update({ content })
     .eq('contract_id', contractId)
 
-  if (!error) revalidatePath(`/dashboard/contracts/${contractId}`)
+  if (!error) {
+    revalidatePath(`/dashboard/contracts/${contractId}`)
+    revalidatePath('/dashboard/contracts')
+  }
   return { error: error?.message ?? null }
 }
 
@@ -90,6 +94,10 @@ export async function updateContractStatus(contractId: string, status: string) {
     .from('contracts')
     .update({ status })
     .eq('contract_id', contractId)
+  if (!error) {
+    revalidatePath(`/dashboard/contracts/${contractId}`)
+    revalidatePath('/dashboard/contracts')
+  }
   return { error: error?.message ?? null }
 }
 
@@ -109,6 +117,10 @@ export async function markContractSigned(contractId: string, signedBy: string) {
       signed_at: new Date().toISOString(),
     })
     .eq('contract_id', contractId)
+  if (!error) {
+    revalidatePath(`/dashboard/contracts/${contractId}`)
+    revalidatePath('/dashboard/contracts')
+  }
   return { error: error?.message ?? null }
 }
 
@@ -123,7 +135,7 @@ export async function sendContractToClient(contractId: string) {
   const { data: studio } = await context.admin
     .from('studios')
     .select('name, email')
-    .eq('owner_id', context.userId)
+    .eq('studio_id', context.studioId)
     .single()
 
   type ContractEmailRecord = {
@@ -163,6 +175,8 @@ export async function sendContractToClient(contractId: string) {
     .eq('contract_id', contractId)
 
   if (error) return { error: error.message }
+  revalidatePath(`/dashboard/contracts/${contractId}`)
+  revalidatePath('/dashboard/contracts')
   return { error: null }
 }
 
@@ -178,5 +192,6 @@ export async function deleteContract(contractId: string) {
     .from('contracts')
     .delete()
     .eq('contract_id', contractId)
+  if (!error) revalidatePath('/dashboard/contracts')
   return { error: error?.message ?? null }
 }
