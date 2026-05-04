@@ -99,10 +99,9 @@ export async function addSession(form: {
     booking_ref: nextRef,
   }
 
-  if (form.session_type)    insertData.session_type    = form.session_type
-  if (form.service_type)    insertData.service_type    = form.service_type
-  if (form.shoot_type)      insertData.shoot_type      = form.shoot_type
-  if (form.base_price)      insertData.base_price      = parseFloat(form.base_price)
+  if (form.session_type)     insertData.session_type     = form.session_type
+  if (form.service_type)     insertData.service_type     = form.service_type
+  if (form.shoot_type)       insertData.shoot_type       = form.shoot_type
   if (form.location_address) insertData.location_address = form.location_address
   if (form.package_id)      insertData.package_id      = form.package_id
   if (form.outfits_count)   insertData.outfits_count   = parseInt(form.outfits_count, 10)
