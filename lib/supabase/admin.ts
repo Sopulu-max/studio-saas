@@ -8,24 +8,34 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 //
 // Fix: supply an explicit PermissiveDB type that satisfies Supabase's
 // GenericSchema constraints but types every row/insert/update as
-// Record<string, any>. This keeps the schema-aware inference path active
-// (IsAny is false) while making all property lookups return `any` rather
+// Record<string, unknown>. This keeps the schema-aware inference path active
+// (IsAny is false) while making all property lookups return `unknown` rather
 // than `never`.
+type PermissiveRecord = Record<string, unknown>
+
+// GenericTable (postgrest-js) requires Relationships: GenericRelationship[].
+// unknown[] does not satisfy that constraint, causing every table lookup to
+// resolve to `never` and cascading `never` into all insert/update/select
+// argument and result types.  Using never[] fixes this: `never` is assignable
+// to any type (including GenericRelationship), so never[] satisfies the array
+// constraint while still expressing "no typed relationships".
 type PermissiveDB = {
   public: {
     Tables: Record<string, {
-      Row:           Record<string, any>
-      Insert:        Record<string, any>
-      Update:        Record<string, any>
-      Relationships: any[]
+      Row:           PermissiveRecord
+      Insert:        PermissiveRecord
+      Update:        PermissiveRecord
+      Relationships: never[]
     }>
     Views: Record<string, {
-      Row:           Record<string, any>
-      Relationships: any[]
+      Row:           PermissiveRecord
+      Insert:        PermissiveRecord
+      Update:        PermissiveRecord
+      Relationships: never[]
     }>
     Functions: Record<string, {
-      Args:    Record<string, any>
-      Returns: any
+      Args:    PermissiveRecord
+      Returns: unknown
     }>
   }
 }

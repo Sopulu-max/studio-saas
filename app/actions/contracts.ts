@@ -161,7 +161,7 @@ export async function sendContractToClient(contractId: string) {
   const { error: emailError } = await sendContractEmail({
     to:          clientEmail,
     clientName:  contract.bookings?.clients?.full_name ?? 'Client',
-    studioName:  studio?.name ?? '',
+    studioName:  (studio?.name as string | null | undefined) ?? '',
     contractId,
     sessionDate: contract.bookings?.session_date ?? undefined,
     siteUrl,
