@@ -97,14 +97,16 @@ export async function addSession(form: {
     booking_ref: nextRef,
   }
 
-  if (form.session_type) insertData.session_type = form.session_type
-  if (form.service_type) insertData.service_type = form.service_type
+  if (form.session_type)    insertData.session_type    = form.session_type
+  if (form.service_type)    insertData.service_type    = form.service_type
+  if (form.shoot_type)      insertData.shoot_type      = form.shoot_type
+  if (form.base_price)      insertData.base_price      = parseFloat(form.base_price)
   if (form.location_address) insertData.location_address = form.location_address
-  if (form.package_id) insertData.package_id = form.package_id
-  if (form.outfits_count) insertData.outfits_count = parseInt(form.outfits_count, 10)
-  if (form.edited_photos) insertData.edited_photos = parseInt(form.edited_photos, 10)
-  if (form.event_name) insertData.event_name = form.event_name
-  if (form.event_date) insertData.event_date = form.event_date
+  if (form.package_id)      insertData.package_id      = form.package_id
+  if (form.outfits_count)   insertData.outfits_count   = parseInt(form.outfits_count, 10)
+  if (form.edited_photos)   insertData.edited_photos   = parseInt(form.edited_photos, 10)
+  if (form.event_name)      insertData.event_name      = form.event_name
+  if (form.event_date)      insertData.event_date      = form.event_date
 
   const { data: session, error } = await context.admin
     .from('bookings')
@@ -391,6 +393,7 @@ export async function updateSession(sessionId: string, form: {
   shoot_type?: string
   session_date: string
   package_id: string
+  base_price?: string
   outfits_count: string
   edited_photos: string
   location_address: string
@@ -422,18 +425,19 @@ export async function updateSession(sessionId: string, form: {
   if (!editorOk)  return { error: 'Editor not found' }
 
   const updateData: Record<string, string | number | null> = {
-    client_id:    form.client_id,
-    session_date: form.session_date,
-    session_type: form.session_type,
-    service_type: form.service_type || 'photo',
-    shoot_type:   form.shoot_type   || null,
-    notes:        form.notes || null,
-    package_id:   form.package_id   || null,
-    outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
-    edited_photos: form.edited_photos ? parseInt(form.edited_photos, 10) : null,
-    location_address: form.location_address || null,
-    event_name:   form.event_name   || null,
-    event_date:   form.event_date   || null,
+    client_id:        form.client_id,
+    session_date:     form.session_date,
+    session_type:     form.session_type,
+    service_type:     form.service_type      || 'photo',
+    shoot_type:       form.shoot_type        || null,
+    notes:            form.notes             || null,
+    package_id:       form.package_id        || null,
+    base_price:       form.base_price        ? parseFloat(form.base_price) : null,
+    outfits_count:    form.outfits_count     ? parseInt(form.outfits_count, 10)  : null,
+    edited_photos:    form.edited_photos     ? parseInt(form.edited_photos, 10)  : null,
+    location_address: form.location_address  || null,
+    event_name:       form.event_name        || null,
+    event_date:       form.event_date        || null,
   }
 
   const { error: updateError } = await context.admin

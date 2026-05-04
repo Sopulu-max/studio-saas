@@ -21,8 +21,10 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
     client_id?: string | null
     session_type?: string | null
     service_type?: string | null
+    shoot_type?: string | null
     session_date?: string | null
     package_id?: string | null
+    base_price?: number | string | null
     outfits_count?: number | null
     edited_photos?: number | null
     location_address?: string | null
