@@ -14,7 +14,7 @@ type PrintOrderItem = {
 type PrintOrderBooking = {
   booking_id?: string | null
   session_date?: string | null
-  clients?: { full_name?: string | null; phone?: string | null; email?: string | null } | null
+  clients?: { client_id?: string | null; full_name?: string | null; phone?: string | null; email?: string | null } | null
   packages?: { name?: string | null } | null
 } | null
 
@@ -39,7 +39,7 @@ export default async function PrintOrderDetailPage({
     .from('print_orders')
     .select(`
       *,
-      bookings ( booking_id, session_date, studio_id, clients ( full_name, phone, email ), packages ( name ) ),
+      bookings ( booking_id, session_date, studio_id, clients ( client_id, full_name, phone, email ), packages ( name ) ),
       print_order_items ( * )
     `)
     .eq('order_id', id)
@@ -90,7 +90,13 @@ export default async function PrintOrderDetailPage({
       {booking && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
-          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{booking.clients?.full_name}</p>
+          {booking.clients?.client_id ? (
+            <Link href={`/dashboard/clients/${booking.clients.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
+              {booking.clients.full_name}
+            </Link>
+          ) : (
+            <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{booking.clients?.full_name}</p>
+          )}
           {booking.clients?.phone && (
             <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{booking.clients.phone}</p>
           )}

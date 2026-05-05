@@ -21,7 +21,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       session_date?: string | null
       location_address?: string | null
       studio_id?: string | null
-      clients?: { full_name?: string | null; email?: string | null } | null
+      clients?: { client_id?: string | null; full_name?: string | null; email?: string | null } | null
       packages?: { name?: string | null } | null
     } | null
   }
@@ -31,7 +31,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       *,
       bookings!inner (
         booking_id, booking_ref, session_date, location_address, studio_id,
-        clients ( full_name, email ),
+        clients ( client_id, full_name, email ),
         packages ( name )
       )
     `)
@@ -55,7 +55,11 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px' }}>
-            {contract.bookings?.clients?.full_name ?? '—'}
+            {contract.bookings?.clients?.client_id ? (
+              <Link href={`/dashboard/clients/${contract.bookings.clients.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {contract.bookings.clients.full_name ?? '—'}
+              </Link>
+            ) : (contract.bookings?.clients?.full_name ?? '—')}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
             <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(contract.bookings?.clients?.full_name, contract.bookings?.booking_ref, contract.bookings?.booking_id, contract.bookings?.session_date)}</span>
@@ -81,7 +85,13 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
-        <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{contract.bookings?.clients?.full_name}</p>
+        {contract.bookings?.clients?.client_id ? (
+          <Link href={`/dashboard/clients/${contract.bookings.clients.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
+            {contract.bookings.clients.full_name}
+          </Link>
+        ) : (
+          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{contract.bookings?.clients?.full_name}</p>
+        )}
         <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{contract.bookings?.clients?.email}</p>
         <div style={{ display: 'flex', gap: '24px', marginTop: '12px' }}>
           <div>
@@ -111,14 +121,18 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             </div>
           )}
         </div>
-        {contract.bookings?.booking_id && (
-          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--line-inner)' }}>
-            <Link
-              href={`/dashboard/sessions/${contract.bookings.booking_id}`}
-              style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}
-            >
-              View session →
-            </Link>
+        {(contract.bookings?.booking_id || contract.bookings?.clients?.client_id) && (
+          <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--line-inner)', display: 'flex', gap: '16px' }}>
+            {contract.bookings?.clients?.client_id && (
+              <Link href={`/dashboard/clients/${contract.bookings.clients.client_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+                View client →
+              </Link>
+            )}
+            {contract.bookings?.booking_id && (
+              <Link href={`/dashboard/sessions/${contract.bookings.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+                View session →
+              </Link>
+            )}
           </div>
         )}
       </div>

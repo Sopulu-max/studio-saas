@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getStudioContext } from '@/lib/studio'
 import GalleryUploader from './gallery-uploader'
 
@@ -13,7 +14,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
     status: string | null
     outfits_count: number | null
     selections_count: number | null
-    clients: { full_name: string | null } | null
+    clients: { client_id: string | null; full_name: string | null } | null
   }
 
   type GalleryRow = {
@@ -37,7 +38,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
         status,
         outfits_count,
         selections_count,
-        clients(full_name)
+        clients(client_id, full_name)
       )
     `)
     .eq('gallery_id', id)
@@ -76,7 +77,15 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{gallery.title}</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {booking?.clients?.full_name} · {photos?.length ?? 0} photo{photos?.length !== 1 ? 's' : ''}
+            {booking?.clients?.client_id ? (
+              <Link href={`/dashboard/clients/${booking.clients.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {booking.clients.full_name}
+              </Link>
+            ) : booking?.clients?.full_name}
+            {' · '}{photos?.length ?? 0} photo{photos?.length !== 1 ? 's' : ''}
+            {booking?.booking_id && (
+              <> · <Link href={`/dashboard/sessions/${booking.booking_id}`} style={{ color: 'var(--link)', textDecoration: 'none' }}>View session →</Link></>
+            )}
           </p>
         </div>
         <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>

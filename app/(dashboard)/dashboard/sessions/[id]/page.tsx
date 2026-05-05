@@ -45,7 +45,9 @@ type SessionRecord = {
   edited_photos?: number | null
   extra_outfits?: number | null
   extra_pictures?: number | null
-  clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
+  client_id?: string | null
+  package_id?: string | null
+  clients?: { client_id?: string | null; full_name?: string | null; email?: string | null; phone?: string | null } | null
   packages?: { name?: string | null; base_price?: number | string | null; duration_mins?: number | null } | null
   booking_staff?: SessionStaffRelation[] | null
   booking_addons?: SessionAddonRelation[] | null
@@ -60,7 +62,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     .from('bookings')
     .select(`
       *,
-      clients ( full_name, email, phone ),
+      clients ( client_id, full_name, email, phone ),
       packages ( name, base_price, duration_mins ),
       booking_staff ( role, staff_id, staff ( full_name ) ),
       booking_addons ( quantity, package_addons ( name, price ) )
@@ -142,7 +144,11 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 4px' }}>
-            {session.clients?.full_name ?? '—'}
+            {session.client_id ? (
+              <Link href={`/dashboard/clients/${session.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {session.clients?.full_name ?? '—'}
+              </Link>
+            ) : (session.clients?.full_name ?? '—')}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
             <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(session.clients?.full_name, session.booking_ref, id, session.session_date)}</span>
@@ -181,9 +187,22 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       {/* Client */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
-        <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{session.clients?.full_name}</p>
+        {session.client_id ? (
+          <Link href={`/dashboard/clients/${session.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
+            {session.clients?.full_name}
+          </Link>
+        ) : (
+          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{session.clients?.full_name}</p>
+        )}
         <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{session.clients?.email}</p>
         <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{session.clients?.phone ?? '—'}</p>
+        {session.client_id && (
+          <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '12px', paddingTop: '12px' }}>
+            <Link href={`/dashboard/clients/${session.client_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+              View client →
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Session details */}
@@ -266,7 +285,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           {session.packages?.name ? (
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Package</p>
-              <p style={{ fontSize: '14px', margin: 0 }}>{session.packages.name}</p>
+              {session.package_id ? (
+                <Link href={`/dashboard/packages/${session.package_id}`} style={{ fontSize: '14px', margin: 0, display: 'block', color: 'inherit', textDecoration: 'none' }}>
+                  {session.packages.name}
+                </Link>
+              ) : (
+                <p style={{ fontSize: '14px', margin: 0 }}>{session.packages.name}</p>
+              )}
               <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '2px 0 0' }}>
                 ₦{Number(session.packages.base_price).toLocaleString()}
                 {session.packages.duration_mins ? ` · ${session.packages.duration_mins} mins` : ''}
@@ -285,63 +310,38 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             const isPhotoVideo = session.service_type === 'photo_video'
             const isPureVideo  = session.service_type === 'video'
 
+            const StaffName = ({ member, label }: { member: SessionStaffRelation | undefined; label: string }) => (
+              <div>
+                <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{label}</p>
+                {member?.staff_id ? (
+                  <Link href={`/dashboard/staff/${member.staff_id}`} style={{ fontSize: '14px', display: 'block', margin: 0, color: 'inherit', textDecoration: 'none' }}>
+                    {member.staff?.full_name}
+                  </Link>
+                ) : (
+                  <p style={{ fontSize: '14px', margin: 0, color: member ? 'var(--text)' : 'var(--text-4)' }}>
+                    {member?.staff?.full_name ?? 'None assigned'}
+                  </p>
+                )}
+              </div>
+            )
+
             if (isPhotoVideo) {
               return (
                 <>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Photographer</p>
-                    <p style={{ fontSize: '14px', margin: 0, color: photographer ? 'var(--text)' : 'var(--text-4)' }}>
-                      {photographer?.staff?.full_name ?? 'None assigned'}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Photo editor</p>
-                    <p style={{ fontSize: '14px', margin: 0, color: editor ? 'var(--text)' : 'var(--text-4)' }}>
-                      {editor?.staff?.full_name ?? 'None assigned'}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Videographer</p>
-                    <p style={{ fontSize: '14px', margin: 0, color: videographer ? 'var(--text)' : 'var(--text-4)' }}>
-                      {videographer?.staff?.full_name ?? 'None assigned'}
-                    </p>
-                  </div>
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Video editor</p>
-                    <p style={{ fontSize: '14px', margin: 0, color: videoEditor ? 'var(--text)' : 'var(--text-4)' }}>
-                      {videoEditor?.staff?.full_name ?? 'None assigned'}
-                    </p>
-                  </div>
-                  {colourGrader && (
-                    <div>
-                      <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Colour grader</p>
-                      <p style={{ fontSize: '14px', margin: 0 }}>{colourGrader.staff?.full_name}</p>
-                    </div>
-                  )}
+                  <StaffName member={photographer} label="Photographer" />
+                  <StaffName member={editor} label="Photo editor" />
+                  <StaffName member={videographer} label="Videographer" />
+                  <StaffName member={videoEditor} label="Video editor" />
+                  {colourGrader && <StaffName member={colourGrader} label="Colour grader" />}
                 </>
               )
             }
 
             return (
               <>
-                <div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{isPureVideo ? 'Videographer' : 'Photographer'}</p>
-                  <p style={{ fontSize: '14px', margin: 0, color: photographer ? 'var(--text)' : 'var(--text-4)' }}>
-                    {photographer?.staff?.full_name ?? 'None assigned'}
-                  </p>
-                </div>
-                <div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{isPureVideo ? 'Video editor' : 'Editor'}</p>
-                  <p style={{ fontSize: '14px', margin: 0, color: editor ? 'var(--text)' : 'var(--text-4)' }}>
-                    {editor?.staff?.full_name ?? 'None assigned'}
-                  </p>
-                </div>
-                {colourGrader && (
-                  <div>
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Colour grader</p>
-                    <p style={{ fontSize: '14px', margin: 0 }}>{colourGrader.staff?.full_name}</p>
-                  </div>
-                )}
+                <StaffName member={photographer} label={isPureVideo ? 'Videographer' : 'Photographer'} />
+                <StaffName member={editor} label={isPureVideo ? 'Video editor' : 'Editor'} />
+                {colourGrader && <StaffName member={colourGrader} label="Colour grader" />}
               </>
             )
           })()}

@@ -32,7 +32,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       notes?: string | null
       status?: string | null
       studio_id?: string | null
-      clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
+      package_id?: string | null
+      clients?: { client_id?: string | null; full_name?: string | null; email?: string | null; phone?: string | null } | null
       packages?: { name?: string | null; base_price?: number | string | null } | null
     } | null
   }
@@ -41,8 +42,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
     .select(`
       *,
       bookings!inner (
-        booking_id, booking_ref, session_date, location, notes, status, studio_id,
-        clients ( full_name, email, phone ),
+        booking_id, booking_ref, session_date, location, notes, status, studio_id, package_id,
+        clients ( client_id, full_name, email, phone ),
         packages ( name, base_price ),
         booking_staff ( role, staff ( full_name ) )
       )
@@ -87,7 +88,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px' }}>
-            {invoice.bookings?.clients?.full_name ?? '—'}
+            {invoice.bookings?.clients?.client_id ? (
+              <Link href={`/dashboard/clients/${invoice.bookings.clients.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {invoice.bookings.clients.full_name ?? '—'}
+              </Link>
+            ) : (invoice.bookings?.clients?.full_name ?? '—')}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
             <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(invoice.bookings?.clients?.full_name, invoice.bookings?.booking_ref, invoice.bookings?.booking_id, invoice.bookings?.session_date)}</span>
@@ -111,9 +116,22 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 12px', color: 'var(--text-3)' }}>CLIENT</p>
-        <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{invoice.bookings?.clients?.full_name}</p>
+        {invoice.bookings?.clients?.client_id ? (
+          <Link href={`/dashboard/clients/${invoice.bookings.clients.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
+            {invoice.bookings.clients.full_name}
+          </Link>
+        ) : (
+          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{invoice.bookings?.clients?.full_name}</p>
+        )}
         <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{invoice.bookings?.clients?.email}</p>
         <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{invoice.bookings?.clients?.phone}</p>
+        {invoice.bookings?.clients?.client_id && (
+          <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '12px', paddingTop: '12px' }}>
+            <Link href={`/dashboard/clients/${invoice.bookings.clients.client_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+              View client →
+            </Link>
+          </div>
+        )}
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
@@ -133,7 +151,13 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Package</p>
-            <p style={{ fontSize: '14px', margin: 0 }}>{invoice.bookings?.packages?.name}</p>
+            {invoice.bookings?.package_id ? (
+              <Link href={`/dashboard/packages/${invoice.bookings.package_id}`} style={{ fontSize: '14px', display: 'block', margin: 0, color: 'inherit', textDecoration: 'none' }}>
+                {invoice.bookings.packages?.name ?? '—'}
+              </Link>
+            ) : (
+              <p style={{ fontSize: '14px', margin: 0 }}>{invoice.bookings?.packages?.name ?? '—'}</p>
+            )}
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Due date</p>
@@ -144,6 +168,13 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             </p>
           </div>
         </div>
+        {invoice.bookings?.booking_id && (
+          <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '12px', paddingTop: '12px' }}>
+            <Link href={`/dashboard/sessions/${invoice.bookings.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+              View session →
+            </Link>
+          </div>
+        )}
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
