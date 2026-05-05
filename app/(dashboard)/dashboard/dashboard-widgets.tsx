@@ -332,6 +332,7 @@ export default function DashboardWidgets(props: DashboardProps) {
     const kpis: {
       label: string; primary: string; unit?: string
       sub: string; subColor?: string; accentColor?: string
+      href: string
     }[] = [
       {
         label:   'Today',
@@ -339,6 +340,7 @@ export default function DashboardWidgets(props: DashboardProps) {
         unit:    props.todaySessions.length === 1 ? 'session' : 'sessions',
         sub:     props.revenueToday > 0 ? `${fmt(props.revenueToday)} collected` : 'No payments yet',
         subColor: props.revenueToday > 0 ? '#3b6d11' : undefined,
+        href:    '/dashboard/sessions',
       },
       {
         label:   'This week',
@@ -356,12 +358,14 @@ export default function DashboardWidgets(props: DashboardProps) {
           return parts.length ? parts.join(' · ') : (props.revenueWeek > 0 ? `${fmt(props.revenueWeek)} collected` : 'No sessions yet')
         })(),
         subColor: undefined,
+        href:    '/dashboard/sessions',
       },
       {
         label:   'Active pipeline',
         primary: String(props.pipelineSessions.length),
         unit:    props.pipelineSessions.length === 1 ? 'session' : 'sessions',
         sub:     pipelineSub,
+        href:    '/dashboard/sessions',
       },
       {
         label:   'Outstanding',
@@ -373,6 +377,7 @@ export default function DashboardWidgets(props: DashboardProps) {
             : 'All settled',
         subColor:     overdueInvoiceCount > 0 ? '#a32d2d' : undefined,
         accentColor:  overdueInvoiceCount > 0 ? '#a32d2d' : undefined,
+        href:    overdueInvoiceCount > 0 ? '/dashboard/invoices?status=overdue' : '/dashboard/invoices',
       },
     ]
 
@@ -380,7 +385,7 @@ export default function DashboardWidgets(props: DashboardProps) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
         <style>{`@media (max-width: 680px) { .kpi-grid { grid-template-columns: repeat(2,1fr) !important; } }`}</style>
         {kpis.map((k, i) => (
-          <div key={i} className={i === 0 ? 'kpi-grid' : ''} style={{ ...card, padding: '1.1rem 1.25rem' }}>
+          <Link key={i} href={k.href} className={i === 0 ? 'kpi-grid' : ''} style={{ ...card, padding: '1.1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
             <p style={{ ...sxn, marginBottom: '10px' }}>{k.label}</p>
             <p style={{ fontSize: '28px', fontWeight: 700, margin: '0 0 1px', letterSpacing: '-0.02em', lineHeight: 1, color: k.accentColor ?? 'var(--text)' }}>
               {k.primary}
@@ -391,7 +396,7 @@ export default function DashboardWidgets(props: DashboardProps) {
             <p style={{ fontSize: '12px', margin: 0, color: k.subColor ?? 'var(--text-4)', fontWeight: k.subColor ? 600 : 400 }}>
               {k.sub}
             </p>
-          </div>
+          </Link>
         ))}
       </div>
     )
@@ -1024,10 +1029,11 @@ export default function DashboardWidgets(props: DashboardProps) {
           const roles      = m.roles?.length ? m.roles : m.role ? [m.role] : []
           const dotColor   = checkedOut ? '#6abf69' : checkedIn ? '#4a90d9' : '#c8c8c4'
           return (
-            <div key={m.staff_id} style={{
+            <Link key={m.staff_id} href={`/dashboard/staff/${m.staff_id}`} style={{
               display: 'flex', alignItems: 'center', justifyContent: 'space-between',
               padding: '0.75rem 1.25rem', gap: '8px',
               borderBottom: i < Math.min(props.staffToday.length, 8) - 1 ? '1px solid var(--line-inner)' : 'none',
+              textDecoration: 'none', color: 'inherit',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0 }}>
                 <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: dotColor, flexShrink: 0 }} />
@@ -1043,7 +1049,7 @@ export default function DashboardWidgets(props: DashboardProps) {
               <span style={{ fontSize: '11px', color: late ? '#a32d2d' : 'var(--text-4)', fontWeight: late ? 700 : 400, flexShrink: 0 }}>
                 {checkedIn ? (late ? `${fmtTime(m.checkin!.checked_in_at)} LATE` : fmtTime(m.checkin!.checked_in_at)) : '—'}
               </span>
-            </div>
+            </Link>
           )
         })}
         {props.staffToday.length > 8 && (
@@ -1195,10 +1201,11 @@ export default function DashboardWidgets(props: DashboardProps) {
           todayClients.map((c, i) => {
             const ty  = c.sessionType ? (props.sessionTypeStyles[c.sessionType] ?? null) : null
             return (
-              <div key={`${c.clientId}-${i}`} style={{
+              <Link key={`${c.clientId}-${i}`} href={`/dashboard/clients/${c.clientId}`} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
                 padding: '0.7rem 1.25rem',
                 borderTop: '1px solid var(--line-inner)',
+                textDecoration: 'none', color: 'inherit',
               }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -1216,7 +1223,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                     {fmtTime(c.sessionDate)}
                   </span>
                 )}
-              </div>
+              </Link>
             )
           })
         )}
