@@ -9,6 +9,8 @@ export default function ThemeToggle() {
     const next = !dark
     setDark(next)
     document.documentElement.classList.toggle('dark', next)
+    // Cookie: read by the server on next request so SSR renders the correct class
+    document.cookie = `theme=${next ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`
     try { localStorage.setItem('theme', next ? 'dark' : 'light') } catch {}
   }
 

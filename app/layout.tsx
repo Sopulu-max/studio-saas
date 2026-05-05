@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { DM_Sans, Geist_Mono } from 'next/font/google'
+import { cookies } from 'next/headers'
 import { Toaster } from 'sonner'
 import './globals.css'
 
@@ -40,13 +41,17 @@ const themeScript = `
 })();
 `
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  const cookieStore = await cookies()
+  const theme = cookieStore.get('theme')?.value
+  const isDark = theme === 'dark'
+
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${geistMono.variable} h-full antialiased${isDark ? ' dark' : ''}`}
       suppressHydrationWarning
     >
       <head>
