@@ -16,7 +16,17 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
     clients: { full_name: string | null } | null
   }
 
-  const { data: gallery } = await context.admin
+  type GalleryRow = {
+    gallery_id: string
+    title: string | null
+    status: string | null
+    shared_link: string | null
+    bookings: GalleryBooking | null
+  }
+
+  type GalleryPhoto = { photo_id: string; file_url: string; thumbnail_url: string; is_favourite: boolean; is_edited: boolean; uploaded_at?: string | null }
+
+  const { data: galleryRaw } = await context.admin
     .from('galleries')
     .select(`
       *,
@@ -34,15 +44,19 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
     .eq('bookings.studio_id', context.studioId)
     .single()
 
-  if (!gallery) redirect('/dashboard/galleries')
+  if (!galleryRaw) redirect('/dashboard/galleries')
 
-  const { data: photos } = await context.admin
+  const gallery = galleryRaw as unknown as GalleryRow
+
+  const { data: photosRaw } = await context.admin
     .from('gallery_photos')
     .select('*')
     .eq('gallery_id', id)
     .order('uploaded_at', { ascending: false })
 
-  const booking = gallery.bookings as unknown as GalleryBooking | null
+  const photos = (photosRaw ?? []) as unknown as GalleryPhoto[]
+
+  const booking = gallery.bookings
 
   const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
     processing: { bg: '#faeeda', color: '#854f0b' },
@@ -103,8 +117,8 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
 
       <GalleryUploader
         galleryId={id}
-        currentStatus={gallery.status}
-        photos={photos ?? []}
+        currentStatus={gallery.status ?? ''}
+        photos={photos}
         clientLink={clientLink}
         selectionOpen={selectionOpen}
       />

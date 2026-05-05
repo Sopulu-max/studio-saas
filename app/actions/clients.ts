@@ -51,9 +51,9 @@ export async function addClient(form: {
       .maybeSingle()
     if (byEmail) {
       return {
-        error: `A client named "${byEmail.full_name}" is already registered with this email.`,
-        existingClientId: byEmail.client_id,
-        existingClientName: byEmail.full_name,
+        error: `A client named "${byEmail.full_name as string}" is already registered with this email.`,
+        existingClientId: byEmail.client_id as string,
+        existingClientName: byEmail.full_name as string,
         newClientId: null,
       }
     }
@@ -68,9 +68,9 @@ export async function addClient(form: {
       .maybeSingle()
     if (byPhone) {
       return {
-        error: `A client named "${byPhone.full_name}" is already registered with this phone number.`,
-        existingClientId: byPhone.client_id,
-        existingClientName: byPhone.full_name,
+        error: `A client named "${byPhone.full_name as string}" is already registered with this phone number.`,
+        existingClientId: byPhone.client_id as string,
+        existingClientName: byPhone.full_name as string,
         newClientId: null,
       }
     }
@@ -85,7 +85,7 @@ export async function addClient(form: {
   }).select('client_id').single()
 
   if (!error) revalidatePath('/dashboard/clients')
-  return { error: error?.message ?? null, existingClientId: null, existingClientName: null, newClientId: inserted?.client_id ?? null }
+  return { error: error?.message ?? null, existingClientId: null, existingClientName: null, newClientId: (inserted?.client_id as string | undefined) ?? null }
 }
 
 export async function deleteClient(clientId: string) {
@@ -129,7 +129,7 @@ export async function updateClient(clientId: string, form: {
       .eq('email', form.email.trim().toLowerCase())
       .neq('client_id', clientId)
       .maybeSingle()
-    if (byEmail) return { error: `"${byEmail.full_name}" is already registered with this email.`, existingClientId: byEmail.client_id }
+    if (byEmail) return { error: `"${byEmail.full_name as string}" is already registered with this email.`, existingClientId: byEmail.client_id as string }
   }
 
   if (form.phone) {
@@ -140,7 +140,7 @@ export async function updateClient(clientId: string, form: {
       .eq('phone', form.phone.trim())
       .neq('client_id', clientId)
       .maybeSingle()
-    if (byPhone) return { error: `"${byPhone.full_name}" is already registered with this phone number.`, existingClientId: byPhone.client_id }
+    if (byPhone) return { error: `"${byPhone.full_name as string}" is already registered with this phone number.`, existingClientId: byPhone.client_id as string }
   }
 
   const { error } = await context.admin

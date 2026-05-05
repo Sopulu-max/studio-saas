@@ -18,6 +18,18 @@ type InvoiceBooking = {
   studios?: { name?: string | null; email?: string | null; phone?: string | null; address?: string | null; logo_url?: string | null } | null
 }
 
+type InvoiceRow = {
+  invoice_id: string
+  total: number | string | null
+  subtotal: number | string | null
+  discount: number | string | null
+  tax: number | string | null
+  status: string | null
+  issued_at: string | null
+  due_date: string | null
+  bookings: InvoiceBooking | null
+}
+
 export default async function PublicInvoiceViewPage({
   params,
   searchParams,
@@ -47,13 +59,17 @@ export default async function PublicInvoiceViewPage({
 
   if (!invoice) notFound()
 
-  const { data: payments } = await admin
+  const typedInvoice = invoice as unknown as InvoiceRow
+
+  type PaymentRow = { payment_id: string; paid_at: string; amount: number | string; method: string; reference?: string | null }
+  const { data: paymentsRaw } = await admin
     .from('payments')
     .select('*')
     .eq('invoice_id', id)
     .order('paid_at', { ascending: true })
+  const payments = (paymentsRaw ?? []) as unknown as PaymentRow[]
 
-  const booking = invoice.bookings as unknown as InvoiceBooking | null
+  const booking = typedInvoice.bookings
 
   const { data: addons } = await admin
     .from('booking_addons')
@@ -63,14 +79,14 @@ export default async function PublicInvoiceViewPage({
   const studio = booking?.studios ?? null
   const client = booking?.clients ?? null
   const pkg = booking?.packages ?? null
-  const amountPaid = payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0
-  const balanceDue = Math.max(0, Number(invoice.total) - amountPaid)
+  const amountPaid = payments.reduce((sum, payment) => sum + Number(payment.amount), 0)
+  const balanceDue = Math.max(0, Number(typedInvoice.total) - amountPaid)
   const shortId = id.slice(-8).toUpperCase()
   const fmt = (n: number) => 'NGN ' + Number(n).toLocaleString('en-NG')
 
   const addonsList = (addons ?? []) as unknown as AddonRow[]
   const addonsTotal = addonsList.reduce((sum, addon) => sum + Number(addon.package_addons?.price ?? 0) * addon.quantity, 0)
-  const baseAmount = Number(invoice.subtotal) - addonsTotal
+  const baseAmount = Number(typedInvoice.subtotal) - addonsTotal
 
   return (
     <>
@@ -128,14 +144,14 @@ export default async function PublicInvoiceViewPage({
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '26px', fontWeight: '300', letterSpacing: '-.02em', color: '#111', marginBottom: '6px' }}>INVOICE</p>
             <p style={{ fontSize: '12px', color: '#888' }}>#{shortId}</p>
-            {invoice.issued_at && (
+            {typedInvoice.issued_at && (
               <p style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                Issued: {new Date(invoice.issued_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Issued: {new Date(typedInvoice.issued_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
-            {invoice.due_date && (
+            {typedInvoice.due_date && (
               <p style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
-                Due: {new Date(invoice.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Due: {new Date(typedInvoice.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
           </div>
@@ -187,14 +203,14 @@ export default async function PublicInvoiceViewPage({
         </table>
 
         <div style={{ maxWidth: '280px', marginLeft: 'auto', marginBottom: '36px' }}>
-          <div className="row"><span style={{ color: '#666' }}>Subtotal</span><span>{fmt(Number(invoice.subtotal))}</span></div>
-          {Number(invoice.discount) > 0 && (
-            <div className="row"><span style={{ color: '#666' }}>Discount</span><span>-{fmt(Number(invoice.discount))}</span></div>
+          <div className="row"><span style={{ color: '#666' }}>Subtotal</span><span>{fmt(Number(typedInvoice.subtotal))}</span></div>
+          {Number(typedInvoice.discount) > 0 && (
+            <div className="row"><span style={{ color: '#666' }}>Discount</span><span>-{fmt(Number(typedInvoice.discount))}</span></div>
           )}
-          {Number(invoice.tax) > 0 && (
-            <div className="row"><span style={{ color: '#666' }}>Tax ({invoice.tax}%)</span><span>{fmt(Number(invoice.subtotal) * Number(invoice.tax) / 100)}</span></div>
+          {Number(typedInvoice.tax) > 0 && (
+            <div className="row"><span style={{ color: '#666' }}>Tax ({typedInvoice.tax}%)</span><span>{fmt(Number(typedInvoice.subtotal) * Number(typedInvoice.tax) / 100)}</span></div>
           )}
-          <div className="row total"><span>Total</span><span>{fmt(Number(invoice.total))}</span></div>
+          <div className="row total"><span>Total</span><span>{fmt(Number(typedInvoice.total))}</span></div>
         </div>
 
         {payments && payments.length > 0 && (

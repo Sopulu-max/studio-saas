@@ -31,7 +31,7 @@ export async function addContract(form: {
       .select('contract_id')
       .eq('booking_id', form.booking_id)
       .maybeSingle()
-    if (existing) return { error: '__DUPLICATE__', existingContractId: existing.contract_id }
+    if (existing) return { error: '__DUPLICATE__', existingContractId: existing.contract_id as string }
   }
 
   const { data: contract, error } = await context.admin

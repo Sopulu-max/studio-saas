@@ -56,7 +56,7 @@ export async function addInvoice(form: {
       .eq('booking_id', form.booking_id)
       .neq('status', 'cancelled')
       .maybeSingle()
-    if (existing) return { error: '__DUPLICATE__', existingInvoiceId: existing.invoice_id }
+    if (existing) return { error: '__DUPLICATE__', existingInvoiceId: existing.invoice_id as string }
   }
 
   if (form.package_id) {
@@ -111,7 +111,7 @@ export async function addInvoice(form: {
     )
   }
 
-  return { error: null, invoiceId: invoice.invoice_id }
+  return { error: null, invoiceId: invoice.invoice_id as string }
 }
 
 export async function updateInvoiceStatus(invoiceId: string, status: string) {
@@ -214,7 +214,7 @@ export async function sendInvoiceToClient(invoiceId: string) {
   const { error: emailError } = await sendInvoiceEmail({
     to: clientEmail,
     clientName: invoice.bookings?.clients?.full_name ?? 'Client',
-    studioName: studio?.name ?? '',
+    studioName: (studio?.name as string | null | undefined) ?? '',
     invoiceId,
     total: Number(invoice.total),
     dueDate: invoice.due_date ?? undefined,

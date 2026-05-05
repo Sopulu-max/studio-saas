@@ -7,26 +7,49 @@ import { sessionName } from '@/lib/session-title'
 
 type BookingPackageRelation = { name?: string | null } | null
 
+type ClientRow = {
+  client_id: string
+  client_ref?: number | null
+  full_name: string | null
+  email: string | null
+  phone: string | null
+  address: string | null
+  avatar_url?: string | null
+}
+
+type BookingRow = {
+  booking_id: string
+  booking_ref: number | null
+  session_type: string | null
+  session_date: string | null
+  status: string | null
+  packages: BookingPackageRelation
+}
+
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: client } = await context.admin
+  const { data: clientRaw } = await context.admin
     .from('clients')
     .select('*')
     .eq('client_id', id)
     .eq('studio_id', context.studioId)
     .single()
 
-  if (!client) redirect('/dashboard/clients')
+  if (!clientRaw) redirect('/dashboard/clients')
 
-  const { data: bookings } = await context.admin
+  const client = clientRaw as unknown as ClientRow
+
+  const { data: bookingsRaw } = await context.admin
     .from('bookings')
     .select('booking_id, booking_ref, session_type, session_date, status, packages(name)')
     .eq('client_id', id)
     .eq('studio_id', context.studioId)
     .order('session_date', { ascending: false })
+
+  const bookings = (bookingsRaw ?? []) as unknown as BookingRow[]
 
   const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
     pending_confirmation: { bg: '#faeeda', color: '#854f0b' },
@@ -45,7 +68,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             entityId={id}
             entityType="client"
             currentUrl={client.avatar_url ?? null}
-            name={client.full_name}
+            name={client.full_name ?? ''}
             size={56}
           />
           <div>

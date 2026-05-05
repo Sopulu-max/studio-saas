@@ -161,7 +161,7 @@ export default function NewSessionForm({ clients, packages, staff }: {
         addons: [],
       })
       if (pkgError) { setError(pkgError); setLoading(false); return }
-      packageId = newId ?? ''
+      packageId = (newId as string | undefined) ?? ''
     }
 
     const result = await addSession({

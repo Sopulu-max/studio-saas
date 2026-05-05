@@ -17,7 +17,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
   if (!staffMember) notFound()
 
-  if (staffMember.invite_accepted_at) {
+  if (staffMember.invite_accepted_at as string | null) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: '2rem' }}>
         <div style={{ maxWidth: '400px', textAlign: 'center' }}>
@@ -40,10 +40,10 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)', padding: '2rem 1rem' }}>
       <AcceptInviteForm
         token={token}
-        fullName={staffMember.full_name}
-        email={staffMember.email}
+        fullName={staffMember.full_name as string}
+        email={staffMember.email as string}
         studioName={studioName}
-        role={staffMember.role}
+        role={staffMember.role as string}
       />
     </div>
   )

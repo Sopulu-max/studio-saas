@@ -30,8 +30,8 @@ export async function POST(request: Request) {
   }
 
   const acceptanceError = getInviteAcceptanceError({
-    inviteAcceptedAt: staffMember.invite_accepted_at,
-    invitedEmail: staffMember.email,
+    inviteAcceptedAt: staffMember.invite_accepted_at as string | null,
+    invitedEmail: staffMember.email as string | null,
     signedInEmail: user.email,
   })
   if (acceptanceError) {
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       invite_accepted_at:  new Date().toISOString(),
       invite_token:        null, // invalidate token
     })
-    .eq('staff_id', staffMember.staff_id)
+    .eq('staff_id', staffMember.staff_id as string)
     .select('staff_id')
     .maybeSingle()
 

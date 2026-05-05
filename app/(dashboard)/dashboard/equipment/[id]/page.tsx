@@ -3,6 +3,17 @@ import Link from 'next/link'
 import EquipmentActions from './equipment-actions'
 import { getStudioContext } from '@/lib/studio'
 
+type EquipmentRow = {
+  equipment_id: string
+  name: string | null
+  category: string | null
+  serial_number: string | null
+  status: string
+  notes: string | null
+  purchase_date: string | null
+  purchase_price: number | string | null
+}
+
 const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
   camera:    { bg: '#eeedfe', color: '#534ab7' },
   lens:      { bg: '#e6f1fb', color: '#185fa5' },
@@ -23,20 +34,22 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: item } = await context.admin
+  const { data: itemRaw } = await context.admin
     .from('equipment')
     .select('*')
     .eq('equipment_id', id)
     .eq('studio_id', context.studioId)
     .single()
 
-  if (!item) redirect('/dashboard/equipment')
+  if (!itemRaw) redirect('/dashboard/equipment')
+
+  const item = itemRaw as unknown as EquipmentRow
 
   const cat = CATEGORY_COLORS[item.category ?? ''] ?? CATEGORY_COLORS.other
   const st  = STATUS_COLORS[item.status ?? '']    ?? STATUS_COLORS.available
 
   // Extract checkout name from notes prefix if present
-  const checkoutMatch = (item.notes ?? '').match(/^\[Checked out to: (.+?) on .+?\]/)
+  const checkoutMatch = ((item.notes ?? '') as string).match(/^\[Checked out to: (.+?) on .+?\]/)
   const checkedOutTo  = checkoutMatch?.[1] ?? null
 
   return (
@@ -88,7 +101,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
           )}
         </div>
         {(() => {
-          const displayNotes = (item.notes ?? '').replace(/^\[Checked out to:.*?\]\n?/, '').trim()
+          const displayNotes = ((item.notes ?? '') as string).replace(/^\[Checked out to:.*?\]\n?/, '').trim()
           return displayNotes ? (
             <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '16px', paddingTop: '16px' }}>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 4px' }}>Notes</p>

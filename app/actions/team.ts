@@ -56,7 +56,7 @@ export async function inviteStaffMember(data: {
     if (existing.invite_accepted_at) return { error: 'This person has already joined your team.' }
     // Re-send invite — update token
     const { error: updateErr } = await context.admin.from('staff').update({ invite_token: inviteToken, invite_sent_at: inviteSentAt })
-      .eq('staff_id', existing.staff_id)
+      .eq('staff_id', existing.staff_id as string)
     if (updateErr) return { error: updateErr.message }
   } else {
     const { error: insertErr } = await context.admin.from('staff').insert({
@@ -77,7 +77,7 @@ export async function inviteStaffMember(data: {
   const { error: emailErr } = await sendStaffInviteEmail({
     to:          data.email,
     inviteeName: data.fullName.trim(),
-    studioName:  studio.name,
+    studioName:  studio.name as string,
     role:        roleLabel,
     inviteUrl,
   })
@@ -130,10 +130,10 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
   const inviteUrl = `${siteUrl}/invite/${inviteToken}`
 
   const { error: emailErr } = await sendStaffInviteEmail({
-    to:          staffMember.email,
-    inviteeName: staffMember.full_name,
-    studioName:  studio?.name ?? 'your studio',
-    role:        ROLE_LABELS[staffMember.role] ?? staffMember.role,
+    to:          staffMember.email as string,
+    inviteeName: staffMember.full_name as string,
+    studioName:  (studio?.name as string | null | undefined) ?? 'your studio',
+    role:        ROLE_LABELS[staffMember.role as string] ?? (staffMember.role as string),
     inviteUrl,
   })
   return { error: emailErr ?? null }

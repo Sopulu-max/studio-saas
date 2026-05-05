@@ -26,7 +26,7 @@ export default function SearchInput({
       })
     }, 300)
     return () => clearTimeout(timer)
-  }, [value])
+  }, [pathname, router, startTransition, value])
 
   return (
     <input

@@ -252,8 +252,8 @@ export default async function SessionsPage({
         .eq('bookings.studio_id', context.studioId),
     ])
     const active = (activeRaw ?? []) as unknown as SessionListRow[]
-    const invoicedIds  = new Set((invoiceRows  ?? []).map((r: { booking_id?: string | null }) => r.booking_id).filter(Boolean) as string[])
-    const contractedIds = new Set((contractRows ?? []).map((r: { booking_id?: string | null }) => r.booking_id).filter(Boolean) as string[])
+    const invoicedIds  = new Set(((invoiceRows  ?? []) as unknown as { booking_id?: string | null }[]).map((r) => r.booking_id).filter(Boolean) as string[])
+    const contractedIds = new Set(((contractRows ?? []) as unknown as { booking_id?: string | null }[]).map((r) => r.booking_id).filter(Boolean) as string[])
 
     naData = {
       pending:          intakeStatus ? active.filter(s => s.status === intakeStatus) : [],
@@ -269,7 +269,7 @@ export default async function SessionsPage({
   const { data: typeRows } = view === 'all'
     ? await context.admin.from('bookings').select('shoot_type').eq('studio_id', context.studioId).not('shoot_type', 'is', null)
     : { data: null }
-  const distinctCategories = [...new Set((typeRows ?? []).map((r: { shoot_type?: string | null }) => r.shoot_type).filter(Boolean) as string[])].sort()
+  const distinctCategories = [...new Set(((typeRows ?? []) as unknown as { shoot_type?: string | null }[]).map((r) => r.shoot_type).filter(Boolean) as string[])].sort()
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER

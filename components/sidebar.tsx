@@ -51,36 +51,35 @@ function GripDots() {
   )
 }
 
+function getInitialNavItems(isOwner: boolean): NavItem[] {
+  if (!isOwner || typeof window === 'undefined') return OWNER_NAV_DEFAULT
+  try {
+    const saved = localStorage.getItem(NAV_STORAGE_KEY)
+    if (!saved) return OWNER_NAV_DEFAULT
+    const parsed: NavItem[] = JSON.parse(saved)
+    const defaultHrefs = OWNER_NAV_DEFAULT.map((n) => n.href)
+    const savedHrefs = parsed.map((n) => n.href)
+    const valid = parsed.filter((n) => defaultHrefs.includes(n.href))
+    const newOnes = OWNER_NAV_DEFAULT.filter((n) => !savedHrefs.includes(n.href))
+    return valid.length > 0 ? [...valid, ...newOnes] : OWNER_NAV_DEFAULT
+  } catch {
+    return OWNER_NAV_DEFAULT
+  }
+}
+
 export default function Sidebar({ studioName, isOwner = true }: { studioName: string; isOwner?: boolean }) {
   const pathname  = usePathname()
   const router    = useRouter()
   const supabase  = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [editNav,    setEditNav]    = useState(false)
-  const [navItems,   setNavItems]   = useState<NavItem[]>(OWNER_NAV_DEFAULT)
+  const [navItems,   setNavItems]   = useState<NavItem[]>(() => getInitialNavItems(isOwner))
   const [dragging,   setDragging]   = useState<string | null>(null)
   const [dragOver,   setDragOver]   = useState<string | null>(null)
 
-  // Load saved nav order
-  useEffect(() => {
-    if (!isOwner) return
-    try {
-      const saved = localStorage.getItem(NAV_STORAGE_KEY)
-      if (saved) {
-        const parsed: NavItem[] = JSON.parse(saved)
-        const defaultHrefs = OWNER_NAV_DEFAULT.map(n => n.href)
-        // merge: keep saved order but add any new items not yet in saved
-        const savedHrefs = parsed.map(n => n.href)
-        const valid  = parsed.filter(n => defaultHrefs.includes(n.href))
-        const newOnes = OWNER_NAV_DEFAULT.filter(n => !savedHrefs.includes(n.href))
-        if (valid.length > 0) setNavItems([...valid, ...newOnes])
-      }
-    } catch {}
-  }, [isOwner])
-
   function saveNav(items: NavItem[]) {
     setNavItems(items)
-    localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(items))
+    try { localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(items)) } catch {}
   }
 
   function onDragStart(href: string) { setDragging(href) }
@@ -104,7 +103,6 @@ export default function Sidebar({ studioName, isOwner = true }: { studioName: st
     if (idx < navItems.length - 1) saveNav(moveItem(navItems, idx, idx + 1))
   }
 
-  useEffect(() => { setMobileOpen(false) }, [pathname])
   useEffect(() => {
     if (typeof document !== 'undefined')
       document.body.style.overflow = mobileOpen ? 'hidden' : ''
@@ -117,6 +115,10 @@ export default function Sidebar({ studioName, isOwner = true }: { studioName: st
   }
 
   const activeNav = isOwner ? navItems : STAFF_NAV
+
+  function handleNavClick() {
+    setMobileOpen(false)
+  }
 
   const navContent = (
     <>
@@ -186,7 +188,7 @@ export default function Sidebar({ studioName, isOwner = true }: { studioName: st
 
               <Link
                 href={editNav ? '#' : item.href}
-                onClick={editNav ? e => e.preventDefault() : undefined}
+                onClick={editNav ? e => e.preventDefault() : handleNavClick}
                 style={{
                   flex: 1, display: 'block', padding: '7px 10px', borderRadius: '7px',
                   fontSize: '13.5px',
@@ -229,6 +231,7 @@ export default function Sidebar({ studioName, isOwner = true }: { studioName: st
         )}
         {isOwner && (
           <Link href="/dashboard/settings"
+            onClick={handleNavClick}
             style={{
               display: 'block', padding: '7px 10px', borderRadius: '7px', fontSize: '13.5px',
               fontWeight: pathname === '/dashboard/settings' ? '500' : '400',

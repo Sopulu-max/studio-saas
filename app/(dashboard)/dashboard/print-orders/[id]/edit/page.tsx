@@ -15,16 +15,25 @@ export default async function EditPrintOrderPage({ params }: { params: Promise<{
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: order } = await context.admin
+  type PrintOrderEditRow = {
+    order_id: string
+    notes: string | null
+    status: string | null
+    print_order_items: PrintOrderItem[] | null
+  }
+
+  const { data: orderRaw } = await context.admin
     .from('print_orders')
     .select('order_id, notes, status, print_order_items(*)')
     .eq('order_id', id)
     .eq('studio_id', context.studioId)
     .single()
 
-  if (!order) redirect('/dashboard/print-orders')
+  if (!orderRaw) redirect('/dashboard/print-orders')
 
-  const items = (order.print_order_items as unknown as PrintOrderItem[]).map(i => ({
+  const order = orderRaw as unknown as PrintOrderEditRow
+
+  const items = (order.print_order_items ?? []).map(i => ({
     product_name: i.product_name,
     size:         i.size         ?? '',
     quantity:     String(i.quantity),

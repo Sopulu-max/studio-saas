@@ -76,35 +76,44 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
-  const { data: invoice } = await context.admin
+  type SessionInvoice = { invoice_id: string; total: number | string | null; status: string | null; payments: { amount: number }[] | null }
+  type SessionGallery = { gallery_id: string; title: string | null; status: string | null }
+  type SessionPrintOrder = { order_id: string; status: string | null; print_order_items: PrintOrderItemRelation[] | null }
+  type SessionContract = { contract_id: string; status: string | null }
+
+  const { data: invoiceRaw } = await context.admin
     .from('invoices')
     .select('invoice_id, total, status, payments(amount)')
     .eq('booking_id', id)
     .single()
+  const invoice = invoiceRaw as unknown as SessionInvoice | null
 
-  const amountPaid = ((invoice?.payments as unknown as { amount: number }[] | null) ?? [])
+  const amountPaid = (invoice?.payments ?? [])
     .reduce((sum, p) => sum + Number(p.amount), 0)
   const balanceDue = invoice ? Math.max(0, Number(invoice.total) - amountPaid) : 0
 
-  const { data: gallery } = await context.admin
+  const { data: galleryRaw } = await context.admin
     .from('galleries')
     .select('gallery_id, title, status')
     .eq('booking_id', id)
     .single()
+  const gallery = galleryRaw as unknown as SessionGallery | null
 
-  const { data: printOrder } = await context.admin
+  const { data: printOrderRaw } = await context.admin
     .from('print_orders')
     .select('order_id, status, print_order_items(quantity, unit_price)')
     .eq('booking_id', id)
     .order('created_at', { ascending: false })
     .limit(1)
     .single()
+  const printOrder = printOrderRaw as unknown as SessionPrintOrder | null
 
-  const { data: contract } = await context.admin
+  const { data: contractRaw } = await context.admin
     .from('contracts')
     .select('contract_id, status')
     .eq('booking_id', id)
     .single()
+  const contract = contractRaw as unknown as SessionContract | null
 
   // Fetch available staff for assignment dropdowns (session.studio_id is already available)
   const { data: availableStaff } = await context.admin
@@ -128,10 +137,6 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   const isEvent        = session.session_type === 'event'
   const isOutdoor      = session.session_type === 'outdoor'
   const isVideoSession = session.service_type === 'video' || session.service_type === 'photo_video'
-
-  const refCode = session.booking_ref != null
-    ? `#${String(session.booking_ref).padStart(4, '0')}`
-    : `#${id.slice(0, 6).toUpperCase()}`
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -434,7 +439,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           {printOrder ? (
             <>
               <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>
-                ₦{((printOrder.print_order_items as unknown as PrintOrderItemRelation[]) ?? []).reduce((sum, item) => sum + Number(item.unit_price) * item.quantity, 0).toLocaleString()}
+                ₦{(printOrder.print_order_items ?? []).reduce((sum, item) => sum + Number(item.unit_price) * item.quantity, 0).toLocaleString()}
               </p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: 'var(--text-3)', textTransform: 'capitalize' }}>{printOrder.status}</span>
@@ -486,7 +491,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           full_name: bs.staff?.full_name ?? '',
           role: bs.role ?? '',
         }))}
-        availableStaff={availableStaff ?? []}
+        availableStaff={(availableStaff ?? []) as unknown as { staff_id: string; full_name: string; role?: string }[]}
         driveLink={session.drive_link ?? ''}
       />
     </div>

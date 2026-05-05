@@ -22,6 +22,15 @@ const bookingRequestSchema = z.object({
   notes:            z.string().optional(),
 })
 
+type PublicStudioRow = {
+  studio_id: string
+  name?: string | null
+  email?: string | null
+  booking_statuses?: unknown
+  session_types?: unknown
+  service_types?: unknown
+}
+
 export async function submitBookingRequest(form: {
   studio_id: string
   full_name: string
@@ -54,7 +63,12 @@ export async function submitBookingRequest(form: {
   if (!studio) return { error: 'Studio not found' }
 
   // Build config so status values are dynamic, not hardcoded strings
-  const config        = buildStudioConfig((studio as any).session_types, (studio as any).booking_statuses, (studio as any).service_types)
+  const studioConfig = studio as PublicStudioRow
+  const config = buildStudioConfig(
+    studioConfig.session_types,
+    studioConfig.booking_statuses,
+    studioConfig.service_types
+  )
   const cancelValues  = config.bookingStatuses.filter(s => s.is_cancellation).map(s => s.value)
   const initialStatus = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)[0]?.value ?? 'pending_confirmation'
 
@@ -67,7 +81,7 @@ export async function submitBookingRequest(form: {
     .maybeSingle()
 
   if (existing) {
-    clientId = existing.client_id
+    clientId = existing.client_id as string
   } else {
     const { data: newClient, error: clientError } = await admin
       .from('clients')
@@ -81,7 +95,7 @@ export async function submitBookingRequest(form: {
       .single()
 
     if (clientError || !newClient) return { error: clientError?.message ?? 'Failed to save your details' }
-    clientId = newClient.client_id
+    clientId = newClient.client_id as string
   }
 
   // Duplicate booking check — same client, same date, excluding all cancellation statuses
@@ -137,7 +151,7 @@ export async function submitBookingRequest(form: {
 
   // Fire confirmation emails — don't block on errors
   const emailPayload = {
-    studioName:    studio.name ?? '',
+    studioName:    (studio.name as string | null) ?? '',
     clientName:    form.full_name.trim(),
     sessionType:   form.session_type,
     preferredDate: form.preferred_date,
@@ -149,7 +163,7 @@ export async function submitBookingRequest(form: {
 
   if (studio.email) {
     sendStudioBookingNotification({
-      studioEmail: studio.email,
+      studioEmail: studio.email as string,
       clientPhone: form.phone.trim(),
       ...emailPayload,
     }).catch(() => {})
@@ -158,24 +172,32 @@ export async function submitBookingRequest(form: {
   return { error: null }
 }
 
+type GalleryStatusRow = { booking_id: string; status: string | null }
+type BookingSelectionRow = { status: string | null; selections_count: number | null; clients?: { phone?: string | null } | null }
+
 export async function verifyGalleryPhone(galleryId: string, phone: string) {
   const admin = createAdminClient()
 
-  const { data: gallery } = await admin
+  const { data: galleryRaw } = await admin
     .from('galleries')
     .select('booking_id, status')
     .eq('gallery_id', galleryId)
     .single()
 
-  if (!gallery || gallery.status === 'expired') return { verified: false }
+  if (!galleryRaw) return { verified: false }
+  const gallery = galleryRaw as unknown as GalleryStatusRow
+  if (gallery.status === 'expired') return { verified: false }
 
-  const { data: booking } = await admin
+  const { data: bookingRaw } = await admin
     .from('bookings')
     .select('status, selections_count, clients(phone)')
     .eq('booking_id', gallery.booking_id)
     .single()
 
-  if (!booking || !isGallerySelectionOpen({
+  if (!bookingRaw) return { verified: false }
+  const booking = bookingRaw as unknown as BookingSelectionRow
+
+  if (!isGallerySelectionOpen({
     galleryStatus: gallery.status,
     bookingStatus: booking.status,
     selectionsCount: booking.selections_count,
@@ -185,7 +207,7 @@ export async function verifyGalleryPhone(galleryId: string, phone: string) {
 
   return {
     verified: isMatchingGalleryPhone(
-      booking.clients as unknown as { phone?: string | null } | null,
+      booking.clients as { phone?: string | null } | null,
       phone,
     ),
   }
@@ -199,24 +221,29 @@ export async function submitSelections(galleryId: string, phone: string, count: 
 
   const admin = createAdminClient()
 
-  const { data: gallery } = await admin
+  const { data: galleryRaw2 } = await admin
     .from('galleries')
     .select('booking_id, status')
     .eq('gallery_id', galleryId)
     .single()
 
-  if (!gallery || gallery.status === 'expired') return { error: 'Gallery not found' }
+  if (!galleryRaw2) return { error: 'Gallery not found' }
+  const gallery2 = galleryRaw2 as unknown as GalleryStatusRow
+  if (gallery2.status === 'expired') return { error: 'Gallery not found' }
 
-  const { data: booking } = await admin
+  const { data: bookingRaw2 } = await admin
     .from('bookings')
     .select('status, selections_count')
-    .eq('booking_id', gallery.booking_id)
+    .eq('booking_id', gallery2.booking_id)
     .single()
 
-  if (!booking || !isGallerySelectionOpen({
-    galleryStatus: gallery.status,
-    bookingStatus: booking.status,
-    selectionsCount: booking.selections_count,
+  if (!bookingRaw2) return { error: 'Selections are closed for this gallery' }
+  const booking2 = bookingRaw2 as unknown as BookingSelectionRow
+
+  if (!isGallerySelectionOpen({
+    galleryStatus: gallery2.status,
+    bookingStatus: booking2.status,
+    selectionsCount: booking2.selections_count,
   })) {
     return { error: 'Selections are closed for this gallery' }
   }
@@ -224,7 +251,7 @@ export async function submitSelections(galleryId: string, phone: string, count: 
   const { error: bookingError } = await admin
     .from('bookings')
     .update({ selections_count: count })
-    .eq('booking_id', gallery.booking_id)
+    .eq('booking_id', gallery2.booking_id)
 
   if (bookingError) return { error: bookingError.message }
 

@@ -52,7 +52,7 @@ export async function addPackage(form: {
       .eq('studio_id', context.studioId)
       .ilike('name', form.name.trim())
       .maybeSingle()
-    if (byName) return { error: '__DUPLICATE__', existingPackageId: byName.package_id }
+    if (byName) return { error: '__DUPLICATE__', existingPackageId: byName.package_id as string }
   }
 
   const { data: pkg, error } = await context.admin
@@ -128,7 +128,7 @@ export async function updatePackage(packageId: string, form: {
       .ilike('name', form.name.trim())
       .neq('package_id', packageId)
       .maybeSingle()
-    if (byName) return { error: '__DUPLICATE__', existingPackageId: byName.package_id }
+    if (byName) return { error: '__DUPLICATE__', existingPackageId: byName.package_id as string }
   }
 
   const { error: updateError } = await context.admin

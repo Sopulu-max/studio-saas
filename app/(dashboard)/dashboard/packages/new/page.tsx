@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { addPackage } from '@/app/actions/packages'
 import { useStudioConfig } from '@/components/studio-config-provider'
@@ -30,39 +31,28 @@ export default function NewPackagePage() {
   const router       = useRouter()
   const searchParams = useSearchParams()
   const config       = useStudioConfig()
+  const outfitsParam = searchParams.get('outfits')
+  const photosParam = searchParams.get('photos')
+  const priceParam = searchParams.get('price')
+  const sessionTypeParam = searchParams.get('session_type')
+  const initialSessionType = sessionTypeParam && config.sessionTypes.some((t) => t.value === sessionTypeParam)
+    ? sessionTypeParam
+    : config.sessionTypes[0]?.value ?? 'studio'
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState('')
   const [dupPackageId, setDupPackageId] = useState('')
   const [form, setForm] = useState({
-    name: '', description: '', base_price: '', duration_mins: '',
-    shoot_type: '', outfits_count: '', edited_photos: '', coverage_hours: '',
+    name: '', description: '', base_price: priceParam ?? '', duration_mins: '',
+    shoot_type: '', outfits_count: outfitsParam ?? '', edited_photos: photosParam ?? '', coverage_hours: '',
     contract_template: '',
   })
-  const [sessionType, setSessionType]   = useState(config.sessionTypes[0]?.value ?? 'studio')
+  const [sessionType, setSessionType]   = useState(initialSessionType)
   const [serviceType, setServiceType]   = useState(config.serviceTypes[0]?.value ?? 'photo')
+  const [pricingType, setPricingType] = useState<'fixed' | 'per_project'>('fixed')
   const [inclusions, setInclusions]   = useState<string[]>([])
   const [inclusionInput, setInclusionInput] = useState('')
   const [addons, setAddons] = useState<Addon[]>([])
   const inclusionInputRef = useRef<HTMLInputElement>(null)
-
-  // Pre-fill from URL params (e.g. coming from "save as package" on invoice)
-  useEffect(() => {
-    const outfits     = searchParams.get('outfits')
-    const photos      = searchParams.get('photos')
-    const price       = searchParams.get('price')
-    const sessionTypeParam = searchParams.get('session_type')
-    if (outfits || photos || price || sessionTypeParam) {
-      setForm(prev => ({
-        ...prev,
-        outfits_count: outfits ?? prev.outfits_count,
-        edited_photos: photos  ?? prev.edited_photos,
-        base_price:    price   ?? prev.base_price,
-      }))
-      if (sessionTypeParam && config.sessionTypes.some(t => t.value === sessionTypeParam)) {
-        setSessionType(sessionTypeParam)
-      }
-    }
-  }, [searchParams])
 
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -115,7 +105,6 @@ export default function NewPackagePage() {
   const isEvent        = sessionType === 'event'
   const isOutdoor      = sessionType === 'outdoor'
   const isVideoSession = serviceType === 'video' || serviceType === 'photo_video'
-  const [pricingType, setPricingType] = useState<'fixed' | 'per_project'>('fixed')
 
   return (
     <div style={{ maxWidth: '560px' }}>
@@ -269,7 +258,7 @@ export default function NewPackagePage() {
       <div style={sectionStyle}>
         <div style={{ marginBottom: '12px' }}>
           <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Inclusions</p>
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>What's included in this package</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>What&apos;s included in this package</p>
         </div>
 
         {inclusions.length > 0 && (
@@ -379,10 +368,10 @@ export default function NewPackagePage() {
             A package with this name already exists.
           </p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
-            <a href={`/dashboard/packages/${dupPackageId}`}
+            <Link href={`/dashboard/packages/${dupPackageId}`}
               style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
               View existing package →
-            </a>
+            </Link>
             <span style={{ color: '#ccc' }}>|</span>
             <button type="button" onClick={() => handleSubmit(true)}
               style={{ fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#7a5800', padding: 0, textDecoration: 'underline' }}>

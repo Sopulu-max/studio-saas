@@ -11,6 +11,21 @@ type PackageAddon = {
   price?: number | string | null
 }
 
+type PackageRecord = {
+  name?: string | null
+  shoot_type?: string | null
+  session_type?: string | null
+  service_type?: string | null
+  base_price?: number | string | null
+  duration_mins?: number | null
+  outfits_count?: number | null
+  edited_photos?: number | null
+  coverage_hours?: number | null
+  description?: string | null
+  inclusions?: string[] | null
+  package_addons?: PackageAddon[] | null
+}
+
 // Known category colours — same palette as packages list page
 const KNOWN_COLORS: Record<string, { bg: string; color: string }> = {
   portrait:    { bg: '#eeedfe', color: '#534ab7' },
@@ -56,9 +71,6 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
-  type PackageRecord = Record<string, any> & {
-    package_addons?: PackageAddon[] | null
-  }
   const { data: pkgRaw } = await context.admin
     .from('packages')
     .select('*, package_addons(*)')

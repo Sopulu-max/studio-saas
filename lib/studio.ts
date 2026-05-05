@@ -72,11 +72,11 @@ export async function getStudioContext(): Promise<StudioContext> {
   ])
 
   if (studio?.studio_id) {
-    return { admin, userId: user.id, studioId: studio.studio_id, role: 'owner' }
+    return { admin, userId: user.id, studioId: studio.studio_id as string, role: 'owner' }
   }
 
   if (staffMember?.studio_id) {
-    return { admin, userId: user.id, studioId: staffMember.studio_id, role: 'staff', staffId: staffMember.staff_id }
+    return { admin, userId: user.id, studioId: staffMember.studio_id as string, role: 'staff', staffId: staffMember.staff_id as string | undefined }
   }
 
   return { error: 'Studio not found' }

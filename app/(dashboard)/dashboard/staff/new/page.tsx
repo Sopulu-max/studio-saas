@@ -79,7 +79,7 @@ export default function NewStaffPage() {
     const { error, existingStaffId } = await addStaff(form)
     if (error) {
       setError(error)
-      if (existingStaffId) setExistingId(existingStaffId)
+      if (existingStaffId) setExistingId(existingStaffId as string)
       setLoading(false)
     } else {
       router.push('/dashboard/staff')

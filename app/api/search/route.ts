@@ -9,6 +9,14 @@ type SearchInvoiceRow = {
   bookings?: { clients?: { full_name?: string | null } | null } | null
 }
 
+type SearchSessionRow = {
+  booking_id: string
+  session_date?: string | null
+  status?: string | null
+  session_type?: string | null
+  clients?: { full_name?: string | null } | null
+}
+
 export async function GET(req: NextRequest) {
   const q = req.nextUrl.searchParams.get('q')?.trim() ?? ''
   if (q.length < 2) return NextResponse.json({ clients: [], sessions: [], invoices: [] })
@@ -57,9 +65,9 @@ export async function GET(req: NextRequest) {
   ])
 
   // Annotate sessions with config-driven status color so the client doesn't need a hardcoded map
-  const annotatedSessions = (sessions ?? []).map(s => ({
+  const annotatedSessions = ((sessions ?? []) as SearchSessionRow[]).map((s) => ({
     ...s,
-    color_fg: getStatusConfig(config, (s as any).status).color_fg,
+    color_fg: getStatusConfig(config, s.status ?? '').color_fg,
   }))
 
   return NextResponse.json({

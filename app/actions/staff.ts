@@ -34,7 +34,7 @@ export async function addStaff(form: {
       .eq('studio_id', context.studioId)
       .eq('email', form.email.trim().toLowerCase())
       .maybeSingle()
-    if (byEmail) return { error: `"${byEmail.full_name}" is already registered with this email.`, existingStaffId: byEmail.staff_id }
+    if (byEmail) return { error: `"${byEmail.full_name as string}" is already registered with this email.`, existingStaffId: byEmail.staff_id as string }
   }
 
   const { error } = await context.admin.from('staff').insert({
@@ -76,7 +76,7 @@ export async function updateStaff(staffId: string, form: {
       .eq('email', form.email.trim().toLowerCase())
       .neq('staff_id', staffId)
       .maybeSingle()
-    if (byEmail) return { error: `"${byEmail.full_name}" is already registered with this email.`, existingStaffId: byEmail.staff_id }
+    if (byEmail) return { error: `"${byEmail.full_name as string}" is already registered with this email.`, existingStaffId: byEmail.staff_id as string }
   }
 
   const { error } = await context.admin

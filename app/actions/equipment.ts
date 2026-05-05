@@ -36,7 +36,7 @@ export async function addEquipment(form: {
       .eq('studio_id', context.studioId)
       .eq('serial_number', form.serial_number.trim())
       .maybeSingle()
-    if (bySerial) return { error: `"${bySerial.name}" is already registered with this serial number.`, existingEquipmentId: bySerial.equipment_id }
+    if (bySerial) return { error: `"${bySerial.name as string}" is already registered with this serial number.`, existingEquipmentId: bySerial.equipment_id as string }
   }
 
   const { data: item, error } = await context.admin.from('equipment').insert({
@@ -81,7 +81,7 @@ export async function updateEquipment(equipmentId: string, form: {
       .eq('serial_number', form.serial_number.trim())
       .neq('equipment_id', equipmentId)
       .maybeSingle()
-    if (bySerial) return { error: `"${bySerial.name}" is already registered with this serial number.`, existingEquipmentId: bySerial.equipment_id }
+    if (bySerial) return { error: `"${bySerial.name as string}" is already registered with this serial number.`, existingEquipmentId: bySerial.equipment_id as string }
   }
 
   const { error } = await context.admin
@@ -122,7 +122,7 @@ export async function checkoutEquipment(equipmentId: string, assignedTo: string)
     .single()
 
   const checkoutLine = `[Checked out to: ${assignedTo.trim()} on ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}]`
-  const existingNotes = (item?.notes ?? '').replace(/^\[Checked out to:.*?\]\n?/, '')
+  const existingNotes = ((item?.notes ?? '') as string).replace(/^\[Checked out to:.*?\]\n?/, '')
   const newNotes = existingNotes.trim()
     ? `${checkoutLine}\n${existingNotes.trim()}`
     : checkoutLine
@@ -154,7 +154,7 @@ export async function checkinEquipment(equipmentId: string) {
     .eq('equipment_id', equipmentId)
     .single()
 
-  const cleanNotes = (item?.notes ?? '').replace(/^\[Checked out to:.*?\]\n?/, '').trim() || null
+  const cleanNotes = ((item?.notes ?? '') as string).replace(/^\[Checked out to:.*?\]\n?/, '').trim() || null
 
   const { error } = await context.admin
     .from('equipment')

@@ -34,10 +34,10 @@ export default async function OnboardingPage() {
       padding: '2rem 1rem',
     }}>
       <OnboardingWizard
-        initialName={studio.name ?? ''}
-        initialSlug={studio.slug ?? ''}
-        initialTimezone={studio.timezone ?? ''}
-        initialPhone={studio.phone ?? ''}
+        initialName={(studio.name as string | null) ?? ''}
+        initialSlug={(studio.slug as string | null) ?? ''}
+        initialTimezone={(studio.timezone as string | null) ?? ''}
+        initialPhone={(studio.phone as string | null) ?? ''}
         initialSessionTypes={config.sessionTypes}
         siteUrl={siteUrl}
       />

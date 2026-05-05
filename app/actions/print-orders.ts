@@ -128,15 +128,24 @@ export async function updatePrintOrderStatus(orderId: string, status: string) {
   return { error: error?.message ?? null }
 }
 
+type PrintOrderFormSession = {
+  booking_id: string
+  booking_ref?: number | null
+  session_date?: string | null
+  session_type?: string | null
+  clients?: { full_name?: string | null; phone?: string | null } | null
+  packages?: { name?: string | null } | null
+}
+
 export async function getPrintOrderFormData() {
   const context = await getStudioContext()
-  if ('error' in context) return { sessions: [] }
+  if ('error' in context) return { sessions: [] as PrintOrderFormSession[] }
 
-  const { data: sessions } = await context.admin
+  const { data: sessionsRaw } = await context.admin
     .from('bookings')
     .select('booking_id, booking_ref, session_date, session_type, clients(full_name, phone), packages(name)')
     .eq('studio_id', context.studioId)
     .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })
-  return { sessions: sessions ?? [] }
+  return { sessions: (sessionsRaw ?? []) as unknown as PrintOrderFormSession[] }
 }

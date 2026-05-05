@@ -182,7 +182,7 @@ export default async function InvoicesPage({
   const { data: methodRows } = view === 'payments'
     ? await context.admin.from('payments').select('method').in('invoice_id', allInvoiceIds.slice(0, 1000))
     : { data: null }
-  const distinctMethods = [...new Set((methodRows ?? []).map((r: { method?: string | null }) => r.method).filter(Boolean) as string[])].sort()
+  const distinctMethods = [...new Set(((methodRows ?? []) as unknown as { method?: string | null }[]).map((r) => r.method).filter(Boolean) as string[])].sort()
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER
@@ -236,10 +236,14 @@ export default async function InvoicesPage({
             <>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
-                  <span>Session</span><span>Total</span><span>Due date</span><span>Status</span>
+                  <span>Session</span><span>Total / paid</span><span>Due date</span><span>Status</span>
                 </div>
                 {invoices.map((inv, i) => {
                   const s = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
+                  const paid    = paidMap[inv.invoice_id] ?? 0
+                  const total   = Number(inv.total ?? 0)
+                  const bal     = Math.max(0, total - paid)
+                  const partial = paid > 0 && bal > 0
                   return (
                     <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`} style={{
                       display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
@@ -252,7 +256,17 @@ export default async function InvoicesPage({
                           {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
                         </p>
                       </div>
-                      <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>₦{Number(inv.total).toLocaleString()}</p>
+                      <div>
+                        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>₦{total.toLocaleString()}</p>
+                        {partial && (
+                          <p style={{ fontSize: '11px', color: '#854f0b', margin: 0, fontWeight: '500' }}>
+                            ₦{paid.toLocaleString()} paid · ₦{bal.toLocaleString()} due
+                          </p>
+                        )}
+                        {inv.status === 'paid' && paid > 0 && (
+                          <p style={{ fontSize: '11px', color: '#3b6d11', margin: 0, fontWeight: '500' }}>✓ Paid in full</p>
+                        )}
+                      </div>
                       <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
                         {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : '—'}
                       </p>

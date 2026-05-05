@@ -118,10 +118,10 @@ export async function addSession(form: {
   if (error || !session) return { error: error?.message ?? 'Failed to create session' }
 
   const staffAssignments: { booking_id: string; staff_id: string; role: string }[] = []
-  if (form.photographer_id) staffAssignments.push({ booking_id: session.booking_id, staff_id: form.photographer_id, role: 'photographer' })
+  if (form.photographer_id) staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.photographer_id, role: 'photographer' })
   // Only add editor if it's a different person — same person can't have two rows for the same booking
   if (form.editor_id && form.editor_id !== form.photographer_id) {
-    staffAssignments.push({ booking_id: session.booking_id, staff_id: form.editor_id, role: 'editor' })
+    staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.editor_id, role: 'editor' })
   }
   if (staffAssignments.length > 0) {
     const { error: staffError } = await context.admin.from('booking_staff').insert(staffAssignments)
@@ -233,7 +233,7 @@ export async function deleteSession(sessionId: string) {
     .from('invoices')
     .select('invoice_id')
     .eq('booking_id', sessionId)
-  const invoiceIds = (invoices ?? []).map((i: { invoice_id: string }) => i.invoice_id)
+  const invoiceIds = (invoices ?? []).map((i: { invoice_id: unknown }) => i.invoice_id as string)
   if (invoiceIds.length) {
     await db.from('payments').delete().in('invoice_id', invoiceIds)
     await db.from('invoices').delete().in('invoice_id', invoiceIds)
@@ -244,7 +244,7 @@ export async function deleteSession(sessionId: string) {
     .from('galleries')
     .select('gallery_id')
     .eq('booking_id', sessionId)
-  const galleryIds = (galleries ?? []).map((g: { gallery_id: string }) => g.gallery_id)
+  const galleryIds = (galleries ?? []).map((g: { gallery_id: unknown }) => g.gallery_id as string)
   if (galleryIds.length) {
     await db.from('gallery_photos').delete().in('gallery_id', galleryIds)
     await db.from('galleries').delete().in('gallery_id', galleryIds)
@@ -255,7 +255,7 @@ export async function deleteSession(sessionId: string) {
     .from('print_orders')
     .select('order_id')
     .eq('booking_id', sessionId)
-  const orderIds = (printOrders ?? []).map((o: { order_id: string }) => o.order_id)
+  const orderIds = (printOrders ?? []).map((o: { order_id: unknown }) => o.order_id as string)
   if (orderIds.length) {
     await db.from('print_order_items').delete().in('order_id', orderIds)
     await db.from('print_orders').delete().in('order_id', orderIds)
@@ -360,9 +360,9 @@ export async function getSessionFormData() {
   ])
 
   return {
-    clients: clients ?? [],
-    packages: packages ?? [],
-    staff: staff ?? [],
+    clients: (clients ?? []) as unknown as { client_id: string; full_name: string; phone?: string | null }[],
+    packages: (packages ?? []) as unknown as { package_id: string; name: string; base_price: number | string; session_type?: string | null; outfits_count?: number | null; edited_photos?: number | null }[],
+    staff: (staff ?? []) as unknown as { staff_id: string; full_name: string; role?: string | null }[],
   }
 }
 

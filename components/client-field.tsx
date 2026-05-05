@@ -238,7 +238,6 @@ export default function ClientField({ value, selectedName, initialClients, onCha
                   value={createForm.full_name}
                   onChange={e => setCreateForm(f => ({ ...f, full_name: e.target.value }))}
                   style={{ width: '100%', boxSizing: 'border-box' as const }}
-                  // eslint-disable-next-line jsx-a11y/no-autofocus
                   autoFocus
                 />
                 <input

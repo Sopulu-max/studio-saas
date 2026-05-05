@@ -96,7 +96,7 @@ function HBar({ value, max, label, sub, color = 'var(--btn)' }: {
 }
 
 function VBars({ data, valueKey, fmtValue, height = 120 }: {
-  data: { label: string; [key: string]: any }[]
+  data: Array<{ label: string } & Record<string, number | string>>
   valueKey: string; fmtValue?: (v: number) => string; height?: number
 }) {
   const values = data.map(d => Number(d[valueKey]))

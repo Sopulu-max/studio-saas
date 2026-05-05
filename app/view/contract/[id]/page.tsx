@@ -40,7 +40,16 @@ export default async function PublicContractViewPage({
 
   if (!contract) notFound()
 
-  const booking = contract.bookings as ContractBooking | null
+  type ContractRow = {
+    contract_id: string
+    status: string | null
+    content: string | null
+    signed_by: string | null
+    signed_at: string | null
+    bookings: ContractBooking | null
+  }
+  const typedContract = contract as unknown as ContractRow
+  const booking = typedContract.bookings
   const studio = booking?.studios ?? null
   const client = booking?.clients ?? null
   const pkg = booking?.packages ?? null
@@ -114,10 +123,10 @@ export default async function PublicContractViewPage({
             <span style={{
               display: 'inline-block', marginTop: '8px', fontSize: '11px', fontWeight: '600',
               padding: '3px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '.04em',
-              background: contract.status === 'signed' ? '#eaf3de' : contract.status === 'sent' ? '#e6f1fb' : '#f1efe8',
-              color: contract.status === 'signed' ? '#3b6d11' : contract.status === 'sent' ? '#185fa5' : '#5f5e5a',
+              background: typedContract.status === 'signed' ? '#eaf3de' : typedContract.status === 'sent' ? '#e6f1fb' : '#f1efe8',
+              color: typedContract.status === 'signed' ? '#3b6d11' : typedContract.status === 'sent' ? '#185fa5' : '#5f5e5a',
             }}>
-              {contract.status}
+              {typedContract.status}
             </span>
           </div>
         </div>
@@ -140,7 +149,7 @@ export default async function PublicContractViewPage({
         <hr className="divider" />
 
         <div style={{ marginBottom: '48px' }}>
-          {contract.content.split('\n').map((line: string, index: number) => (
+          {(typedContract.content ?? '').split('\n').map((line: string, index: number) => (
             <p key={index} style={{ fontSize: '13px', lineHeight: '1.8', color: '#333', marginBottom: line ? '0' : '12px' }}>
               {line || <>&nbsp;</>}
             </p>
@@ -154,10 +163,10 @@ export default async function PublicContractViewPage({
           <div className="sig-block">
             <p>Client signature</p>
             <div className="sig-line" />
-            <p className="sig-name">{contract.signed_by || client?.full_name}</p>
-            {contract.signed_at && (
+            <p className="sig-name">{typedContract.signed_by || client?.full_name}</p>
+            {typedContract.signed_at && (
               <p style={{ fontSize: '11px', color: '#aaa', marginTop: '4px' }}>
-                Signed {new Date(contract.signed_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                Signed {new Date(typedContract.signed_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
           </div>

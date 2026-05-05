@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { checkIn, checkOut } from '@/app/actions/attendance'
 
 const DAY_LABELS: Record<string, string> = {
@@ -325,9 +326,9 @@ export default function AttendanceBoard({
       {staff.length === 0 && (
         <p style={{ fontSize: '14px', color: 'var(--text-4)', padding: '2rem 0' }}>
           No staff members yet.{' '}
-          <a href="/dashboard/staff/new" style={{ color: 'var(--btn)', textDecoration: 'none' }}>
+          <Link href="/dashboard/staff/new" style={{ color: 'var(--btn)', textDecoration: 'none' }}>
             Add your first team member →
-          </a>
+          </Link>
         </p>
       )}
     </div>

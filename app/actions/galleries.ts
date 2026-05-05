@@ -41,7 +41,7 @@ export async function addGallery(form: {
     .single()
 
   if (error || !gallery) return { error: error?.message ?? 'Failed to create gallery' }
-  return { error: null, galleryId: gallery.gallery_id }
+  return { error: null, galleryId: gallery.gallery_id as string }
 }
 
 export async function updateGalleryStatus(galleryId: string, status: string) {
@@ -118,7 +118,7 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
   const { error: emailError } = await sendGalleryEmail({
     to: clientEmail,
     clientName: gallery.bookings?.clients?.full_name ?? 'Client',
-    studioName: studio?.name ?? '',
+    studioName: (studio?.name as string | null | undefined) ?? '',
     galleryUrl,
     driveLink: driveLink || gallery.bookings?.drive_link || undefined,
     sessionDate: gallery.bookings?.session_date ?? undefined,

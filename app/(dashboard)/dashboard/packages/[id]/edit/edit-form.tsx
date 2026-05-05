@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { updatePackage } from '@/app/actions/packages'
@@ -21,12 +22,30 @@ const INCLUSION_SUGGESTIONS = [
 ]
 
 type Addon = { name: string; description: string; price: string }
+type PackageAddonRecord = { name?: string | null; description?: string | null; price?: number | string | null }
+type EditPackageRecord = {
+  package_id: string
+  name?: string | null
+  description?: string | null
+  base_price?: number | string | null
+  duration_mins?: number | null
+  shoot_type?: string | null
+  outfits_count?: number | null
+  edited_photos?: number | null
+  coverage_hours?: number | null
+  contract_template?: string | null
+  session_type?: string | null
+  service_type?: string | null
+  pricing_type?: 'fixed' | 'per_project' | null
+  inclusions?: string[] | null
+  package_addons?: PackageAddonRecord[] | null
+}
 
 const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
 const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
 const sectionStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }
 
-export default function EditPackageForm({ pkg }: { pkg: any }) {
+export default function EditPackageForm({ pkg }: { pkg: EditPackageRecord }) {
   const router = useRouter()
   const config = useStudioConfig()
   const [loading, setLoading]     = useState(false)
@@ -51,8 +70,8 @@ export default function EditPackageForm({ pkg }: { pkg: any }) {
   const [inclusions, setInclusions] = useState<string[]>(pkg.inclusions ?? [])
   const [inclusionInput, setInclusionInput] = useState('')
   const [addons, setAddons] = useState<Addon[]>(
-    (pkg.package_addons ?? []).map((a: any) => ({
-      name: a.name, description: a.description ?? '', price: String(a.price),
+    (pkg.package_addons ?? []).map((a) => ({
+      name: a.name ?? '', description: a.description ?? '', price: String(a.price),
     }))
   )
   const inclusionInputRef = useRef<HTMLInputElement>(null)
@@ -263,7 +282,7 @@ export default function EditPackageForm({ pkg }: { pkg: any }) {
       <div style={sectionStyle}>
         <div style={{ marginBottom: '12px' }}>
           <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Inclusions</p>
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>What's included in this package</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>What&apos;s included in this package</p>
         </div>
 
         {inclusions.length > 0 && (
@@ -373,10 +392,10 @@ export default function EditPackageForm({ pkg }: { pkg: any }) {
             Another package already has this name.
           </p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
-            <a href={`/dashboard/packages/${dupPackageId}`}
+            <Link href={`/dashboard/packages/${dupPackageId}`}
               style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
               View existing package →
-            </a>
+            </Link>
             <span style={{ color: '#ccc' }}>|</span>
             <button type="button" onClick={() => handleSubmit(true)}
               style={{ fontSize: '13px', background: 'none', border: 'none', cursor: 'pointer', color: '#7a5800', padding: 0, textDecoration: 'underline' }}>

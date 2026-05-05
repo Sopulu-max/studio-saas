@@ -52,11 +52,13 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
 
   if (!invoice) redirect('/dashboard/invoices')
 
-  const { data: payments } = await context.admin
+  type PaymentRow = { payment_id: string; paid_at: string; amount: number | string; method: string; reference?: string | null }
+  const { data: paymentsRaw } = await context.admin
     .from('payments')
     .select('*')
     .eq('invoice_id', id)
     .order('paid_at', { ascending: true })
+  const payments = (paymentsRaw ?? []) as unknown as PaymentRow[]
 
   const { data: addons } = await context.admin
     .from('booking_addons')
@@ -65,7 +67,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
 
   const addonRows = (addons ?? []) as unknown as AddonRow[]
   const addonsTotal = addonRows.reduce((sum, addon) => sum + Number(addon.package_addons?.price ?? 0) * addon.quantity, 0)
-  const amountPaid = payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0
+  const amountPaid = payments.reduce((sum, p) => sum + Number(p.amount), 0)
   const balanceDue = Math.max(0, Number(invoice.total) - amountPaid)
   const fmt = (n: number) => 'NGN ' + Number(n).toLocaleString('en-NG')
 

@@ -12,6 +12,15 @@ type PublicGalleryBooking = {
   packages?: { name?: string | null } | null
 }
 
+type PublicGalleryRow = {
+  gallery_id: string
+  title: string | null
+  description: string | null
+  status: string | null
+  shared_link: string | null
+  bookings: PublicGalleryBooking | null
+}
+
 export default async function PublicGalleryPage({
   params,
 }: {
@@ -20,7 +29,7 @@ export default async function PublicGalleryPage({
   const { slug } = await params
   const admin = createAdminClient()
 
-  const { data: gallery } = await admin
+  const { data: galleryRaw } = await admin
     .from('galleries')
     .select(`
       *,
@@ -33,7 +42,9 @@ export default async function PublicGalleryPage({
     .eq('shared_link', slug)
     .maybeSingle()
 
-  if (!gallery || gallery.status === 'expired') notFound()
+  if (!galleryRaw) notFound()
+  const gallery = galleryRaw as unknown as PublicGalleryRow
+  if (gallery.status === 'expired') notFound()
 
   const { data: photos } = await admin
     .from('gallery_photos')
@@ -42,7 +53,7 @@ export default async function PublicGalleryPage({
     .order('is_favourite', { ascending: false })
     .order('uploaded_at', { ascending: true })
 
-  const booking        = gallery.bookings as unknown as PublicGalleryBooking | null
+  const booking        = gallery.bookings
   type GalleryPhoto = { photo_id: string; file_url: string; thumbnail_url: string; is_favourite: boolean; is_edited: boolean }
   const allPhotos      = (photos ?? []) as unknown as GalleryPhoto[]
   const selectionMode  = booking?.status === 'selecting'

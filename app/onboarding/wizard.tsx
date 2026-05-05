@@ -145,7 +145,7 @@ export default function OnboardingWizard({
         {step === 2 && <>
           <p style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.06em', margin: '0 0 8px' }}>Step 2 of 3</p>
           <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 6px', color: 'var(--text)' }}>Session types</h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: '0 0 22px' }}>Remove any you don't offer. You can always change these later.</p>
+          <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: '0 0 22px' }}>Remove any you don&apos;t offer. You can always change these later.</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '10px' }}>
             {types.map((t, i) => (
@@ -201,6 +201,7 @@ export default function OnboardingWizard({
         {/* ── Step 3 ── */}
         {step === 3 && <>
           <p style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '.06em', margin: '0 0 8px' }}>Step 3 of 3</p>
+          {/* eslint-disable-next-line react/no-unescaped-entities */}
           <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 6px', color: 'var(--text)' }}>You're all set! 🎉</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: '0 0 28px' }}>Share your booking link with clients to start receiving requests.</p>
 

@@ -48,10 +48,18 @@ export default async function PrintOrderDetailPage({
 
   if (!order) redirect('/dashboard/print-orders')
 
-  const items   = (order.print_order_items as unknown as PrintOrderItem[]) ?? []
-  const booking = order.bookings as unknown as PrintOrderBooking
+  type PrintOrderRow = {
+    status: string | null
+    notes: string | null
+    print_order_items: PrintOrderItem[] | null
+    bookings: PrintOrderBooking
+  }
+  const typedOrder = order as unknown as PrintOrderRow
+
+  const items   = typedOrder.print_order_items ?? []
+  const booking = typedOrder.bookings
   const total   = items.reduce((sum, i) => sum + Number(i.unit_price) * i.quantity, 0)
-  const s       = STATUS_COLORS[order.status ?? ''] ?? STATUS_COLORS.pending
+  const s       = STATUS_COLORS[typedOrder.status ?? ''] ?? STATUS_COLORS.pending
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -65,9 +73,9 @@ export default async function PrintOrderDetailPage({
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', textTransform: 'capitalize' }}>
-            {order.status}
+            {typedOrder.status}
           </span>
-          {order.status !== 'collected' && order.status !== 'cancelled' && (
+          {typedOrder.status !== 'collected' && typedOrder.status !== 'cancelled' && (
             <Link
               href={`/dashboard/print-orders/${id}/edit`}
               style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
@@ -137,14 +145,14 @@ export default async function PrintOrderDetailPage({
       </div>
 
       {/* Notes */}
-      {order.notes && (
+      {typedOrder.notes && (
         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 8px' }}>NOTES</p>
-          <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: 0, lineHeight: '1.6' }}>{order.notes}</p>
+          <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: 0, lineHeight: '1.6' }}>{typedOrder.notes}</p>
         </div>
       )}
 
-      <OrderActions orderId={id} currentStatus={order.status} />
+      <OrderActions orderId={id} currentStatus={typedOrder.status ?? 'pending'} />
     </div>
   )
 }

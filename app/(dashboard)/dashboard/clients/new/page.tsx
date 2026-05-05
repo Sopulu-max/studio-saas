@@ -26,21 +26,22 @@ export default function NewClientPage() {
     setExistingId(null)
   }
 
+  const searchQuery = (form.full_name || form.email || form.phone).trim()
+
   // Live search — fires 350 ms after the user stops typing in name, email, or phone
   useEffect(() => {
-    const query = (form.full_name || form.email || form.phone).trim()
-    if (query.length < 2) { setMatches([]); return }
+    if (searchQuery.length < 2) return
 
     if (searchTimer.current) clearTimeout(searchTimer.current)
     searchTimer.current = setTimeout(async () => {
       setSearching(true)
-      const { data } = await searchClients(query)
+      const { data } = await searchClients(searchQuery)
       setMatches(data as ClientMatch[])
       setSearching(false)
     }, 350)
 
     return () => { if (searchTimer.current) clearTimeout(searchTimer.current) }
-  }, [form.full_name, form.email, form.phone])
+  }, [searchQuery])
 
   async function handleSubmit() {
     if (!form.full_name.trim()) { setError('Name is required'); return }
@@ -122,7 +123,7 @@ export default function NewClientPage() {
         </div>
 
         {/* Live match suggestions */}
-        {(matches.length > 0 || searching) && !error && (
+        {(searchQuery.length >= 2 && (matches.length > 0 || searching)) && !error && (
           <div style={{
             marginBottom: '16px', border: '1px solid var(--line)', borderRadius: '10px', overflow: 'hidden',
             background: 'var(--surface)',

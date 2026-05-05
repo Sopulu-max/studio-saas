@@ -54,18 +54,20 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
 
   if (!invoice) redirect('/dashboard/invoices')
 
-  const { data: payments } = await context.admin
+  type PaymentRow = { payment_id: string; paid_at: string; amount: number | string; method: string; reference?: string | null }
+  const { data: paymentsRaw } = await context.admin
     .from('payments')
     .select('*')
     .eq('invoice_id', id)
     .order('paid_at', { ascending: false })
+  const payments = (paymentsRaw ?? []) as unknown as PaymentRow[]
 
   const { data: addons } = await context.admin
     .from('booking_addons')
     .select('quantity, package_addons(name, price)')
     .eq('booking_id', invoice.bookings?.booking_id ?? '')
 
-  const amountPaid = payments?.reduce((sum, payment) => sum + Number(payment.amount), 0) ?? 0
+  const amountPaid = payments.reduce((sum, payment) => sum + Number(payment.amount), 0)
   const balanceDue = Number(invoice.total) - amountPaid
 
   const STATUS_COLORS: Record<string, { bg: string; color: string }> = {

@@ -193,7 +193,7 @@ export default function BookingStatusesForm({ initial }: { initial: BookingStatu
                     <label style={{ fontSize: '13px', color: 'var(--text-3)', flexShrink: 0 }}>Staff assignment:</label>
                     <select
                       value={s.staff_role ?? ''}
-                      onChange={e => update(i, { staff_role: (e.target.value || null) as any })}
+                      onChange={e => update(i, { staff_role: (e.target.value || null) as 'shooter' | 'grader' | 'editor' | null })}
                       style={{ fontSize: '13px', padding: '3px 8px', borderRadius: '6px' }}
                     >
                       {STAFF_ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}

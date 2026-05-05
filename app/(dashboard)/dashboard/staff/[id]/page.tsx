@@ -55,6 +55,18 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
 
   if (!member) redirect('/dashboard/staff')
 
+  type StaffRow = {
+    staff_id: string
+    full_name: string
+    email: string | null
+    role: string | null
+    roles: string[] | null
+    avatar_url: string | null
+    hire_date: string | null
+    working_days: string[] | null
+  }
+  const typedMember = member as unknown as StaffRow
+
   // booking_staff and staff_checkins are not in the generated Supabase types — cast explicitly
   type AssignmentRow  = { role: string | null; bookings: AssignedBooking }
   type CheckinRecord  = { checkin_id: string; date: string; checked_in_at: string; checked_out_at: string | null }
@@ -78,9 +90,9 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   const recentCheckins = (recentCheckinsRaw ?? []) as unknown as CheckinRecord[]
 
   const effectiveRoles: string[] =
-    member.roles && member.roles.length > 0
-      ? member.roles
-      : member.role ? [member.role] : []
+    typedMember.roles && typedMember.roles.length > 0
+      ? typedMember.roles
+      : typedMember.role ? [typedMember.role] : []
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -89,12 +101,12 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
           <AvatarUpload
             entityId={id}
             entityType="staff"
-            currentUrl={member.avatar_url ?? null}
-            name={member.full_name}
+            currentUrl={typedMember.avatar_url ?? null}
+            name={typedMember.full_name ?? ''}
             size={56}
           />
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{member.full_name}</h1>
+            <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{typedMember.full_name}</h1>
             <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{assignments?.length ?? 0} sessions assigned</p>
           </div>
         </div>
@@ -121,13 +133,13 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Email</p>
-            <p style={{ fontSize: '14px', margin: 0 }}>{member.email}</p>
+            <p style={{ fontSize: '14px', margin: 0 }}>{typedMember.email}</p>
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Hire date</p>
             <p style={{ fontSize: '14px', margin: 0 }}>
-              {member.hire_date
-                ? new Date(member.hire_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+              {typedMember.hire_date
+                ? new Date(typedMember.hire_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
                 : '—'}
             </p>
           </div>
@@ -137,10 +149,10 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
       {/* Working days */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>WORKING DAYS</p>
-        {member.working_days && member.working_days.length > 0 ? (
+        {typedMember.working_days && typedMember.working_days.length > 0 ? (
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
             {WEEKDAYS.map(d => {
-              const active = (member.working_days as string[]).includes(d.value)
+              const active = (typedMember.working_days as string[]).includes(d.value)
               return (
                 <span key={d.value} style={{
                   fontSize: '12px', fontWeight: '500', padding: '5px 12px', borderRadius: '8px',

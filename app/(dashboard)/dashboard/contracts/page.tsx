@@ -256,7 +256,7 @@ export default async function ContractsPage({
 
     const activeBookings = (activeRaw ?? []) as unknown as BookingRow[]
     const contractedIds  = new Set(
-      (contractedRaw ?? []).map((r: { booking_id?: string | null }) => r.booking_id).filter(Boolean)
+      ((contractedRaw ?? []) as unknown as { booking_id?: string | null }[]).map((r) => r.booking_id).filter(Boolean)
     )
     const noContract = activeBookings.filter(b => !contractedIds.has(b.booking_id))
 

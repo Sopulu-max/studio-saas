@@ -7,7 +7,14 @@ import SearchableSelect from '@/components/searchable-select'
 import { sessionName } from '@/lib/session-title'
 
 type Item = { product_name: string; size: string; quantity: string; unit_price: string }
-type Session = { booking_id: string; booking_ref?: number | null; session_date?: string | null; session_type?: string | null; clients: any; packages: any }
+type Session = {
+  booking_id: string
+  booking_ref?: number | null
+  session_date?: string | null
+  session_type?: string | null
+  clients?: { full_name?: string | null; phone?: string | null } | null
+  packages?: { name?: string | null } | null
+}
 
 const PRODUCT_SUGGESTIONS = [
   '4×6 Print', '5×7 Print', '8×10 Print', '10×12 Print', '11×14 Print', '16×20 Print', '20×24 Print',

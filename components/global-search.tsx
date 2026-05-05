@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 type Client  = { client_id: string; full_name: string; email?: string | null; phone?: string | null }
@@ -43,26 +43,30 @@ export default function GlobalSearch() {
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 50)
-      setQuery('')
-      setResults(null)
-      setCursor(0)
     }
   }, [open])
 
   // Debounced search
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current)
-    if (query.length < 2) { setResults(null); return }
+    if (query.length < 2) return
+    let cancelled = false
     debounceRef.current = setTimeout(async () => {
       setLoading(true)
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`)
         const data = await res.json()
-        setResults(data)
-        setCursor(0)
+        if (!cancelled) {
+          setResults(data)
+          setCursor(0)
+        }
       } catch {}
-      setLoading(false)
+      if (!cancelled) setLoading(false)
     }, 250)
+    return () => {
+      cancelled = true
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
   }, [query])
 
   // Flatten results for keyboard nav
@@ -73,23 +77,39 @@ export default function GlobalSearch() {
     for (const i of results.invoices) allLinks.push({ href: `/dashboard/invoices/${i.invoice_id}`, label: i.bookings?.clients?.full_name ?? '' })
   }
 
+  function closeSearch() {
+    setOpen(false)
+    setQuery('')
+    setResults(null)
+    setCursor(0)
+    setLoading(false)
+  }
+
+  function openSearch() {
+    setQuery('')
+    setResults(null)
+    setCursor(0)
+    setLoading(false)
+    setOpen(true)
+  }
+
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(c => Math.min(c + 1, allLinks.length - 1)) }
     if (e.key === 'ArrowUp')   { e.preventDefault(); setCursor(c => Math.max(c - 1, 0)) }
     if (e.key === 'Enter' && allLinks[cursor]) {
       router.push(allLinks[cursor].href)
-      setOpen(false)
+      closeSearch()
     }
   }
 
-  const navigate = useCallback((href: string) => {
+  function navigate(href: string) {
     router.push(href)
-    setOpen(false)
-  }, [router])
+    closeSearch()
+  }
 
   if (!open) return (
     <button
-      onClick={() => setOpen(true)}
+      onClick={openSearch}
       title="Search (⌘K)"
       style={{
         display: 'flex', alignItems: 'center', gap: '6px',
@@ -111,7 +131,7 @@ export default function GlobalSearch() {
     <>
       {/* Backdrop */}
       <div
-        onClick={() => setOpen(false)}
+        onClick={closeSearch}
         style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(3px)' }}
       />
 
@@ -140,19 +160,19 @@ export default function GlobalSearch() {
             }}
           />
           {loading && <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>…</span>}
-          <kbd onClick={() => setOpen(false)} style={{ fontSize: '11px', color: 'var(--text-4)', cursor: 'pointer', padding: '2px 6px', border: '1px solid var(--line)', borderRadius: '4px' }}>Esc</kbd>
+          <kbd onClick={closeSearch} style={{ fontSize: '11px', color: 'var(--text-4)', cursor: 'pointer', padding: '2px 6px', border: '1px solid var(--line)', borderRadius: '4px' }}>Esc</kbd>
         </div>
 
         {/* Results */}
-        {results && (
+        {query.length >= 2 && results && (
           <div style={{ maxHeight: '380px', overflowY: 'auto', padding: '8px 0' }}>
             {results.clients.length === 0 && results.sessions.length === 0 && results.invoices.length === 0 ? (
-              <p style={{ fontSize: '13px', color: 'var(--text-4)', padding: '12px 16px', margin: 0 }}>No results for "{query}"</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-4)', padding: '12px 16px', margin: 0 }}>No results for &quot;{query}&quot;</p>
             ) : (
               <>
                 {results.clients.length > 0 && (
                   <Section label="Clients">
-                    {results.clients.map((c, i) => {
+                    {results.clients.map((c) => {
                       const idx = allLinks.findIndex(l => l.href === `/dashboard/clients/${c.client_id}`)
                       return (
                         <ResultRow key={c.client_id} active={idx === cursor}
@@ -202,7 +222,7 @@ export default function GlobalSearch() {
           </div>
         )}
 
-        {!results && !loading && (
+        {(query.length < 2 || !results) && !loading && (
           <div style={{ padding: '20px 16px' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>Type at least 2 characters to search…</p>
           </div>

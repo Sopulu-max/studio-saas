@@ -46,8 +46,6 @@ export default function BookingForm({
 
   const isEvent   = form.session_type === 'event'
   const isOutdoor = form.session_type === 'outdoor'
-  const isStudio  = form.session_type === 'studio'
-
   // Minimum date = tomorrow
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -224,7 +222,7 @@ export default function BookingForm({
         <>
           <div style={row}>
             <label style={label}>
-              What's the occasion?{' '}
+              What&apos;s the occasion?{' '}
               <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
             </label>
             <input

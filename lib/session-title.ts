@@ -51,7 +51,6 @@ export function sessionTitle(
   clientName: string | null | undefined,
   sessionType: string | null | undefined,
   sessionDate: string | null | undefined,
-  bookingRef?: number | string | null,
 ): string {
   const name = clientName?.trim() || 'Unknown client'
 

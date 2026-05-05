@@ -62,9 +62,6 @@ export default function InvoiceActions({
       toast.error(error)
       setLoading(false)
     } else {
-      if (balanceDue - parseFloat(payment.amount) <= 0) {
-        await updateInvoiceStatus(invoiceId, 'paid')
-      }
       toast.success('Payment recorded')
       router.refresh()
       setShowPaymentForm(false)

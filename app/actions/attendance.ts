@@ -77,7 +77,7 @@ export async function checkOut(staffId: string, checkedOutAt?: string) {
   const { error } = await context.admin
     .from('staff_checkins')
     .update({ checked_out_at: ts })
-    .eq('checkin_id', existing.checkin_id)
+    .eq('checkin_id', existing.checkin_id as string)
 
   if (!error) {
     revalidatePath('/dashboard/attendance')
@@ -167,7 +167,7 @@ export async function saveCheckin(form: {
     ;({ error } = await context.admin
       .from('staff_checkins')
       .update({ checked_in_at: checkedInAt, checked_out_at: checkedOutAt })
-      .eq('checkin_id', existing.checkin_id))
+      .eq('checkin_id', existing.checkin_id as string))
   } else {
     ;({ error } = await context.admin
       .from('staff_checkins')

@@ -40,7 +40,7 @@ export default async function SettingsPage() {
         serviceTypes={config.serviceTypes}
         bookingStatuses={config.bookingStatuses}
         contractTemplates={contractTemplates}
-        teamMembers={teamMembers ?? []}
+        teamMembers={(teamMembers ?? []) as unknown as { staff_id: string; full_name: string; email: string; role: string; invite_sent_at: string | null; invite_accepted_at: string | null; user_id: string | null }[]}
         studioId={studio.studio_id}
         name={studio.name ?? ''}
         email={studio.email ?? ''}
