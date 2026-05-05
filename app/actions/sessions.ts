@@ -21,7 +21,6 @@ const addSessionSchema = z.object({
   editor_id: z.string().optional().default(''),
   edited_photos: z.string().optional().default(''),
   shoot_type: z.string().optional().default(''),
-  base_price: z.string().optional().default(''),
   force_duplicate: z.boolean().optional().default(false),
 })
 
@@ -41,7 +40,6 @@ export async function addSession(form: {
   editor_id: string
   edited_photos: string
   shoot_type: string
-  base_price: string
   force_duplicate?: boolean
 }) {
   const result = addSessionSchema.safeParse(form)
@@ -394,7 +392,6 @@ export async function updateSession(sessionId: string, form: {
   shoot_type?: string
   session_date: string
   package_id: string
-  base_price?: string
   outfits_count: string
   edited_photos: string
   location_address: string
@@ -433,7 +430,6 @@ export async function updateSession(sessionId: string, form: {
     shoot_type:       form.shoot_type        || null,
     notes:            form.notes             || null,
     package_id:       form.package_id        || null,
-    base_price:       form.base_price        ? parseFloat(form.base_price) : null,
     outfits_count:    form.outfits_count     ? parseInt(form.outfits_count, 10)  : null,
     edited_photos:    form.edited_photos     ? parseInt(form.edited_photos, 10)  : null,
     location_address: form.location_address  || null,

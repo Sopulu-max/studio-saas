@@ -42,7 +42,6 @@ type SessionRecord = {
   shoot_type?: string | null
   session_date?: string | null
   package_id?: string | null
-  base_price?: number | string | null
   outfits_count?: number | null
   edited_photos?: number | null
   location_address?: string | null
@@ -97,7 +96,6 @@ export default function EditSessionForm({
     shoot_type:         session.shoot_type         ?? '',
     session_date:       toDatetimeLocal(session.session_date),
     package_id:         session.package_id         ?? '',
-    base_price:         session.base_price != null ? String(session.base_price) : '',
     outfits_count: session.outfits_count != null ? String(session.outfits_count) : '',
     edited_photos: session.edited_photos != null ? String(session.edited_photos) : '',
     location_address:   session.location_address   ?? '',
@@ -175,7 +173,6 @@ export default function EditSessionForm({
       shoot_type:      form.shoot_type,
       session_date:    form.session_date,
       package_id:      form.package_id,
-      base_price:      form.base_price,
       outfits_count:   form.outfits_count,
       edited_photos:   form.edited_photos,
       location_address: form.location_address,

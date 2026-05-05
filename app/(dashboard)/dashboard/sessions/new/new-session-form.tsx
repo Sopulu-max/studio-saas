@@ -164,8 +164,9 @@ export default function NewSessionForm({ clients, packages, staff }: {
       packageId = (newId as string | undefined) ?? ''
     }
 
+    const { base_price: _price, ...sessionForm } = form
     const result = await addSession({
-      ...form,
+      ...sessionForm,
       service_type: form.service_type,
       package_id: packageId,
       photographer_id: form.photographer_id,
@@ -187,8 +188,9 @@ export default function NewSessionForm({ clients, packages, staff }: {
     setLoading(true)
     setError('')
     setDupId(null)
+    const { base_price: _price, ...sessionForm } = form
     const result = await addSession({
-      ...form,
+      ...sessionForm,
       service_type: form.service_type,
       package_id: form.package_id,
       photographer_id: form.photographer_id,
