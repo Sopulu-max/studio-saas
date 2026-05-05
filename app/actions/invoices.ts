@@ -270,7 +270,6 @@ type InvoiceBooking = {
   status: string | null
   session_type: string | null
   package_id: string | null
-  base_price: number | string | null
   outfits_count: number | null
   clients: { full_name: string | null; phone: string | null } | null
   packages: { name: string | null; base_price: number | null } | null
@@ -291,7 +290,7 @@ export async function getInvoiceFormData(bookingId?: string) {
 
   let bookingsQuery = context.admin
     .from('bookings')
-    .select('booking_id, booking_ref, session_date, status, session_type, package_id, base_price, outfits_count, clients(full_name, phone), packages(name, base_price)')
+    .select('booking_id, booking_ref, session_date, status, session_type, package_id, outfits_count, clients(full_name, phone), packages(name, base_price)')
     .eq('studio_id', context.studioId)
     .order('session_date', { ascending: false })
   for (const v of cancelValues) { bookingsQuery = bookingsQuery.neq('status', v) }

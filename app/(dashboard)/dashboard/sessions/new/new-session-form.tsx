@@ -142,19 +142,26 @@ export default function NewSessionForm({ clients, packages, staff }: {
 
     let packageId = form.package_id
 
-    // Inline package creation if name is entered
-    if (newPackageName.trim() && !packageId) {
-      if (!form.base_price) { setError('Enter a price to save the package'); setLoading(false); return }
-      if (!form.shoot_type) { setError('Enter a category to save the package'); setLoading(false); return }
+    // If a price was entered but no package is linked, create one so the price
+    // lives in the packages table rather than directly on the booking.
+    // The user can optionally give it a name; otherwise we auto-generate one
+    // from the session specs so the packages list stays readable.
+    if (form.base_price && !packageId) {
+      const sessionLabel = config.sessionTypes.find(t => t.value === form.session_type)?.label ?? form.session_type
+      const nameParts    = [form.shoot_type || sessionLabel]
+      if (form.outfits_count) nameParts.push(`${form.outfits_count} outfit${parseInt(form.outfits_count) !== 1 ? 's' : ''}`)
+      if (form.edited_photos) nameParts.push(`${form.edited_photos} photos`)
+      const autoName = newPackageName.trim() || nameParts.join(' · ')
+
       const { error: pkgError, packageId: newId } = await addPackage({
-        name: newPackageName.trim(),
-        description: '',
-        base_price: form.base_price,
+        name:          autoName,
+        description:   '',
+        base_price:    form.base_price,
         duration_mins: '60',
-        session_type: form.session_type,
-        service_type: form.service_type,
-        shoot_type: form.shoot_type,
-        inclusions: [],
+        session_type:  form.session_type,
+        service_type:  form.service_type,
+        shoot_type:    form.shoot_type,
+        inclusions:    [],
         outfits_count: form.outfits_count,
         edited_photos: form.edited_photos,
         coverage_hours: '',
@@ -188,11 +195,29 @@ export default function NewSessionForm({ clients, packages, staff }: {
     setLoading(true)
     setError('')
     setDupId(null)
+
+    let packageId = form.package_id
+    if (form.base_price && !packageId) {
+      const sessionLabel = config.sessionTypes.find(t => t.value === form.session_type)?.label ?? form.session_type
+      const nameParts    = [form.shoot_type || sessionLabel]
+      if (form.outfits_count) nameParts.push(`${form.outfits_count} outfit${parseInt(form.outfits_count) !== 1 ? 's' : ''}`)
+      if (form.edited_photos) nameParts.push(`${form.edited_photos} photos`)
+      const autoName = newPackageName.trim() || nameParts.join(' · ')
+      const { error: pkgError, packageId: newId } = await addPackage({
+        name: autoName, description: '', base_price: form.base_price,
+        duration_mins: '60', session_type: form.session_type, service_type: form.service_type,
+        shoot_type: form.shoot_type, inclusions: [], outfits_count: form.outfits_count,
+        edited_photos: form.edited_photos, coverage_hours: '', addons: [],
+      })
+      if (pkgError) { setError(pkgError); setLoading(false); return }
+      packageId = (newId as string | undefined) ?? ''
+    }
+
     const { base_price: _price, ...sessionForm } = form
     const result = await addSession({
       ...sessionForm,
       service_type: form.service_type,
-      package_id: form.package_id,
+      package_id: packageId,
       photographer_id: form.photographer_id,
       editor_id: form.editor_id,
       force_duplicate: true,

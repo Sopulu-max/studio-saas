@@ -27,7 +27,6 @@ type Booking = {
   booking_id: string
   booking_ref?: number | null
   package_id?: string | null
-  base_price?: number | string | null
   session_type?: string | null
   session_date?: string | null
   outfits_count?: number | null
@@ -88,12 +87,8 @@ function getBookingSelectionState(
     }
   }
 
-  // Priority: linked package price → booking's own entered price → empty
-  const fallbackPrice = booking.packages?.base_price
-    ? String(booking.packages.base_price)
-    : booking.base_price
-      ? String(booking.base_price)
-      : ''
+  // No package match — fall back to the package attached directly to the booking if any
+  const fallbackPrice = booking.packages?.base_price ? String(booking.packages.base_price) : ''
   return {
     agreedAmount: fallbackPrice,
     selectedPackageId: '',
