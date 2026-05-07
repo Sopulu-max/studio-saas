@@ -98,12 +98,12 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Phone</p>
             <p style={{ fontSize: '14px', margin: 0 }}>{client.phone ?? '—'}</p>
           </div>
-          {client.address && (
-            <div style={{ gridColumn: '1 / -1' }}>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Address</p>
-              <p style={{ fontSize: '14px', margin: 0 }}>{client.address}</p>
-            </div>
-          )}
+          <div style={{ gridColumn: '1 / -1' }}>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Address</p>
+            <p style={{ fontSize: '14px', margin: 0, color: client.address ? 'var(--text)' : 'var(--text-4)' }}>
+              {client.address ?? '—'}
+            </p>
+          </div>
         </div>
       </div>
 
