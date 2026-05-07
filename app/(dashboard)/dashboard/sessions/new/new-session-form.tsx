@@ -187,7 +187,8 @@ export default function NewSessionForm({ clients, packages, staff }: {
       setError(result.error)
       setLoading(false)
     } else {
-      router.push('/dashboard/sessions')
+      const sessionId = (result as { sessionId?: string }).sessionId
+      router.push(sessionId ? `/dashboard/sessions/${sessionId}` : '/dashboard/sessions')
     }
   }
 
@@ -226,7 +227,8 @@ export default function NewSessionForm({ clients, packages, staff }: {
       setError(result.error)
       setLoading(false)
     } else {
-      router.push('/dashboard/sessions')
+      const sessionId = (result as { sessionId?: string }).sessionId
+      router.push(sessionId ? `/dashboard/sessions/${sessionId}` : '/dashboard/sessions')
     }
   }
 

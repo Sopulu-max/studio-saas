@@ -124,9 +124,14 @@ export async function addSession(form: {
   }
   if (staffAssignments.length > 0) {
     const { error: staffError } = await context.admin.from('booking_staff').insert(staffAssignments)
-    if (staffError) return { error: staffError.message }
+    if (staffError) {
+      // Roll back the booking so we don't leave an orphan that triggers false duplicate warnings
+      await context.admin.from('bookings').delete().eq('booking_id', session.booking_id as string)
+      return { error: staffError.message }
+    }
   }
 
+  revalidatePath('/dashboard/sessions')
   return { error: null, sessionId: session.booking_id }
 }
 
