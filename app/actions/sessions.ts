@@ -3,7 +3,8 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext, fetchStudio, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
-import { buildStudioConfig } from '@/lib/studio-config'
+import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
+import { sendStatusUpdateEmail } from '@/lib/email'
 
 const addSessionSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -139,7 +140,42 @@ export async function updateSessionStatus(sessionId: string, status: string) {
     .update({ status })
     .eq('booking_id', sessionId)
     .eq('studio_id', context.studioId)
-  return { error: error?.message ?? null }
+
+  if (error) return { error: error.message }
+
+  revalidatePath(`/dashboard/sessions/${sessionId}`)
+  revalidatePath('/dashboard/sessions')
+
+  // Fire-and-forget status update email — failures must never block the response
+  ;(async () => {
+    try {
+      const [{ data: booking }, studioRow] = await Promise.all([
+        context.admin
+          .from('bookings')
+          .select('clients ( full_name, email )')
+          .eq('booking_id', sessionId)
+          .single(),
+        fetchStudio(context.admin, context.studioId),
+      ])
+
+      const client      = (booking?.clients as unknown) as { full_name: string; email: string } | null
+      const clientEmail = client?.email
+      if (!clientEmail) return  // no email on file — skip silently
+
+      const config      = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+      const statusLabel = getStatusConfig(config, status).label
+      const studioName  = studioRow?.name ?? 'Your studio'
+
+      await sendStatusUpdateEmail({
+        to:          clientEmail,
+        clientName:  client?.full_name ?? 'there',
+        studioName,
+        statusLabel,
+      })
+    } catch { /* swallow — email is best-effort */ }
+  })()
+
+  return { error: null }
 }
 
 export async function bulkUpdateSessionStatus(sessionIds: string[], status: string) {
