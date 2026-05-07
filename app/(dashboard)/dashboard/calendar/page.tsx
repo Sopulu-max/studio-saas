@@ -18,6 +18,25 @@ type CalendarSessionRow = {
   clients?: { full_name?: string | null }[] | { full_name?: string | null } | null
 }
 
+type CalendarOccasionRow = {
+  booking_id:   string
+  booking_ref?: number | null
+  event_date:   string
+  event_name?:  string | null
+  clients?: { full_name?: string | null }[] | { full_name?: string | null } | null
+}
+
+function occasionEmoji(name: string | null | undefined): string {
+  const n = (name ?? '').toLowerCase()
+  if (n.includes('birthday'))                        return '🎂'
+  if (n.includes('wedding') || n.includes('nuptial')) return '💍'
+  if (n.includes('anniversary'))                      return '💞'
+  if (n.includes('graduation'))                       return '🎓'
+  if (n.includes('engagement'))                       return '💒'
+  if (n.includes('naming') || n.includes('christening') || n.includes('dedication')) return '👶'
+  return '📅'
+}
+
 function monthUrl(year: number, month: number) {
   return `/dashboard/calendar?year=${year}&month=${month}`
 }
@@ -81,8 +100,19 @@ export default async function CalendarPage({
       weekQuery = weekQuery.neq('status', val)
     }
 
-    const { data: weekSessionsRaw } = await weekQuery
-    const weekSessions = (weekSessionsRaw ?? []) as unknown as CalendarSessionRow[]
+    const [{ data: weekSessionsRaw }, { data: weekOccasionsRaw }] = await Promise.all([
+      weekQuery,
+      context.admin
+        .from('bookings')
+        .select('booking_id, booking_ref, event_date, event_name, clients(full_name)')
+        .eq('studio_id', context.studioId)
+        .not('event_date', 'is', null)
+        .gte('event_date', fromStr)
+        .lte('event_date', toStr),
+    ])
+
+    const weekSessions  = (weekSessionsRaw  ?? []) as unknown as CalendarSessionRow[]
+    const weekOccasions = (weekOccasionsRaw ?? []) as unknown as CalendarOccasionRow[]
 
     const byDate: Record<string, CalendarSessionRow[]> = {}
     for (const s of weekSessions) {
@@ -90,6 +120,14 @@ export default async function CalendarPage({
       const key = s.session_date.slice(0, 10)
       byDate[key] = byDate[key] ?? []
       byDate[key]!.push(s)
+    }
+
+    const weekEventByDate: Record<string, CalendarOccasionRow[]> = {}
+    for (const o of weekOccasions) {
+      if (!o.event_date) continue
+      const key = o.event_date.slice(0, 10)
+      weekEventByDate[key] = weekEventByDate[key] ?? []
+      weekEventByDate[key]!.push(o)
     }
 
     const weekDays = Array.from({ length: 7 }, (_, i) => addDays(monday, i))
@@ -183,38 +221,55 @@ export default async function CalendarPage({
                   background:  isToday ? 'var(--hover)' : 'transparent',
                   display:     'flex', flexDirection: 'column', gap: '5px',
                 }}>
-                  {daySessions.length === 0
+                  {daySessions.length === 0 && (weekEventByDate[dayStr] ?? []).length === 0
                     ? <span style={{ fontSize: '11px', color: 'var(--text-4)', margin: 'auto', textAlign: 'center', opacity: 0.4 }}>—</span>
-                    : daySessions.map((s: CalendarSessionRow) => {
-                        const sc         = getStatusConfig(config, s.status)
-                        const typeCfg    = getSessionTypeConfig(config, s.session_type)
-                        const clientName = (Array.isArray(s.clients) ? s.clients[0]?.full_name : s.clients?.full_name) ?? null
-                        const sName      = sessionName(clientName, s.booking_ref, s.booking_id, s.session_date)
-                        return (
-                          <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`}
-                            style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: sc.color_bg, textDecoration: 'none', border: `1px solid ${sc.color_fg}22` }}>
-                            <p style={{ fontSize: '12px', fontWeight: '600', color: sc.color_fg, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {clientName ?? sName}
-                            </p>
-                            <p style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, margin: '0 0 5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {sName}
-                            </p>
-                            <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' as const }}>
-                              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500', border: `1px solid ${typeCfg.color_fg}22`, whiteSpace: 'nowrap' as const }}>
-                                {typeCfg.label}
-                              </span>
-                              {s.shoot_type && (
-                                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--line-inner)', whiteSpace: 'nowrap' as const }}>
-                                  {s.shoot_type}
+                    : <>
+                        {daySessions.map((s: CalendarSessionRow) => {
+                          const sc         = getStatusConfig(config, s.status)
+                          const typeCfg    = getSessionTypeConfig(config, s.session_type)
+                          const clientName = (Array.isArray(s.clients) ? s.clients[0]?.full_name : s.clients?.full_name) ?? null
+                          const sName      = sessionName(clientName, s.booking_ref, s.booking_id, s.session_date)
+                          return (
+                            <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`}
+                              style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: sc.color_bg, textDecoration: 'none', border: `1px solid ${sc.color_fg}22` }}>
+                              <p style={{ fontSize: '12px', fontWeight: '600', color: sc.color_fg, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {clientName ?? sName}
+                              </p>
+                              <p style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, margin: '0 0 5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {sName}
+                              </p>
+                              <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' as const }}>
+                                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500', border: `1px solid ${typeCfg.color_fg}22`, whiteSpace: 'nowrap' as const }}>
+                                  {typeCfg.label}
                                 </span>
-                              )}
-                              <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: sc.color_bg, color: sc.color_fg, border: `1px solid ${sc.color_fg}33`, whiteSpace: 'nowrap' as const, marginLeft: 'auto' }}>
-                                {sc.label}
-                              </span>
-                            </div>
-                          </Link>
-                        )
-                      })
+                                {s.shoot_type && (
+                                  <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--line-inner)', whiteSpace: 'nowrap' as const }}>
+                                    {s.shoot_type}
+                                  </span>
+                                )}
+                                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: sc.color_bg, color: sc.color_fg, border: `1px solid ${sc.color_fg}33`, whiteSpace: 'nowrap' as const, marginLeft: 'auto' }}>
+                                  {sc.label}
+                                </span>
+                              </div>
+                            </Link>
+                          )
+                        })}
+                        {(weekEventByDate[dayStr] ?? []).map((o: CalendarOccasionRow) => {
+                          const clientName = (Array.isArray(o.clients) ? o.clients[0]?.full_name : o.clients?.full_name) ?? null
+                          const emoji = occasionEmoji(o.event_name)
+                          return (
+                            <Link key={`occ-${o.booking_id}`} href={`/dashboard/sessions/${o.booking_id}`}
+                              style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: '#fff8e6', textDecoration: 'none', border: '1px dashed #c9980055' }}>
+                              <p style={{ fontSize: '12px', fontWeight: '600', color: '#8a6a00', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {emoji} {clientName ?? '—'}
+                              </p>
+                              <p style={{ fontSize: '10px', color: '#8a6a00', opacity: 0.75, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {o.event_name ?? 'Occasion'}
+                              </p>
+                            </Link>
+                          )
+                        })}
+                      </>
                   }
                 </div>
               )
@@ -256,8 +311,19 @@ export default async function CalendarPage({
     query = query.neq('status', val)
   }
 
-  const { data: sessionsRaw } = await query
-  const sessions = (sessionsRaw ?? []) as unknown as CalendarSessionRow[]
+  const [{ data: sessionsRaw }, { data: occasionsRaw }] = await Promise.all([
+    query,
+    context.admin
+      .from('bookings')
+      .select('booking_id, booking_ref, event_date, event_name, clients(full_name)')
+      .eq('studio_id', context.studioId)
+      .not('event_date', 'is', null)
+      .gte('event_date', fromStr)
+      .lte('event_date', toStr),
+  ])
+
+  const sessions  = (sessionsRaw  ?? []) as unknown as CalendarSessionRow[]
+  const occasions = (occasionsRaw ?? []) as unknown as CalendarOccasionRow[]
 
   const byDate: Record<string, CalendarSessionRow[]> = {}
   for (const s of sessions ?? []) {
@@ -265,6 +331,14 @@ export default async function CalendarPage({
     const dateKey = s.session_date.slice(0, 10)
     byDate[dateKey] = byDate[dateKey] ?? []
     byDate[dateKey]!.push(s)
+  }
+
+  const eventByDate: Record<string, CalendarOccasionRow[]> = {}
+  for (const o of occasions) {
+    if (!o.event_date) continue
+    const key = o.event_date.slice(0, 10)
+    eventByDate[key] = eventByDate[key] ?? []
+    eventByDate[key]!.push(o)
   }
 
   const firstDayOfMonth = new Date(year, month - 1, 1).getDay()
@@ -386,6 +460,33 @@ export default async function CalendarPage({
                             +{daySessions.length - 3} more
                           </p>
                         )}
+                        {(dateKey ? (eventByDate[dateKey] ?? []) : []).map((o: CalendarOccasionRow) => {
+                          const clientName = (Array.isArray(o.clients) ? o.clients[0]?.full_name : o.clients?.full_name) ?? null
+                          const emoji = occasionEmoji(o.event_name)
+                          return (
+                            <Link
+                              key={`occ-${o.booking_id}`}
+                              href={`/dashboard/sessions/${o.booking_id}`}
+                              title={`${clientName ?? '—'} — ${o.event_name ?? 'Occasion'}`}
+                              style={{
+                                display: 'flex', alignItems: 'center', gap: '4px',
+                                padding: '2px 5px', borderRadius: '5px',
+                                background: '#fff8e6', textDecoration: 'none',
+                                border: '1px dashed #c9980055', overflow: 'hidden',
+                              }}
+                            >
+                              <span style={{ fontSize: '10px', flexShrink: 0 }}>{emoji}</span>
+                              <span style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                                <span style={{ fontSize: '11px', color: '#8a6a00', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {clientName ?? '—'}
+                                </span>
+                                <span style={{ fontSize: '10px', color: '#8a6a00', opacity: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {o.event_name ?? 'Occasion'}
+                                </span>
+                              </span>
+                            </Link>
+                          )
+                        })}
                       </div>
                     </>
                   )}

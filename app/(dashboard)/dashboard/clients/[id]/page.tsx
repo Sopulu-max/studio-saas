@@ -2,8 +2,9 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import ClientActions from './client-actions'
 import AvatarUpload from '@/components/avatar-upload'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
+import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
 
 type BookingPackageRelation = { name?: string | null } | null
 
@@ -42,23 +43,18 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   const client = clientRaw as unknown as ClientRow
 
-  const { data: bookingsRaw } = await context.admin
-    .from('bookings')
-    .select('booking_id, booking_ref, session_type, session_date, status, packages(name)')
-    .eq('client_id', id)
-    .eq('studio_id', context.studioId)
-    .order('session_date', { ascending: false })
+  const [bookingsResult, studioRow] = await Promise.all([
+    context.admin
+      .from('bookings')
+      .select('booking_id, booking_ref, session_type, session_date, status, packages(name)')
+      .eq('client_id', id)
+      .eq('studio_id', context.studioId)
+      .order('session_date', { ascending: false }),
+    fetchStudio(context.admin, context.studioId),
+  ])
 
-  const bookings = (bookingsRaw ?? []) as unknown as BookingRow[]
-
-  const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
-    pending_confirmation: { bg: '#faeeda', color: '#854f0b' },
-    confirmed:            { bg: '#e6f1fb', color: '#185fa5' },
-    in_progress:          { bg: '#eeedfe', color: '#534ab7' },
-    editing:              { bg: '#faeeda', color: '#854f0b' },
-    delivered:            { bg: '#eaf3de', color: '#3b6d11' },
-    cancelled:            { bg: '#fcebeb', color: '#a32d2d' },
-  }
+  const bookings = (bookingsResult.data ?? []) as unknown as BookingRow[]
+  const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -118,7 +114,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '1rem 1.25rem' }}>No sessions yet</p>
         ) : (
           bookings.map((b, i) => {
-            const s = STATUS_COLORS[b.status ?? ''] ?? STATUS_COLORS.pending
+            const s = getStatusConfig(config, b.status)
             return (
               <Link key={b.booking_id} href={`/dashboard/sessions/${b.booking_id}`} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
@@ -134,8 +130,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
                     {b.session_date ? ` · ${new Date(b.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                   </p>
                 </div>
-                <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
-                  {b.status}
+                <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.color_bg, color: s.color_fg, fontWeight: '500' }}>
+                  {s.label}
                 </span>
               </Link>
             )

@@ -646,8 +646,11 @@ export default function DashboardWidgets(props: DashboardProps) {
     return (
       <div style={{ ...card, overflow: 'hidden' }}>
         {/* Header */}
-        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
-          <p style={sxn}>Revenue</p>
+        <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <p style={{ ...sxn, margin: 0 }}>Revenue</p>
+          <Link href="/dashboard/invoices" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
+            Invoices →
+          </Link>
         </div>
 
         {/* Today */}
