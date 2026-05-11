@@ -169,10 +169,12 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Base price</p>
             <p style={{ fontSize: '18px', fontWeight: '500', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
           </div>
-          <div>
-            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Duration</p>
-            <p style={{ fontSize: '18px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
-          </div>
+          {pkg.duration_mins != null && (
+            <div>
+              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Duration</p>
+              <p style={{ fontSize: '18px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
+            </div>
+          )}
           {pkg.outfits_count != null && (
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Outfits</p>

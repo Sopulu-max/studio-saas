@@ -111,10 +111,9 @@ export default function NewPackagePage() {
 
   // ─── Submit ──────────────────────────────────────────────────────
   async function handleSubmit(forceDuplicate = false) {
-    if (!form.name)          { setError('Package name is required'); return }
-    if (!form.base_price)    { setError('Price is required'); return }
-    if (!form.duration_mins) { setError('Duration is required'); return }
-    if (!form.shoot_type)    { setError('Category is required'); return }
+    if (!form.name)       { setError('Package name is required'); return }
+    if (!form.base_price) { setError('Price is required'); return }
+    if (!form.shoot_type) { setError('Category is required'); return }
     setLoading(true)
     setError('')
     setDupPackageId('')
@@ -298,9 +297,9 @@ export default function NewPackagePage() {
               placeholder="85000" style={inputStyle} />
           </div>
           <div>
-            <label style={labelStyle}>Duration (mins) <span style={{ color: '#e24b4a' }}>*</span></label>
+            <label style={labelStyle}>Duration (mins) <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
             <input type="number" value={form.duration_mins} onChange={e => update('duration_mins', e.target.value)}
-              placeholder="120" style={inputStyle} />
+              placeholder="e.g. 120" style={inputStyle} />
           </div>
         </div>
 

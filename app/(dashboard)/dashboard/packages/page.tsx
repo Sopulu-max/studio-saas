@@ -448,10 +448,12 @@ export default async function PackagesPage({
                           <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.edited_photos}</p>
                         </div>
                       )}
-                      <div>
-                        <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Duration</p>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
-                      </div>
+                      {pkg.duration_mins != null && (
+                        <div>
+                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Duration</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
+                        </div>
+                      )}
                       {(pkg.package_addons?.length ?? 0) > 0 && (
                         <div>
                           <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Add-ons</p>

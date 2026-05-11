@@ -157,7 +157,7 @@ export default function NewSessionForm({ clients, packages, staff }: {
         name:          autoName,
         description:   '',
         base_price:    form.base_price,
-        duration_mins: '60',
+        duration_mins: '',
         session_type:  form.session_type,
         service_type:  form.service_type,
         shoot_type:    form.shoot_type,
@@ -206,7 +206,7 @@ export default function NewSessionForm({ clients, packages, staff }: {
       const autoName = newPackageName.trim() || nameParts.join(' · ')
       const { error: pkgError, packageId: newId } = await addPackage({
         name: autoName, description: '', base_price: form.base_price,
-        duration_mins: '60', session_type: form.session_type, service_type: form.service_type,
+        duration_mins: '', session_type: form.session_type, service_type: form.service_type,
         shoot_type: form.shoot_type, inclusions: [], outfits_count: form.outfits_count,
         edited_photos: form.edited_photos, coverage_hours: '', addons: [],
       })
