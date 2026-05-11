@@ -26,7 +26,7 @@ export async function middleware(request: NextRequest) {
 
   const isDashboardPage  = path.startsWith('/dashboard')
   const isOnboardingPage = path.startsWith('/onboarding')
-  const isPublicPage     = path.startsWith('/book/') || path.startsWith('/invite/')
+  const isPublicPage     = path.startsWith('/book/') || path.startsWith('/invite/') || path.startsWith('/packages/')
 
   // Public booking and invite pages — always accessible
   if (isPublicPage) return supabaseResponse

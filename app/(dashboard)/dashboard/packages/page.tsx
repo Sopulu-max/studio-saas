@@ -153,6 +153,7 @@ export default async function PackagesPage({
   const [
     { data: allPackagesRaw },
     { count: usedThisMonth },
+    { data: studioSlugRow },
   ] = await Promise.all([
     context.admin.from('packages')
       .select('package_id, base_price, package_addons(addon_id)')
@@ -162,7 +163,12 @@ export default async function PackagesPage({
       .eq('studio_id', context.studioId)
       .not('package_id', 'is', null)
       .gte('session_date', monthStart),
+    context.admin.from('studios')
+      .select('slug')
+      .eq('studio_id', context.studioId)
+      .maybeSingle(),
   ])
+  const studioSlug = (studioSlugRow as unknown as { slug?: string | null } | null)?.slug ?? null
 
   type MinPackage = { package_id: string; base_price?: number | string | null; package_addons?: { addon_id: string }[] | null }
   const allPackages = (allPackagesRaw ?? []) as unknown as MinPackage[]
@@ -183,7 +189,14 @@ export default async function PackagesPage({
   // ── Header ───────────────────────────────────────────────────────
   const header = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-      <h1 style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>Packages</h1>
+      <div>
+        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 2px' }}>Packages</h1>
+        {studioSlug && (
+          <Link href={`/packages/${studioSlug}`} target="_blank" style={{ fontSize: '12px', color: 'var(--text-3)', textDecoration: 'none' }}>
+            View public catalog ↗
+          </Link>
+        )}
+      </div>
       <Link href="/dashboard/packages/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
         New package
       </Link>
