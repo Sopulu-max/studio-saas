@@ -7,6 +7,7 @@ This project uses a Notion page as persistent memory. Follow this protocol every
 ### At the start of every session
 Read the Notion Session Log using the Notion MCP tool:
 - Page ID: `3591d701-ec1a-8162-b744-d5b5e4311db0`
+- It is a top-level page in the workspace titled **Session Log**
 
 This page contains: the current app state, all live modules, key code patterns, the active backlog (priority-ordered), and the history of what was built. Read it before writing any code, making any suggestions, or answering any questions about the project. If the Notion MCP is unavailable, ask the user to paste the current state.
 
