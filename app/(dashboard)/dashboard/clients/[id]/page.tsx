@@ -27,6 +27,13 @@ type BookingRow = {
   packages: BookingPackageRelation
 }
 
+type ClientInvoiceRow = {
+  invoice_id: string
+  total?:     number | string | null
+  status:     string
+  payments?:  { amount: number | string }[] | null
+}
+
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const context = await getStudioContext()
@@ -43,7 +50,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
 
   const client = clientRaw as unknown as ClientRow
 
-  const [bookingsResult, studioRow] = await Promise.all([
+  const [bookingsResult, studioRow, invoicesResult] = await Promise.all([
     context.admin
       .from('bookings')
       .select('booking_id, booking_ref, session_type, session_date, status, packages(name)')
@@ -51,10 +58,23 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       .eq('studio_id', context.studioId)
       .order('session_date', { ascending: false }),
     fetchStudio(context.admin, context.studioId),
+    context.admin
+      .from('invoices')
+      .select('invoice_id, total, status, payments(amount), bookings!inner(client_id, studio_id)')
+      .eq('bookings.client_id', id)
+      .eq('bookings.studio_id', context.studioId),
   ])
 
   const bookings = (bookingsResult.data ?? []) as unknown as BookingRow[]
-  const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+  const config   = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+
+  const invoices      = (invoicesResult.data ?? []) as unknown as ClientInvoiceRow[]
+  const totalInvoiced = invoices
+    .filter(inv => inv.status !== 'cancelled')
+    .reduce((sum, inv) => sum + Number(inv.total ?? 0), 0)
+  const totalPaid = invoices
+    .reduce((sum, inv) => sum + (inv.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0), 0)
+  const outstanding = Math.max(0, totalInvoiced - totalPaid)
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -101,6 +121,36 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             </p>
           </div>
         </div>
+      </div>
+
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>FINANCIALS</p>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+          <div>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Total invoiced</p>
+            <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em' }}>
+              {invoices.length === 0 ? '—' : `₦${totalInvoiced.toLocaleString('en-NG')}`}
+            </p>
+          </div>
+          <div>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Total paid</p>
+            <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em', color: totalPaid > 0 ? '#3b6d11' : 'var(--text)' }}>
+              {invoices.length === 0 ? '—' : `₦${totalPaid.toLocaleString('en-NG')}`}
+            </p>
+          </div>
+          <div>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Outstanding</p>
+            <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em', color: outstanding > 0 ? '#a32d2d' : (invoices.length > 0 ? '#3b6d11' : 'var(--text)') }}>
+              {invoices.length === 0 ? '—' : outstanding > 0 ? `₦${outstanding.toLocaleString('en-NG')}` : 'Settled'}
+            </p>
+          </div>
+        </div>
+        {invoices.length > 0 && (
+          <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '12px 0 0' }}>
+            {invoices.length} invoice{invoices.length !== 1 ? 's' : ''} ·{' '}
+            <Link href="/dashboard/invoices" style={{ color: 'var(--link)', textDecoration: 'none' }}>View all invoices →</Link>
+          </p>
+        )}
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
