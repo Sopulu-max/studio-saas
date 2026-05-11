@@ -83,6 +83,7 @@ export default async function InvoicesPage({
 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
+  const nowTime = new Date().getTime()
 
   // ── Stats (always — full-table aggregates) ─────────────────────
   const { data: allInvoicesRaw } = await context.admin
@@ -151,7 +152,7 @@ export default async function InvoicesPage({
         ...inv,
         _balance: balance({ invoice_id: inv.invoice_id, total: inv.total }),
         _daysOverdue: inv.due_date
-          ? Math.max(0, Math.floor((Date.now() - new Date(inv.due_date).getTime()) / 86_400_000))
+          ? Math.max(0, Math.floor((nowTime - new Date(inv.due_date).getTime()) / 86_400_000))
           : undefined,
       }))
       .filter(inv => inv._balance > 0)
@@ -192,9 +193,14 @@ export default async function InvoicesPage({
       {/* ── Page header ─────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>Invoices</h1>
-        <Link href="/dashboard/invoices/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
-          New invoice
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <a href="/api/export/invoices" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)', fontWeight: '500' }}>
+            Export CSV
+          </a>
+          <Link href="/dashboard/invoices/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
+            New invoice
+          </Link>
+        </div>
       </div>
 
       {/* ── Stats strip ─────────────────────────────────────── */}

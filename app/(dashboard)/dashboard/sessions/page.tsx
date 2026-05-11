@@ -279,9 +279,14 @@ export default async function SessionsPage({
       {/* ── Page header ─────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>Sessions</h1>
-        <Link href="/dashboard/sessions/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
-          New session
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <a href="/api/export/sessions" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)', fontWeight: '500' }}>
+            Export CSV
+          </a>
+          <Link href="/dashboard/sessions/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
+            New session
+          </Link>
+        </div>
       </div>
 
       {/* ── Stats strip ─────────────────────────────────────── */}

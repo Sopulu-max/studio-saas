@@ -3,8 +3,8 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext, fetchStudio, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
-import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
-import { sendStatusUpdateEmail } from '@/lib/email'
+import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
+import { sendStatusUpdateEmail, sendBookingConfirmationEmail } from '@/lib/email'
 
 const addSessionSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -132,6 +132,29 @@ export async function addSession(form: {
   }
 
   revalidatePath('/dashboard/sessions')
+
+  // Fire-and-forget booking confirmation email — failures must never block the response
+  ;(async () => {
+    try {
+      const { data: clientRow } = await context.admin
+        .from('clients')
+        .select('full_name, email')
+        .eq('client_id', form.client_id)
+        .single()
+      const clientData  = clientRow as unknown as { full_name?: string | null; email?: string | null } | null
+      const clientEmail = clientData?.email
+      if (!clientEmail) return  // no email on file — skip silently
+      const typeLabel = getSessionTypeConfig(config, form.session_type).label
+      await sendBookingConfirmationEmail({
+        to:            clientEmail,
+        clientName:    clientData?.full_name ?? 'there',
+        studioName:    studioRow?.name ?? 'Your studio',
+        sessionType:   typeLabel,
+        preferredDate: form.session_date,
+      })
+    } catch { /* swallow — email is best-effort */ }
+  })()
+
   return { error: null, sessionId: session.booking_id }
 }
 

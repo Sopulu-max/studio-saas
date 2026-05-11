@@ -4,7 +4,6 @@ import Pagination from '@/components/pagination'
 import AvatarUpload from '@/components/avatar-upload'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
-import { sessionName } from '@/lib/session-title'
 
 const PAGE_SIZE = 20
 
@@ -78,9 +77,10 @@ export default async function ClientsPage({
   // ── Stats data (always) ────────────────────────────────────────
   // Fetch all clients + all bookings for this studio in parallel
   const now = new Date()
+  const nowTime = now.getTime()
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-  const ninetyDaysAgo = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10)
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)
+  const ninetyDaysAgo = new Date(nowTime - 90 * 86_400_000).toISOString().slice(0, 10)
+  const thirtyDaysAgo = new Date(nowTime - 30 * 86_400_000).toISOString().slice(0, 10)
 
   const [
     { count: totalClients },
@@ -214,9 +214,14 @@ export default async function ClientsPage({
       {/* ── Page header ─────────────────────────────────────── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>Clients</h1>
-        <Link href="/dashboard/clients/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
-          Add client
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <a href="/api/export/clients" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)', fontWeight: '500' }}>
+            Export CSV
+          </a>
+          <Link href="/dashboard/clients/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
+            Add client
+          </Link>
+        </div>
       </div>
 
       {/* ── Stats strip ─────────────────────────────────────── */}
