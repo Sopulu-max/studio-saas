@@ -22,6 +22,19 @@ const packageSchema = z.object({
   })),
 })
 
+type Section = {
+  title: string
+  body: string
+  image_url: string
+}
+
+type TypedInclusion = {
+  label: string
+  type: 'service' | 'product' | 'digital'
+}
+
+// ─── Add ────────────────────────────────────────────────────────────────────
+
 export async function addPackage(form: {
   name: string
   description: string
@@ -36,7 +49,12 @@ export async function addPackage(form: {
   coverage_hours?: string
   contract_template?: string
   pricing_type?: string
+  tagline?: string
+  is_public?: boolean
+  display_order?: number
   addons: { name: string; description: string; price: string }[]
+  sections?: Section[]
+  typed_inclusions?: TypedInclusion[]
   force_duplicate?: boolean
 }) {
   const result = packageSchema.safeParse(form)
@@ -58,40 +76,76 @@ export async function addPackage(form: {
   const { data: pkg, error } = await context.admin
     .from('packages')
     .insert({
-      name: form.name,
-      description: form.description,
-      base_price: parseFloat(form.base_price),
-      duration_mins: parseInt(form.duration_mins, 10),
-      session_type: form.session_type,
-      service_type: form.service_type || 'photo',
-      shoot_type: form.shoot_type,
-      inclusions: form.inclusions,
-      outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
-      edited_photos: form.edited_photos ? parseInt(form.edited_photos, 10) : null,
+      name:           form.name,
+      description:    form.description,
+      base_price:     parseFloat(form.base_price),
+      duration_mins:  parseInt(form.duration_mins, 10),
+      session_type:   form.session_type,
+      service_type:   form.service_type || 'photo',
+      shoot_type:     form.shoot_type,
+      inclusions:     form.inclusions,
+      outfits_count:  form.outfits_count  ? parseInt(form.outfits_count,  10) : null,
+      edited_photos:  form.edited_photos  ? parseInt(form.edited_photos,  10) : null,
       coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
-      pricing_type: form.pricing_type || 'fixed',
-      studio_id: context.studioId,
+      pricing_type:   form.pricing_type  || 'fixed',
+      tagline:        form.tagline        || null,
+      is_public:      form.is_public      ?? true,
+      display_order:  form.display_order  ?? 0,
+      studio_id:      context.studioId,
     })
     .select()
     .single()
 
   if (error || !pkg) return { error: error?.message ?? 'Failed to create package' }
 
+  const pid = (pkg as { package_id: string }).package_id
+
+  // Insert addons
   if (form.addons.length > 0) {
     const { error: addonError } = await context.admin
       .from('package_addons')
       .insert(form.addons.map(a => ({
-        package_id: pkg.package_id,
-        name: a.name,
+        package_id:  pid,
+        name:        a.name,
         description: a.description,
-        price: parseFloat(a.price),
+        price:       parseFloat(a.price),
       })))
     if (addonError) return { error: addonError.message }
   }
 
-  return { error: null, packageId: pkg.package_id }
+  // Insert sections
+  if ((form.sections ?? []).length > 0) {
+    const { error: sectionsError } = await context.admin
+      .from('package_sections')
+      .insert((form.sections!).map((s, i) => ({
+        package_id:    pid,
+        title:         s.title,
+        body:          s.body || null,
+        image_url:     s.image_url || null,
+        display_order: i,
+      })))
+    if (sectionsError) return { error: sectionsError.message }
+  }
+
+  // Insert typed inclusions
+  if ((form.typed_inclusions ?? []).length > 0) {
+    const { error: inclError } = await context.admin
+      .from('package_inclusions')
+      .insert((form.typed_inclusions!).map((inc, i) => ({
+        package_id:    pid,
+        label:         inc.label,
+        type:          inc.type,
+        display_order: i,
+      })))
+    if (inclError) return { error: inclError.message }
+  }
+
+  revalidatePath('/dashboard/packages')
+  return { error: null, packageId: pid }
 }
+
+// ─── Update ─────────────────────────────────────────────────────────────────
 
 export async function updatePackage(packageId: string, form: {
   name: string
@@ -107,7 +161,12 @@ export async function updatePackage(packageId: string, form: {
   coverage_hours?: string
   contract_template?: string
   pricing_type?: string
+  tagline?: string
+  is_public?: boolean
+  display_order?: number
   addons: { name: string; description: string; price: string }[]
+  sections?: Section[]
+  typed_inclusions?: TypedInclusion[]
   force_duplicate?: boolean
 }) {
   const result = packageSchema.safeParse(form)
@@ -134,42 +193,98 @@ export async function updatePackage(packageId: string, form: {
   const { error: updateError } = await context.admin
     .from('packages')
     .update({
-      name: form.name,
-      description: form.description,
-      base_price: parseFloat(form.base_price),
-      duration_mins: parseInt(form.duration_mins, 10),
-      session_type: form.session_type,
-      service_type: form.service_type || 'photo',
-      shoot_type: form.shoot_type,
-      inclusions: form.inclusions,
-      outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
-      edited_photos: form.edited_photos ? parseInt(form.edited_photos, 10) : null,
+      name:           form.name,
+      description:    form.description,
+      base_price:     parseFloat(form.base_price),
+      duration_mins:  parseInt(form.duration_mins, 10),
+      session_type:   form.session_type,
+      service_type:   form.service_type || 'photo',
+      shoot_type:     form.shoot_type,
+      inclusions:     form.inclusions,
+      outfits_count:  form.outfits_count  ? parseInt(form.outfits_count,  10) : null,
+      edited_photos:  form.edited_photos  ? parseInt(form.edited_photos,  10) : null,
       coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
-      pricing_type: form.pricing_type || 'fixed',
+      pricing_type:   form.pricing_type  || 'fixed',
+      tagline:        form.tagline        || null,
+      is_public:      form.is_public      ?? true,
+      display_order:  form.display_order  ?? 0,
     })
     .eq('package_id', packageId)
 
   if (updateError) return { error: updateError.message }
 
-  // Delete all existing addons and re-insert
+  // Addons: delete all + re-insert
   await context.admin.from('package_addons').delete().eq('package_id', packageId)
-
   if (form.addons.length > 0) {
     const { error: addonError } = await context.admin
       .from('package_addons')
       .insert(form.addons.map(a => ({
-        package_id: packageId,
-        name: a.name,
+        package_id:  packageId,
+        name:        a.name,
         description: a.description,
-        price: parseFloat(a.price),
+        price:       parseFloat(a.price),
       })))
     if (addonError) return { error: addonError.message }
   }
 
+  // Sections: delete all + re-insert
+  await context.admin.from('package_sections').delete().eq('package_id', packageId)
+  if ((form.sections ?? []).length > 0) {
+    const { error: sectionsError } = await context.admin
+      .from('package_sections')
+      .insert((form.sections!).map((s, i) => ({
+        package_id:    packageId,
+        title:         s.title,
+        body:          s.body || null,
+        image_url:     s.image_url || null,
+        display_order: i,
+      })))
+    if (sectionsError) return { error: sectionsError.message }
+  }
+
+  // Typed inclusions: delete all + re-insert
+  await context.admin.from('package_inclusions').delete().eq('package_id', packageId)
+  if ((form.typed_inclusions ?? []).length > 0) {
+    const { error: inclError } = await context.admin
+      .from('package_inclusions')
+      .insert((form.typed_inclusions!).map((inc, i) => ({
+        package_id:    packageId,
+        label:         inc.label,
+        type:          inc.type,
+        display_order: i,
+      })))
+    if (inclError) return { error: inclError.message }
+  }
+
   revalidatePath('/dashboard/packages')
+  revalidatePath(`/dashboard/packages/${packageId}`)
   return { error: null }
 }
+
+// ─── Update cover ────────────────────────────────────────────────────────────
+
+export async function updatePackageCover(packageId: string, coverUrl: string) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsPackage(context.admin, context.studioId, packageId))) {
+    return { error: 'Package not found' }
+  }
+
+  const { error } = await context.admin
+    .from('packages')
+    .update({ cover_url: coverUrl || null })
+    .eq('package_id', packageId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard/packages')
+  revalidatePath(`/dashboard/packages/${packageId}`)
+  return { error: null }
+}
+
+// ─── Delete ──────────────────────────────────────────────────────────────────
 
 export async function deletePackage(packageId: string) {
   const context = await getStudioContext()

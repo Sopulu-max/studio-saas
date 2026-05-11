@@ -18,6 +18,9 @@ type PackageRow = {
   package_id:    string
   name:          string
   description?:  string | null
+  tagline?:      string | null
+  cover_url?:    string | null
+  is_public?:    boolean | null
   shoot_type?:   string | null
   session_type?: string | null
   service_type?: string | null
@@ -334,7 +337,7 @@ export default async function PackagesPage({
 
   let q2 = context.admin
     .from('packages')
-    .select('*, package_addons(*)', { count: 'exact' })
+    .select('package_id, name, description, tagline, cover_url, is_public, shoot_type, session_type, service_type, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, created_at, package_addons(*)', { count: 'exact' })
     .eq('studio_id', context.studioId)
 
   if (q)          q2 = q2.ilike('name', `%${q}%`)
@@ -379,45 +382,70 @@ export default async function PackagesPage({
             {(packages as unknown as PackageRow[]).map(pkg => {
               const s = shootTypeColor(pkg.shoot_type)
               return (
-                <Link key={pkg.package_id} href={`/dashboard/packages/${pkg.package_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', display: 'block', textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
-                    <p style={{ fontSize: '15px', fontWeight: '500', margin: 0 }}>{pkg.name}</p>
-                    {pkg.shoot_type && (
-                      <span style={{ fontSize: '11px', padding: '3px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', whiteSpace: 'nowrap', marginLeft: '8px', flexShrink: 0 }}>
-                        {pkg.shoot_type}
-                      </span>
-                    )}
-                  </div>
-                  {pkg.description && (
-                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px', lineHeight: '1.5' }}>{pkg.description}</p>
+                <Link key={pkg.package_id} href={`/dashboard/packages/${pkg.package_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                  {/* Cover image */}
+                  {pkg.cover_url ? (
+                    <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
+                      <img src={pkg.cover_url} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                    </div>
+                  ) : (
+                    <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                    </div>
                   )}
-                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                    <div>
-                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 2px' }}>Price</p>
-                      <p style={{ fontSize: '15px', fontWeight: '500', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
+                  <div style={{ padding: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{pkg.name}</p>
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
+                        {pkg.is_public === false && (
+                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '20px', background: '#f3f3f3', color: '#888', border: '1px solid #e0e0e0', fontWeight: '500' }}>
+                            Hidden
+                          </span>
+                        )}
+                        {pkg.shoot_type && (
+                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', whiteSpace: 'nowrap' }}>
+                            {pkg.shoot_type}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    {pkg.outfits_count != null && (
-                      <div>
-                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 2px' }}>Outfits</p>
-                        <p style={{ fontSize: '15px', fontWeight: '500', margin: 0 }}>{pkg.outfits_count}</p>
-                      </div>
+                    {(pkg.tagline || pkg.description) && (
+                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                        {pkg.tagline || pkg.description}
+                      </p>
                     )}
-                    {pkg.edited_photos != null && (
+                    <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
                       <div>
-                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 2px' }}>Photos</p>
-                        <p style={{ fontSize: '15px', fontWeight: '500', margin: 0 }}>{pkg.edited_photos}</p>
+                        <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Price</p>
+                        <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
                       </div>
-                    )}
-                    <div>
-                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 2px' }}>Duration</p>
-                      <p style={{ fontSize: '15px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
+                      {pkg.outfits_count != null && (
+                        <div>
+                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Outfits</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.outfits_count}</p>
+                        </div>
+                      )}
+                      {pkg.edited_photos != null && (
+                        <div>
+                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Photos</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.edited_photos}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Duration</p>
+                        <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
+                      </div>
+                      {(pkg.package_addons?.length ?? 0) > 0 && (
+                        <div>
+                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Add-ons</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.package_addons!.length}</p>
+                        </div>
+                      )}
                     </div>
-                    {(pkg.package_addons?.length ?? 0) > 0 && (
-                      <div>
-                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 2px' }}>Add-ons</p>
-                        <p style={{ fontSize: '15px', fontWeight: '500', margin: 0 }}>{pkg.package_addons!.length}</p>
-                      </div>
-                    )}
                   </div>
                 </Link>
               )
