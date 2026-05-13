@@ -389,6 +389,31 @@ export default async function SessionsPage({
               }
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Segmented status distribution bar */}
+                  <div>
+                    <div style={{ display: 'flex', height: '8px', borderRadius: '6px', overflow: 'hidden', gap: '2px', marginBottom: '8px' }}>
+                      {activeStatuses.map(sc => {
+                        const cnt = (byStatus.get(sc.value) ?? []).length
+                        if (!cnt) return null
+                        return (
+                          <div key={sc.value} title={`${sc.label}: ${cnt}`}
+                            style={{ flex: cnt, minWidth: '6px', height: '100%', background: sc.color_fg, borderRadius: '3px' }} />
+                        )
+                      })}
+                    </div>
+                    <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                      {activeStatuses.map(sc => {
+                        const cnt = (byStatus.get(sc.value) ?? []).length
+                        if (!cnt) return null
+                        return (
+                          <span key={sc.value} style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: 'var(--text-3)' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: sc.color_fg, display: 'inline-block', flexShrink: 0 }} />
+                            {sc.label} <strong style={{ color: 'var(--text-2)' }}>{cnt}</strong>
+                          </span>
+                        )
+                      })}
+                    </div>
+                  </div>
                   {activeStatuses.map(statusCfg => {
                     const group = byStatus.get(statusCfg.value) ?? []
                     if (!group.length) return null
@@ -500,6 +525,12 @@ export default async function SessionsPage({
                           {dateRange && (
                             <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{dateRange}</span>
                           )}
+                          <div style={{ flex: 1, maxWidth: '120px', height: '4px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div style={{ height: '100%', width: `${catSessions.length > 0 ? ((group.length / catSessions.length) * 100).toFixed(1) : 0}%`, background: 'var(--btn)', borderRadius: '2px' }} />
+                          </div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>
+                            {catSessions.length > 0 ? Math.round((group.length / catSessions.length) * 100) : 0}%
+                          </span>
                         </div>
                         <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                           {group.map((s, i) => {

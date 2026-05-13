@@ -7,6 +7,24 @@ import { getStudioContext } from '@/lib/studio'
 
 const PAGE_SIZE = 20
 
+function getTier(sessions: number): { label: string; bg: string; color: string } {
+  if (sessions >= 10) return { label: 'VIP',       bg: '#faeeda', color: '#854f0b' }
+  if (sessions >= 5)  return { label: 'Regular',   bg: '#eaf3de', color: '#3b6d11' }
+  if (sessions >= 2)  return { label: 'Returning', bg: '#e6f1fb', color: '#185fa5' }
+  return                     { label: 'New',       bg: '#f1efe8', color: '#5f5e5a' }
+}
+
+function relDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  const days = Math.floor((Date.now() - new Date(dateStr).getTime()) / 86_400_000)
+  if (days === 0) return 'Today'
+  if (days === 1) return 'Yesterday'
+  if (days < 7)  return `${days}d ago`
+  if (days < 30) return `${Math.floor(days / 7)}w ago`
+  if (days < 365) return `${Math.floor(days / 30)}mo ago`
+  return `${Math.floor(days / 365)}y ago`
+}
+
 type ClientRow = {
   client_id:   string
   full_name:   string
@@ -261,32 +279,54 @@ export default async function ClientsPage({
             </div>
           ) : (
             <>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
-                {allClients.map((client, i) => (
-                  <Link key={client.client_id} href={`/dashboard/clients/${client.client_id}`} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit',
-                    borderBottom: i < allClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <AvatarUpload entityId={client.client_id} entityType="client"
-                        currentUrl={client.avatar_url ?? null} name={client.full_name} size={36} editable={false} />
-                      <div>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{client.full_name}</p>
-                        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                          {client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${client.client_id.slice(0, 6).toUpperCase()}`}
-                          {client.email ? ` · ${client.email}` : ''}
-                        </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                {allClients.map((client) => {
+                  const sessions = sessionCountMap.get(client.client_id) ?? 0
+                  const lastDate = lastSessionMap.get(client.client_id)
+                  const tier     = getTier(sessions)
+                  const ref      = client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${client.client_id.slice(0, 6).toUpperCase()}`
+                  return (
+                    <Link key={client.client_id} href={`/dashboard/clients/${client.client_id}`} style={{
+                      background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
+                      padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
+                    }}>
+                      {/* Avatar row */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                        <AvatarUpload entityId={client.client_id} entityType="client"
+                          currentUrl={client.avatar_url ?? null} name={client.full_name} size={38} editable={false} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.full_name}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                            {ref}{client.email ? ` · ${client.email}` : ''}
+                          </p>
+                        </div>
+                        <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', flexShrink: 0, letterSpacing: '.03em' }}>
+                          {tier.label}
+                        </span>
                       </div>
-                    </div>
-                    <div style={{ textAlign: 'right' as const }}>
-                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{client.phone ?? '—'}</p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
-                        {sessionCountMap.get(client.client_id) ?? 0} session{(sessionCountMap.get(client.client_id) ?? 0) !== 1 ? 's' : ''}
-                      </p>
-                    </div>
-                  </Link>
-                ))}
+
+                      {/* Stats row */}
+                      <div style={{ display: 'flex', gap: '20px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
+                        <div>
+                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Sessions</p>
+                          <p style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: 'var(--text)', lineHeight: 1.1 }}>{sessions}</p>
+                        </div>
+                        {lastDate && (
+                          <div>
+                            <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Last session</p>
+                            <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: 'var(--text-2)', lineHeight: 1.2 }}>{relDate(lastDate)}</p>
+                          </div>
+                        )}
+                        {client.phone && (
+                          <div style={{ marginLeft: 'auto' }}>
+                            <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Phone</p>
+                            <p style={{ fontSize: '12px', margin: 0, color: 'var(--text-3)' }}>{client.phone}</p>
+                          </div>
+                        )}
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
               <Pagination
                 page={pageNum}

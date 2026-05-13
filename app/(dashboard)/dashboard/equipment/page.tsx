@@ -178,6 +178,7 @@ export default async function EquipmentPage({
             {nonEmptyGroups.map(statusKey => {
               const sc    = STATUS_COLORS[statusKey] ?? STATUS_COLORS.available
               const group = groups[statusKey]
+              const pct   = totalItems > 0 ? (group.length / totalItems) * 100 : 0
               return (
                 <div key={statusKey}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
@@ -185,6 +186,10 @@ export default async function EquipmentPage({
                       {STATUS_LABELS[statusKey] ?? statusKey}
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{group.length} item{group.length !== 1 ? 's' : ''}</span>
+                    <div style={{ flex: 1, maxWidth: '140px', height: '4px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct.toFixed(1)}%`, background: sc.color, borderRadius: '2px' }} />
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>{pct.toFixed(0)}%</span>
                   </div>
                   <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
@@ -243,6 +248,7 @@ export default async function EquipmentPage({
             {allCats.map(catKey => {
               const cc    = getEquipmentCategoryConfig(config, catKey)
               const group = catGroups[catKey]
+              const pct   = totalItems > 0 ? (group.length / totalItems) * 100 : 0
               return (
                 <div key={catKey}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
@@ -250,6 +256,10 @@ export default async function EquipmentPage({
                       {cc.label || catKey}
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{group.length} item{group.length !== 1 ? 's' : ''}</span>
+                    <div style={{ flex: 1, maxWidth: '140px', height: '4px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct.toFixed(1)}%`, background: cc.color_fg, borderRadius: '2px' }} />
+                    </div>
+                    <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>{pct.toFixed(0)}%</span>
                   </div>
                   <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>

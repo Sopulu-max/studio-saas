@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { useStudioConfig } from '@/components/studio-config-provider'
-import { getSessionTypeConfig } from '@/lib/studio-config'
+import { getSessionTypeConfig, getStatusConfig } from '@/lib/studio-config'
 import { bulkUpdateSessionStatus } from '@/app/actions/sessions'
 import { sessionName } from '@/lib/session-title'
 import InlineStatusSelect from '@/components/inline-status-select'
@@ -74,6 +74,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
         {/* Rows */}
         {sessions.map((s, i) => {
           const typeCfg    = getSessionTypeConfig(config, s.session_type)
+          const statusCfg  = getStatusConfig(config, s.status)
           const isSelected = selected.has(s.booking_id)
           const name       = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
           return (
@@ -81,6 +82,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr 1fr',
               padding: '0.875rem 1.25rem', alignItems: 'center',
               borderBottom: i < sessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
+              borderLeft: `4px solid ${statusCfg.color_fg}`,
               background: isSelected ? 'var(--active)' : 'transparent',
               transition: 'background 0.1s',
             }}>

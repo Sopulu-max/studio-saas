@@ -265,12 +265,17 @@ export default async function InvoicesPage({
                       <div>
                         <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>₦{total.toLocaleString()}</p>
                         {partial && (
-                          <p style={{ fontSize: '11px', color: '#854f0b', margin: 0, fontWeight: '500' }}>
+                          <p style={{ fontSize: '11px', color: '#854f0b', margin: '0 0 4px', fontWeight: '500' }}>
                             ₦{paid.toLocaleString()} paid · ₦{bal.toLocaleString()} due
                           </p>
                         )}
                         {inv.status === 'paid' && paid > 0 && (
-                          <p style={{ fontSize: '11px', color: '#3b6d11', margin: 0, fontWeight: '500' }}>✓ Paid in full</p>
+                          <p style={{ fontSize: '11px', color: '#3b6d11', margin: '0 0 4px', fontWeight: '500' }}>✓ Paid in full</p>
+                        )}
+                        {total > 0 && (
+                          <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', width: '80px' }}>
+                            <div style={{ height: '100%', width: `${Math.min(100, (paid / total) * 100).toFixed(0)}%`, background: paid >= total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
+                          </div>
                         )}
                       </div>
                       <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
@@ -327,7 +332,14 @@ export default async function InvoicesPage({
                         {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
                       </p>
                     </div>
-                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>₦{Number(inv.total ?? 0).toLocaleString()}</p>
+                    <div>
+                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 4px' }}>₦{Number(inv.total ?? 0).toLocaleString()}</p>
+                      {Number(inv.total ?? 0) > 0 && (
+                        <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', width: '64px' }}>
+                          <div style={{ height: '100%', width: `${Math.min(100, ((paidMap[inv.invoice_id] ?? 0) / Number(inv.total ?? 0)) * 100).toFixed(0)}%`, background: '#c9a96e', borderRadius: '2px' }} />
+                        </div>
+                      )}
+                    </div>
                     <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, color: isOverdue ? '#a32d2d' : 'var(--text)' }}>
                       ₦{inv._balance.toLocaleString()}
                     </p>

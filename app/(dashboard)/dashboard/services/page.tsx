@@ -201,6 +201,7 @@ export default async function ServicesPage({
                   display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
                   padding: '0.875rem 1.25rem', alignItems: 'center',
                   borderBottom: i < services.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  borderLeft: `4px solid ${tc.color}`,
                   textDecoration: 'none', color: 'inherit',
                 }}
               >
