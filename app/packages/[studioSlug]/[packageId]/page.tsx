@@ -28,10 +28,24 @@ type PublicTypedInclusion = {
 }
 
 type PublicAddon = {
-  addon_id:    string
-  name:        string
+  addon_id:     string
+  name:         string
   description?: string | null
-  price?:      number | string | null
+  price?:       number | string | null
+}
+
+type PublicPkgService = {
+  service_id:    string
+  is_addon:      boolean
+  addon_price:   number | null
+  display_order: number
+  services: {
+    service_id:   string
+    name:         string
+    type:         string
+    description?: string | null
+    price?:       number | null
+  } | null
 }
 
 type PublicPackage = {
@@ -50,6 +64,7 @@ type PublicPackage = {
   package_sections?:   PublicSection[] | null
   package_inclusions?: PublicTypedInclusion[] | null
   package_addons?:     PublicAddon[] | null
+  package_services?:   PublicPkgService[] | null
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -79,15 +94,11 @@ export async function generateMetadata(
     title,
     description,
     openGraph: {
-      title,
-      description,
-      type: 'website',
+      title, description, type: 'website',
       ...(pkg?.cover_url ? { images: [{ url: pkg.cover_url }] } : {}),
     },
     twitter: {
-      card: 'summary_large_image',
-      title,
-      description,
+      card: 'summary_large_image', title, description,
       ...(pkg?.cover_url ? { images: [pkg.cover_url] } : {}),
     },
   }
@@ -103,12 +114,11 @@ export default async function PublicPackageDetailPage({
   const { studioSlug, packageId } = await params
   const admin = createAdminClient()
 
-  // Fetch studio + package in parallel
   const [{ data: studioRaw }, { data: pkgRaw }] = await Promise.all([
     admin.from('studios').select('studio_id, name, slug, logo_url').eq('slug', studioSlug).maybeSingle(),
     admin
       .from('packages')
-      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price)')
+      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
       .eq('package_id', packageId)
       .maybeSingle(),
   ])
@@ -119,10 +129,14 @@ export default async function PublicPackageDetailPage({
   const pkg = pkgRaw as unknown as PublicPackage | null
   if (!pkg || pkg.is_public === false) notFound()
 
-  // Sort related data
+  // Sort / split related data
   const sections        = [...(pkg.package_sections   ?? [])].sort((a, b) => a.display_order - b.display_order)
   const typedInclusions = [...(pkg.package_inclusions ?? [])].sort((a, b) => a.display_order - b.display_order)
-  const addons          = pkg.package_addons ?? []
+  const textAddons      = pkg.package_addons ?? []
+
+  const pkgServices      = [...(pkg.package_services ?? [])].sort((a, b) => a.display_order - b.display_order)
+  const includedCatalog  = pkgServices.filter(s => !s.is_addon && s.services)
+  const addonCatalog     = pkgServices.filter(s => s.is_addon  && s.services)
 
   const price = Number(pkg.base_price ?? 0)
 
@@ -147,11 +161,8 @@ export default async function PublicPackageDetailPage({
             </Link>
           </div>
           <Link
-            href={`/book/${studioSlug}`}
-            style={{
-              fontSize: '13px', fontWeight: '500', padding: '8px 16px',
-              background: '#111', color: 'white', borderRadius: '8px',
-            }}
+            href={`/book/${studioSlug}?package=${packageId}`}
+            style={{ fontSize: '13px', fontWeight: '500', padding: '8px 16px', background: '#111', color: 'white', borderRadius: '8px' }}
           >
             Book now →
           </Link>
@@ -160,11 +171,7 @@ export default async function PublicPackageDetailPage({
         {/* Cover hero */}
         {pkg.cover_url && (
           <div style={{ width: '100%', maxHeight: '480px', overflow: 'hidden' }}>
-            <img
-              src={pkg.cover_url}
-              alt={pkg.name}
-              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: '480px' }}
-            />
+            <img src={pkg.cover_url} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: '480px' }} />
           </div>
         )}
 
@@ -217,7 +224,7 @@ export default async function PublicPackageDetailPage({
             )}
           </div>
 
-          {/* What's included (text bullets) */}
+          {/* What's included — text bullets */}
           {(pkg.inclusions ?? []).length > 0 && (
             <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', padding: '22px 24px', marginBottom: '20px' }}>
               <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>
@@ -230,6 +237,44 @@ export default async function PublicPackageDetailPage({
                     <span style={{ fontSize: '14px', color: '#333', lineHeight: '1.5' }}>{item}</span>
                   </div>
                 ))}
+              </div>
+            </div>
+          )}
+
+          {/* Catalog services — included */}
+          {includedCatalog.length > 0 && (
+            <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', padding: '22px 24px', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>
+                Included services &amp; products
+              </h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {includedCatalog.map(ps => {
+                  const svc  = ps.services!
+                  const meta = INCLUSION_TYPE_META[svc.type] ?? INCLUSION_TYPE_META.service
+                  return (
+                    <div key={ps.service_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span style={{
+                          fontSize: '11px', padding: '3px 9px', borderRadius: '20px',
+                          background: meta.bg, color: meta.color, fontWeight: '600', flexShrink: 0,
+                        }}>
+                          {meta.icon} {meta.label}
+                        </span>
+                        <div>
+                          <p style={{ fontSize: '14px', color: '#333', margin: 0, fontWeight: '500' }}>{svc.name}</p>
+                          {svc.description && (
+                            <p style={{ fontSize: '12px', color: '#888', margin: '1px 0 0' }}>{svc.description}</p>
+                          )}
+                        </div>
+                      </div>
+                      {svc.price != null && (
+                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#22c55e', flexShrink: 0 }}>
+                          Included
+                        </p>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -247,8 +292,7 @@ export default async function PublicPackageDetailPage({
                     <div key={inc.inclusion_id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                       <span style={{
                         fontSize: '11px', padding: '3px 9px', borderRadius: '20px',
-                        background: meta.bg, color: meta.color,
-                        fontWeight: '600', flexShrink: 0, whiteSpace: 'nowrap',
+                        background: meta.bg, color: meta.color, fontWeight: '600', flexShrink: 0, whiteSpace: 'nowrap',
                       }}>
                         {meta.icon} {meta.label}
                       </span>
@@ -285,19 +329,56 @@ export default async function PublicPackageDetailPage({
             </div>
           ))}
 
-          {/* Add-ons */}
-          {addons.length > 0 && (
+          {/* Add-ons: text addons + catalog add-on services merged */}
+          {(textAddons.length > 0 || addonCatalog.length > 0) && (
             <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', overflow: 'hidden', marginBottom: '20px' }}>
               <div style={{ padding: '20px 24px', borderBottom: '0.5px solid #f0f0f0' }}>
                 <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em' }}>
                   Optional add-ons
                 </h2>
               </div>
-              {addons.map((addon, i) => (
+
+              {/* Catalog add-on services */}
+              {addonCatalog.map((ps, i) => {
+                const svc      = ps.services!
+                const meta     = INCLUSION_TYPE_META[svc.type] ?? INCLUSION_TYPE_META.service
+                const showPrice = ps.addon_price != null ? ps.addon_price : svc.price
+                const isLast    = i === addonCatalog.length - 1 && textAddons.length === 0
+                return (
+                  <div key={ps.service_id} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '14px 24px',
+                    borderBottom: !isLast ? '0.5px solid #f0f0f0' : 'none',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{
+                        fontSize: '11px', padding: '2px 8px', borderRadius: '20px',
+                        background: meta.bg, color: meta.color, fontWeight: '600', flexShrink: 0,
+                      }}>
+                        {meta.icon}
+                      </span>
+                      <div>
+                        <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{svc.name}</p>
+                        {svc.description && (
+                          <p style={{ fontSize: '12px', color: '#888', margin: '1px 0 0' }}>{svc.description}</p>
+                        )}
+                      </div>
+                    </div>
+                    {showPrice != null && (
+                      <p style={{ fontSize: '15px', fontWeight: '600', flexShrink: 0, marginLeft: '16px' }}>
+                        + ₦{Number(showPrice).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )
+              })}
+
+              {/* Text addons */}
+              {textAddons.map((addon, i) => (
                 <div key={addon.addon_id} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '14px 24px',
-                  borderBottom: i < addons.length - 1 ? '0.5px solid #f0f0f0' : 'none',
+                  borderBottom: i < textAddons.length - 1 ? '0.5px solid #f0f0f0' : 'none',
                 }}>
                   <div>
                     <p style={{ fontSize: '14px', fontWeight: '500', marginBottom: addon.description ? '2px' : '0' }}>{addon.name}</p>
@@ -322,7 +403,7 @@ export default async function PublicPackageDetailPage({
               Fill in a short form and {studio.name} will get back to you.
             </p>
             <Link
-              href={`/book/${studioSlug}`}
+              href={`/book/${studioSlug}?package=${packageId}`}
               style={{
                 display: 'inline-block',
                 background: 'white', color: '#111',

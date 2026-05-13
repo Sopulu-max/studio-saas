@@ -33,6 +33,12 @@ type TypedInclusion = {
   type: 'service' | 'product' | 'digital'
 }
 
+type LinkedService = {
+  service_id: string
+  is_addon:   boolean
+  addon_price?: string
+}
+
 // ─── Add ────────────────────────────────────────────────────────────────────
 
 export async function addPackage(form: {
@@ -55,6 +61,7 @@ export async function addPackage(form: {
   addons: { name: string; description: string; price: string }[]
   sections?: Section[]
   typed_inclusions?: TypedInclusion[]
+  linked_services?: LinkedService[]
   force_duplicate?: boolean
 }) {
   const result = packageSchema.safeParse(form)
@@ -141,6 +148,21 @@ export async function addPackage(form: {
     if (inclError) return { error: inclError.message }
   }
 
+  // Insert linked services
+  const linkedServices = (form.linked_services ?? []).filter(ls => ls.service_id)
+  if (linkedServices.length > 0) {
+    const { error: svcError } = await context.admin
+      .from('package_services')
+      .insert(linkedServices.map((ls, i) => ({
+        package_id:    pid,
+        service_id:    ls.service_id,
+        is_addon:      ls.is_addon,
+        addon_price:   ls.addon_price ? parseFloat(ls.addon_price) : null,
+        display_order: i,
+      })))
+    if (svcError) return { error: svcError.message }
+  }
+
   revalidatePath('/dashboard/packages')
   return { error: null, packageId: pid }
 }
@@ -167,6 +189,7 @@ export async function updatePackage(packageId: string, form: {
   addons: { name: string; description: string; price: string }[]
   sections?: Section[]
   typed_inclusions?: TypedInclusion[]
+  linked_services?: LinkedService[]
   force_duplicate?: boolean
 }) {
   const result = packageSchema.safeParse(form)
@@ -255,6 +278,22 @@ export async function updatePackage(packageId: string, form: {
         display_order: i,
       })))
     if (inclError) return { error: inclError.message }
+  }
+
+  // Linked services: delete all + re-insert
+  await context.admin.from('package_services').delete().eq('package_id', packageId)
+  const linkedServices = (form.linked_services ?? []).filter(ls => ls.service_id)
+  if (linkedServices.length > 0) {
+    const { error: svcError } = await context.admin
+      .from('package_services')
+      .insert(linkedServices.map((ls, i) => ({
+        package_id:    packageId,
+        service_id:    ls.service_id,
+        is_addon:      ls.is_addon,
+        addon_price:   ls.addon_price ? parseFloat(ls.addon_price) : null,
+        display_order: i,
+      })))
+    if (svcError) return { error: svcError.message }
   }
 
   revalidatePath('/dashboard/packages')

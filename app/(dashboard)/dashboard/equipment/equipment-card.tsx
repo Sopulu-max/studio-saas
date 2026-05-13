@@ -9,11 +9,12 @@ import { updateEquipmentStatus, deleteEquipment } from '@/app/actions/equipment'
 const STATUSES = ['available', 'in_use', 'maintenance', 'retired']
 
 type EquipmentItem = {
-  equipment_id: string
-  name: string
-  category: string
+  equipment_id:  string
+  name:          string
+  category:      string
   serial_number?: string | null
-  status: string
+  status:        string
+  assigned_to?:  string | null
 }
 
 export default function EquipmentCard({ item, catStyle, statusStyle, isLast }: {
@@ -67,9 +68,14 @@ export default function EquipmentCard({ item, catStyle, statusStyle, isLast }: {
         <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
           {item.serial_number ?? '—'}
         </p>
-        <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: statusStyle.bg, color: statusStyle.color, fontWeight: '500', display: 'inline-block' }}>
-          {item.status.replace('_', ' ')}
-        </span>
+        <div>
+          <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: statusStyle.bg, color: statusStyle.color, fontWeight: '500', display: 'inline-block' }}>
+            {item.status.replace('_', ' ')}
+          </span>
+          {item.status === 'in_use' && item.assigned_to && (
+            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '2px 0 0 2px' }}>with {item.assigned_to}</p>
+          )}
+        </div>
       </div>
 
       {showActions && (

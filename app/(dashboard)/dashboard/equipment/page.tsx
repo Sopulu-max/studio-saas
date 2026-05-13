@@ -15,6 +15,7 @@ type EquipmentItem = {
   serial_number?: string | null
   status:        string
   notes?:        string | null
+  assigned_to?:  string | null
 }
 
 // ─── Constants ──────────────────────────────────────────────────────────────
@@ -149,7 +150,7 @@ export default async function EquipmentPage({
   if (view === 'by-status') {
     const { data: raw } = await context.admin
       .from('equipment')
-      .select('equipment_id, name, category, serial_number, status, notes')
+      .select('equipment_id, name, category, serial_number, status, notes, assigned_to')
       .eq('studio_id', context.studioId)
       .order('name', { ascending: true })
 
@@ -210,7 +211,7 @@ export default async function EquipmentPage({
   if (view === 'by-category') {
     const { data: raw } = await context.admin
       .from('equipment')
-      .select('equipment_id, name, category, serial_number, status, notes')
+      .select('equipment_id, name, category, serial_number, status, notes, assigned_to')
       .eq('studio_id', context.studioId)
       .order('name', { ascending: true })
 
@@ -274,7 +275,7 @@ export default async function EquipmentPage({
   // ── All view (default) ───────────────────────────────────────────
   let query = context.admin
     .from('equipment')
-    .select('equipment_id, name, category, serial_number, status, notes', { count: 'exact' })
+    .select('equipment_id, name, category, serial_number, status, notes, assigned_to', { count: 'exact' })
     .eq('studio_id', context.studioId)
 
   if (q)        query = query.ilike('name', `%${q}%`)

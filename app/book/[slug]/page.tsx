@@ -18,42 +18,133 @@ export async function generateMetadata(
   const name = (studioMeta as unknown as { name?: string | null } | null)?.name ?? 'Studio'
   const title = `Book a session — ${name}`
   const description = `Request a photography session with ${name}. Pick your session type and preferred date.`
-
   return {
     title,
     description,
     icons: { icon: [{ url: '/icon.svg', type: 'image/svg+xml' }] },
-    openGraph: {
-      title,
-      description,
-      type: 'website',
-    },
-    twitter: {
-      card: 'summary',
-      title,
-      description,
-    },
+    openGraph: { title, description, type: 'website' },
+    twitter: { card: 'summary', title, description },
   }
+}
+
+export type PreselectedPackage = {
+  package_id:     string
+  name:           string
+  tagline?:       string | null
+  base_price?:    number | null
+  session_type?:  string | null
+  service_type?:  string | null
+  outfits_count?: number | null
+  duration_mins?: number | null
+}
+
+export type PackageLinkedService = {
+  service_id:   string
+  name:         string
+  type:         string
+  description?: string | null
+  price?:       number | null
+  is_addon:     boolean
+  addon_price?: number | null
 }
 
 export default async function PublicBookingPage({
   params,
+  searchParams,
 }: {
-  params: Promise<{ slug: string }>
+  params:       Promise<{ slug: string }>
+  searchParams: Promise<{ package?: string }>
 }) {
-  const { slug } = await params
+  const [{ slug }, { package: packageParam }] = await Promise.all([params, searchParams])
   const admin = createAdminClient()
 
   const { data: studioRaw } = await admin
     .from('studios')
-    .select('studio_id, name, email, slug, session_types, service_types, logo_url')
+    .select('studio_id, name, email, slug, session_types, service_types, booking_statuses, logo_url')
     .eq('slug', slug)
     .maybeSingle()
   const studio = studioRaw as unknown as StudioRow | null
-
   if (!studio) notFound()
 
-  const config = buildStudioConfig(studio.session_types, null, studio.service_types)
+  const config = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types)
+
+  type PublicService = {
+    service_id:   string
+    name:         string
+    type:         string
+    description?: string | null
+    price?:       number | null
+  }
+
+  type RawPkgService = {
+    service_id:    string
+    is_addon:      boolean
+    addon_price:   number | null
+    display_order: number
+    services: {
+      service_id:   string
+      name:         string
+      type:         string
+      description?: string | null
+      price?:       number | null
+    } | null
+  }
+
+  type RawPackage = PreselectedPackage & {
+    package_services?: RawPkgService[] | null
+  }
+
+  // Fetch active services + package (with linked services) in parallel
+  const [{ data: servicesRaw }, { data: pkgRaw }] = await Promise.all([
+    admin
+      .from('services')
+      .select('service_id, name, type, description, price')
+      .eq('studio_id', studio.studio_id)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
+      .order('name',          { ascending: true }),
+    packageParam
+      ? admin
+          .from('packages')
+          .select('package_id, name, tagline, base_price, session_type, service_type, outfits_count, duration_mins, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
+          .eq('package_id', packageParam)
+          .eq('studio_id',  studio.studio_id)
+          .eq('is_public',  true)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+  ])
+
+  const catalogServices = (servicesRaw ?? []) as unknown as PublicService[]
+  const rawPkg          = pkgRaw as unknown as RawPackage | null
+
+  // Split package data from its linked services
+  const preselectedPackage: PreselectedPackage | null = rawPkg
+    ? {
+        package_id:    rawPkg.package_id,
+        name:          rawPkg.name,
+        tagline:       rawPkg.tagline,
+        base_price:    rawPkg.base_price,
+        session_type:  rawPkg.session_type,
+        service_type:  rawPkg.service_type,
+        outfits_count: rawPkg.outfits_count,
+        duration_mins: rawPkg.duration_mins,
+      }
+    : null
+
+  const packageLinkedServices: PackageLinkedService[] = rawPkg?.package_services
+    ? rawPkg.package_services
+        .filter(ps => ps.services != null)
+        .sort((a, b) => a.display_order - b.display_order)
+        .map(ps => ({
+          service_id:  ps.services!.service_id,
+          name:        ps.services!.name,
+          type:        ps.services!.type,
+          description: ps.services!.description,
+          price:       ps.services!.price,
+          is_addon:    ps.is_addon,
+          addon_price: ps.addon_price,
+        }))
+    : []
 
   return (
     <>
@@ -87,7 +178,9 @@ export default async function PublicBookingPage({
             <h1 style={{ fontSize: '26px', fontWeight: '700', letterSpacing: '-.02em', marginBottom: '6px' }}>
               {studio.name}
             </h1>
-            <p style={{ fontSize: '14px', color: '#888' }}>Book a session</p>
+            <p style={{ fontSize: '14px', color: '#888' }}>
+              {preselectedPackage ? 'Book a package' : 'Book a session'}
+            </p>
           </div>
 
           {/* Card */}
@@ -97,6 +190,9 @@ export default async function PublicBookingPage({
               studioName={studio.name ?? ''}
               sessionTypes={config.sessionTypes.map(t => ({ value: t.value, label: t.label }))}
               serviceTypes={config.serviceTypes.map(t => ({ value: t.value, label: t.label }))}
+              catalogServices={catalogServices}
+              preselectedPackage={preselectedPackage}
+              packageLinkedServices={packageLinkedServices}
             />
           </div>
 

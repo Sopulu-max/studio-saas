@@ -89,18 +89,34 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const studioRow = await fetchStudio(context.admin, context.studioId)
+  const [studioRow, { data: pkgRaw }, { data: pkgSvcRaw }] = await Promise.all([
+    fetchStudio(context.admin, context.studioId),
+    context.admin
+      .from('packages')
+      .select('*, package_addons(*), package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
+      .eq('package_id', id)
+      .eq('studio_id', context.studioId)
+      .single(),
+    context.admin
+      .from('package_services')
+      .select('is_addon, addon_price, display_order, services(service_id, name, type, price, description)')
+      .eq('package_id', id)
+      .order('display_order', { ascending: true }),
+  ])
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
-
-  const { data: pkgRaw } = await context.admin
-    .from('packages')
-    .select('*, package_addons(*), package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
-    .eq('package_id', id)
-    .eq('studio_id', context.studioId)
-    .single()
   const pkg = pkgRaw as unknown as PackageRecord | null
 
   if (!pkg) redirect('/dashboard/packages')
+
+  type PkgServiceRow = {
+    is_addon:   boolean
+    addon_price?: number | null
+    display_order: number
+    services?:  { service_id?: string; name?: string | null; type?: string | null; price?: number | null; description?: string | null } | null
+  }
+  const pkgServices = (pkgSvcRaw ?? []) as unknown as PkgServiceRow[]
+  const includedCatalogSvcs = pkgServices.filter(ps => !ps.is_addon)
+  const addonCatalogSvcs    = pkgServices.filter(ps =>  ps.is_addon)
 
   // Sort related rows
   const sections         = [...(pkg.package_sections   ?? [])].sort((a, b) => a.display_order - b.display_order)
@@ -243,6 +259,80 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
               )
             })}
           </div>
+        </div>
+      )}
+
+      {/* Catalog services */}
+      {pkgServices.length > 0 && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>CATALOG SERVICES</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
+              {includedCatalogSvcs.length} included · {addonCatalogSvcs.length} add-on
+            </p>
+          </div>
+
+          {includedCatalogSvcs.length > 0 && (
+            <div>
+              <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', padding: '8px 1.25rem 4px', margin: 0, letterSpacing: '.04em' }}>INCLUDED</p>
+              {includedCatalogSvcs.map((ps, i) => {
+                const svc = ps.services
+                const tc  = INCLUSION_TYPE_META[svc?.type ?? 'service'] ?? INCLUSION_TYPE_META.service
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 1.25rem', borderTop: '1px solid var(--line-inner)',
+                    justifyContent: 'space-between',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: tc.bg, color: tc.color, fontWeight: '500', flexShrink: 0 }}>
+                        {tc.icon} {svc?.type ?? 'service'}
+                      </span>
+                      <span style={{ fontSize: '14px' }}>{svc?.name ?? '—'}</span>
+                    </div>
+                    {svc?.price != null && (
+                      <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>
+                        ₦{Number(svc.price).toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {addonCatalogSvcs.length > 0 && (
+            <div>
+              <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', padding: '8px 1.25rem 4px', margin: 0, letterSpacing: '.04em' }}>OPTIONAL ADD-ONS</p>
+              {addonCatalogSvcs.map((ps, i) => {
+                const svc = ps.services
+                const tc  = INCLUSION_TYPE_META[svc?.type ?? 'service'] ?? INCLUSION_TYPE_META.service
+                const displayPrice = ps.addon_price ?? svc?.price
+                return (
+                  <div key={i} style={{
+                    display: 'flex', alignItems: 'center', gap: '10px',
+                    padding: '10px 1.25rem', borderTop: '1px solid var(--line-inner)',
+                    justifyContent: 'space-between',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: tc.bg, color: tc.color, fontWeight: '500', flexShrink: 0 }}>
+                        {tc.icon} {svc?.type ?? 'service'}
+                      </span>
+                      <span style={{ fontSize: '14px' }}>{svc?.name ?? '—'}</span>
+                    </div>
+                    {displayPrice != null && (
+                      <span style={{ fontSize: '13px', fontWeight: '500' }}>
+                        ₦{Number(displayPrice).toLocaleString()}
+                        {ps.addon_price != null && ps.addon_price !== svc?.price && (
+                          <span style={{ fontSize: '11px', color: 'var(--text-4)', marginLeft: '4px' }}>(override)</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </div>
       )}
 

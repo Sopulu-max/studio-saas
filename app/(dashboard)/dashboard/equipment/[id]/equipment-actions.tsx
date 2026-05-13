@@ -7,19 +7,24 @@ import { updateEquipmentStatus, deleteEquipment, checkoutEquipment, checkinEquip
 
 const NON_CHECKOUT_STATUSES = ['maintenance', 'retired']
 
+type StaffMember = { staff_id: string; full_name: string }
+
 export default function EquipmentActions({
   equipmentId,
   currentStatus,
-  checkedOutTo,
+  assignedTo,
+  staffList = [],
 }: {
-  equipmentId:  string
+  equipmentId:   string
   currentStatus: string
-  checkedOutTo?: string | null
+  assignedTo?:   string | null
+  staffList?:    StaffMember[]
 }) {
   const router = useRouter()
-  const [loading,       setLoading]       = useState(false)
-  const [showCheckout,  setShowCheckout]  = useState(false)
-  const [assignedTo,    setAssignedTo]    = useState('')
+  const [loading,      setLoading]      = useState(false)
+  const [showCheckout, setShowCheckout] = useState(false)
+  const [assignTo,     setAssignTo]     = useState('')
+  const [coNotes,      setCoNotes]      = useState('')
 
   async function handleStatus(status: string) {
     setLoading(true)
@@ -31,11 +36,16 @@ export default function EquipmentActions({
   }
 
   async function handleCheckout() {
-    if (!assignedTo.trim()) { toast.error('Enter who is taking this equipment'); return }
+    if (!assignTo.trim()) { toast.error('Enter who is taking this equipment'); return }
     setLoading(true)
-    const { error } = await checkoutEquipment(equipmentId, assignedTo)
+    const { error } = await checkoutEquipment(equipmentId, assignTo, undefined, coNotes)
     if (error) toast.error(error)
-    else { toast.success('Checked out'); setShowCheckout(false); setAssignedTo('') }
+    else {
+      toast.success('Checked out')
+      setShowCheckout(false)
+      setAssignTo('')
+      setCoNotes('')
+    }
     router.refresh()
     setLoading(false)
   }
@@ -68,9 +78,9 @@ export default function EquipmentActions({
         <div style={{ marginBottom: '16px', paddingBottom: '16px', borderBottom: '1px solid var(--line-inner)' }}>
           {isCheckedOut ? (
             <div>
-              {checkedOutTo && (
+              {assignedTo && (
                 <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 10px' }}>
-                  Currently with: <strong style={{ color: 'var(--text)' }}>{checkedOutTo}</strong>
+                  Currently with: <strong style={{ color: 'var(--text)' }}>{assignedTo}</strong>
                 </p>
               )}
               <button onClick={handleCheckin} disabled={loading}
@@ -86,23 +96,40 @@ export default function EquipmentActions({
                   Check out
                 </button>
               ) : (
-                <div>
-                  <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>Who is taking this?</p>
-                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: 0 }}>Who is taking this?</p>
+
+                  {/* Staff picker: datalist for suggestions + free text */}
+                  <div>
                     <input
-                      type="text"
-                      value={assignedTo}
-                      onChange={e => setAssignedTo(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleCheckout()}
-                      placeholder="Staff name…"
+                      list={`staff-list-${equipmentId}`}
+                      value={assignTo}
+                      onChange={e => setAssignTo(e.target.value)}
+                      placeholder="Name or pick from staff…"
                       autoFocus
-                      style={{ flex: 1, padding: '7px 10px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', boxSizing: 'border-box' }}
+                      style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
                     />
+                    <datalist id={`staff-list-${equipmentId}`}>
+                      {staffList.map(s => (
+                        <option key={s.staff_id} value={s.full_name} />
+                      ))}
+                    </datalist>
+                  </div>
+
+                  {/* Optional notes */}
+                  <input
+                    value={coNotes}
+                    onChange={e => setCoNotes(e.target.value)}
+                    placeholder="Notes (optional, e.g. for which shoot)"
+                    style={{ width: '100%', padding: '7px 10px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', boxSizing: 'border-box', background: 'var(--bg)', color: 'var(--text)' }}
+                  />
+
+                  <div style={{ display: 'flex', gap: '8px' }}>
                     <button onClick={handleCheckout} disabled={loading}
-                      style={{ padding: '7px 14px', fontSize: '13px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-                      Confirm
+                      style={{ padding: '7px 16px', fontSize: '13px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '500' }}>
+                      Confirm checkout
                     </button>
-                    <button onClick={() => { setShowCheckout(false); setAssignedTo('') }}
+                    <button onClick={() => { setShowCheckout(false); setAssignTo(''); setCoNotes('') }}
                       style={{ padding: '7px 12px', fontSize: '13px', background: 'transparent', color: 'var(--text-3)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer' }}>
                       Cancel
                     </button>

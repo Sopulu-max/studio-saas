@@ -43,6 +43,10 @@ export async function ownsEquipment(admin: AdminLike, studioId: string, equipmen
   return hasStudioRecordAccess(admin, studioId, 'equipment', 'equipment_id', equipmentId)
 }
 
+export async function ownsService(admin: AdminLike, studioId: string, serviceId: string) {
+  return hasStudioRecordAccess(admin, studioId, 'services', 'service_id', serviceId)
+}
+
 export async function ownsPrintOrder(admin: AdminLike, studioId: string, orderId: string) {
   return hasStudioRecordAccess(admin, studioId, 'print_orders', 'order_id', orderId)
 }

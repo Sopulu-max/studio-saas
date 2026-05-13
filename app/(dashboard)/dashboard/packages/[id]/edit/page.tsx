@@ -26,17 +26,48 @@ type EditPackageRecord = {
   package_inclusions?: { inclusion_id: string; label: string; type: string; display_order: number }[] | null
 }
 
+export type AvailableService = {
+  service_id:    string
+  name:          string
+  type:          string
+  price?:        number | null
+  description?:  string | null
+}
+
+export type LinkedPackageService = {
+  service_id:  string
+  is_addon:    boolean
+  addon_price?: number | null
+  display_order: number
+}
+
 export default async function EditPackagePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: pkgRaw } = await context.admin
-    .from('packages')
-    .select('*, package_addons(*), package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
-    .eq('package_id', id)
-    .eq('studio_id', context.studioId)
-    .single()
+  const [{ data: pkgRaw }, { data: servicesRaw }, { data: pkgServicesRaw }] = await Promise.all([
+    context.admin
+      .from('packages')
+      .select('*, package_addons(*), package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
+      .eq('package_id', id)
+      .eq('studio_id', context.studioId)
+      .single(),
+    // All active services for this studio (for the picker)
+    context.admin
+      .from('services')
+      .select('service_id, name, type, price, description')
+      .eq('studio_id', context.studioId)
+      .eq('is_active', true)
+      .order('display_order', { ascending: true })
+      .order('name', { ascending: true }),
+    // Existing package ↔ service links
+    context.admin
+      .from('package_services')
+      .select('service_id, is_addon, addon_price, display_order')
+      .eq('package_id', id)
+      .order('display_order', { ascending: true }),
+  ])
 
   if (!pkgRaw) redirect('/dashboard/packages')
 
@@ -50,5 +81,14 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
     pkg.package_inclusions.sort((a, b) => a.display_order - b.display_order)
   }
 
-  return <EditPackageForm pkg={pkg} />
+  const availableServices  = (servicesRaw  ?? []) as unknown as AvailableService[]
+  const linkedPkgServices  = (pkgServicesRaw ?? []) as unknown as LinkedPackageService[]
+
+  return (
+    <EditPackageForm
+      pkg={pkg}
+      availableServices={availableServices}
+      linkedPkgServices={linkedPkgServices}
+    />
+  )
 }

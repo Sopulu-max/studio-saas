@@ -104,7 +104,12 @@ export async function updateEquipment(equipmentId: string, form: {
   return { error: error?.message ?? null }
 }
 
-export async function checkoutEquipment(equipmentId: string, assignedTo: string) {
+export async function checkoutEquipment(
+  equipmentId: string,
+  assignedTo: string,
+  bookingId?: string,
+  checkoutNotes?: string,
+) {
   if (!assignedTo.trim()) return { error: 'Enter who is taking this equipment' }
 
   const context = await getStudioContext()
@@ -114,29 +119,34 @@ export async function checkoutEquipment(equipmentId: string, assignedTo: string)
     return { error: 'Equipment not found' }
   }
 
-  // Fetch current notes so we can prepend checkout info
-  const { data: item } = await context.admin
-    .from('equipment')
-    .select('notes')
-    .eq('equipment_id', equipmentId)
-    .single()
+  const now = new Date().toISOString()
 
-  const checkoutLine = `[Checked out to: ${assignedTo.trim()} on ${new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}]`
-  const existingNotes = ((item?.notes ?? '') as string).replace(/^\[Checked out to:.*?\]\n?/, '')
-  const newNotes = existingNotes.trim()
-    ? `${checkoutLine}\n${existingNotes.trim()}`
-    : checkoutLine
-
-  const { error } = await context.admin
+  // Update equipment row
+  const { error: eqErr } = await context.admin
     .from('equipment')
-    .update({ status: 'in_use', notes: newNotes })
+    .update({
+      status:         'in_use',
+      assigned_to:    assignedTo.trim(),
+      checked_out_at: now,
+      booking_id:     bookingId || null,
+    })
     .eq('equipment_id', equipmentId)
 
-  if (!error) {
-    revalidatePath(`/dashboard/equipment/${equipmentId}`)
-    revalidatePath('/dashboard/equipment')
-  }
-  return { error: error?.message ?? null }
+  if (eqErr) return { error: eqErr.message }
+
+  // Insert history row
+  await context.admin.from('equipment_checkouts').insert({
+    equipment_id:   equipmentId,
+    studio_id:      context.studioId,
+    assigned_to:    assignedTo.trim(),
+    booking_id:     bookingId || null,
+    checked_out_at: now,
+    notes:          checkoutNotes?.trim() || null,
+  })
+
+  revalidatePath(`/dashboard/equipment/${equipmentId}`)
+  revalidatePath('/dashboard/equipment')
+  return { error: null }
 }
 
 export async function checkinEquipment(equipmentId: string) {
@@ -147,25 +157,31 @@ export async function checkinEquipment(equipmentId: string) {
     return { error: 'Equipment not found' }
   }
 
-  // Strip the checkout line from notes
-  const { data: item } = await context.admin
+  const now = new Date().toISOString()
+
+  // Clear checkout columns on equipment
+  const { error: eqErr } = await context.admin
     .from('equipment')
-    .select('notes')
-    .eq('equipment_id', equipmentId)
-    .single()
-
-  const cleanNotes = ((item?.notes ?? '') as string).replace(/^\[Checked out to:.*?\]\n?/, '').trim() || null
-
-  const { error } = await context.admin
-    .from('equipment')
-    .update({ status: 'available', notes: cleanNotes })
+    .update({
+      status:         'available',
+      assigned_to:    null,
+      checked_out_at: null,
+      booking_id:     null,
+    })
     .eq('equipment_id', equipmentId)
 
-  if (!error) {
-    revalidatePath(`/dashboard/equipment/${equipmentId}`)
-    revalidatePath('/dashboard/equipment')
-  }
-  return { error: error?.message ?? null }
+  if (eqErr) return { error: eqErr.message }
+
+  // Close the open history row (most recent without a check-in)
+  await context.admin
+    .from('equipment_checkouts')
+    .update({ checked_in_at: now })
+    .eq('equipment_id', equipmentId)
+    .is('checked_in_at', null)
+
+  revalidatePath(`/dashboard/equipment/${equipmentId}`)
+  revalidatePath('/dashboard/equipment')
+  return { error: null }
 }
 
 export async function updateEquipmentStatus(equipmentId: string, status: string) {

@@ -45,6 +45,8 @@ export async function submitBookingRequest(form: {
   event_name: string
   event_date: string
   notes: string
+  selected_service_ids?: string[]
+  package_id?: string
 }) {
   const result = bookingRequestSchema.safeParse({
     ...form,
@@ -141,13 +143,41 @@ export async function submitBookingRequest(form: {
   if (form.location_address) insertData.location_address = form.location_address.trim()
   if (form.shoot_type) insertData.shoot_type = form.shoot_type.trim()
   if (form.event_name) insertData.event_name = form.event_name.trim()
-  if (form.event_date) insertData.event_date = form.event_date
+  if (form.event_date)  insertData.event_date  = form.event_date
+  if (form.package_id)  insertData.package_id  = form.package_id
 
-  const { error: bookingError } = await admin
+  const { data: newBookingRaw, error: bookingError } = await admin
     .from('bookings')
     .insert(insertData)
+    .select('booking_id')
+    .single()
 
-  if (bookingError) return { error: bookingError.message }
+  if (bookingError || !newBookingRaw) return { error: bookingError?.message ?? 'Failed to create booking' }
+  const newBookingId = (newBookingRaw as unknown as { booking_id: string }).booking_id
+
+  // Insert selected services as booking_services rows
+  const serviceIds = form.selected_service_ids?.filter(Boolean) ?? []
+  if (serviceIds.length > 0 && newBookingId) {
+    // Fetch price snapshots for the selected services
+    const { data: svcs } = await admin
+      .from('services')
+      .select('service_id, price')
+      .in('service_id', serviceIds)
+      .eq('studio_id', form.studio_id)
+      .eq('is_active', true)
+
+    if (svcs && svcs.length > 0) {
+      const svcRows = (svcs as { service_id: string; price: number | null }[])
+      await admin.from('booking_services').insert(
+        svcRows.map(s => ({
+          booking_id:       newBookingId,
+          service_id:       s.service_id,
+          quantity:         1,
+          price_at_booking: s.price ?? null,
+        }))
+      )
+    }
+  }
 
   // Fire confirmation emails — don't block on errors
   const emailPayload = {

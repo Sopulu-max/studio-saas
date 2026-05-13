@@ -45,6 +45,7 @@ export {
   ownsInvoice,
   ownsGallery,
   ownsGalleryPhoto,
+  ownsService,
 } from '@/lib/studio-ownership'
 
 type StudioContext =

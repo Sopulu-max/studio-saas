@@ -26,6 +26,29 @@ type PrintOrderItemRelation = {
   unit_price?: number | string | null
 }
 
+function StaffAssignment({
+  member,
+  label,
+}: {
+  member: SessionStaffRelation | undefined
+  label: string
+}) {
+  return (
+    <div>
+      <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{label}</p>
+      {member?.staff_id ? (
+        <Link href={`/dashboard/staff/${member.staff_id}`} style={{ fontSize: '14px', display: 'block', margin: 0, color: 'inherit', textDecoration: 'none' }}>
+          {member.staff?.full_name}
+        </Link>
+      ) : (
+        <p style={{ fontSize: '14px', margin: 0, color: member ? 'var(--text)' : 'var(--text-4)' }}>
+          {member?.staff?.full_name ?? 'None assigned'}
+        </p>
+      )}
+    </div>
+  )
+}
+
 type SessionRecord = {
   booking_id: string
   studio_id?: string | null
@@ -115,6 +138,19 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     .eq('booking_id', id)
     .single()
   const contract = contractRaw as unknown as SessionContract | null
+
+  // Fetch booked services (from booking_services join)
+  type BookedService = {
+    booking_service_id: string
+    quantity:           number
+    price_at_booking?:  number | null
+    services?:          { name?: string | null; type?: string | null } | null
+  }
+  const { data: bookedServicesRaw } = await context.admin
+    .from('booking_services')
+    .select('booking_service_id, quantity, price_at_booking, services(name, type)')
+    .eq('booking_id', id)
+  const bookedServices = (bookedServicesRaw ?? []) as unknown as BookedService[]
 
   // Fetch available staff for assignment dropdowns (session.studio_id is already available)
   const { data: availableStaff } = await context.admin
@@ -310,38 +346,23 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             const isPhotoVideo = session.service_type === 'photo_video'
             const isPureVideo  = session.service_type === 'video'
 
-            const StaffName = ({ member, label }: { member: SessionStaffRelation | undefined; label: string }) => (
-              <div>
-                <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{label}</p>
-                {member?.staff_id ? (
-                  <Link href={`/dashboard/staff/${member.staff_id}`} style={{ fontSize: '14px', display: 'block', margin: 0, color: 'inherit', textDecoration: 'none' }}>
-                    {member.staff?.full_name}
-                  </Link>
-                ) : (
-                  <p style={{ fontSize: '14px', margin: 0, color: member ? 'var(--text)' : 'var(--text-4)' }}>
-                    {member?.staff?.full_name ?? 'None assigned'}
-                  </p>
-                )}
-              </div>
-            )
-
             if (isPhotoVideo) {
               return (
                 <>
-                  <StaffName member={photographer} label="Photographer" />
-                  <StaffName member={editor} label="Photo editor" />
-                  <StaffName member={videographer} label="Videographer" />
-                  <StaffName member={videoEditor} label="Video editor" />
-                  {colourGrader && <StaffName member={colourGrader} label="Colour grader" />}
+                  <StaffAssignment member={photographer} label="Photographer" />
+                  <StaffAssignment member={editor} label="Photo editor" />
+                  <StaffAssignment member={videographer} label="Videographer" />
+                  <StaffAssignment member={videoEditor} label="Video editor" />
+                  {colourGrader && <StaffAssignment member={colourGrader} label="Colour grader" />}
                 </>
               )
             }
 
             return (
               <>
-                <StaffName member={photographer} label={isPureVideo ? 'Videographer' : 'Photographer'} />
-                <StaffName member={editor} label={isPureVideo ? 'Video editor' : 'Editor'} />
-                {colourGrader && <StaffName member={colourGrader} label="Colour grader" />}
+                <StaffAssignment member={photographer} label={isPureVideo ? 'Videographer' : 'Photographer'} />
+                <StaffAssignment member={editor} label={isPureVideo ? 'Video editor' : 'Editor'} />
+                {colourGrader && <StaffAssignment member={colourGrader} label="Colour grader" />}
               </>
             )
           })()}
@@ -376,6 +397,38 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           </div>
         )}
       </div>
+
+      {/* Booked services — shown when client selected services at booking time */}
+      {bookedServices.length > 0 && (
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>BOOKED SERVICES</p>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{bookedServices.length} item{bookedServices.length !== 1 ? 's' : ''}</p>
+          </div>
+          {bookedServices.map((bs, i) => {
+            const svc = bs.services as { name?: string | null; type?: string | null } | null
+            const typeIcon = svc?.type === 'product' ? '📦' : svc?.type === 'digital' ? '💻' : '🎯'
+            return (
+              <div key={bs.booking_service_id} style={{
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                padding: '0.875rem 1.25rem',
+                borderBottom: i < bookedServices.length - 1 ? '1px solid var(--line-inner)' : 'none',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '14px' }}>{typeIcon}</span>
+                  <span style={{ fontSize: '14px' }}>{svc?.name ?? 'Unknown service'}</span>
+                  {bs.quantity > 1 && <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>× {bs.quantity}</span>}
+                </div>
+                {bs.price_at_booking != null && (
+                  <span style={{ fontSize: '13px', color: 'var(--text-3)', fontWeight: '500' }}>
+                    ₦{(Number(bs.price_at_booking) * bs.quantity).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Extras — post-agreement scope additions */}
       <SessionExtras

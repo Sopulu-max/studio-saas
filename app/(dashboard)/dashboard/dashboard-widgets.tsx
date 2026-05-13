@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { sessionName } from '@/lib/session-title'
 import InlineStatusSelect from '@/components/inline-status-select'
@@ -154,6 +154,28 @@ const BLOCK_LABEL: Record<BlockId, string> = {
 
 const STORAGE_KEY = 'dashboard-layout-v9'
 
+function getInitialLayout(): LayoutItem[] {
+  if (typeof window === 'undefined') return LAYOUT_DEFAULT
+
+  try {
+    const saved = window.localStorage.getItem(STORAGE_KEY)
+    if (!saved) return LAYOUT_DEFAULT
+
+    const parsed: LayoutItem[] = JSON.parse(saved)
+    const ids = LAYOUT_DEFAULT.map((item) => item.id)
+    const validCols = new Set<ColType>(['left', 'right', 'full'])
+
+    const isValid =
+      parsed.length === ids.length &&
+      ids.every((id) => parsed.some((item) => item.id === id)) &&
+      parsed.every((item) => ids.includes(item.id) && validCols.has(item.col))
+
+    return isValid ? parsed : LAYOUT_DEFAULT
+  } catch {
+    return LAYOUT_DEFAULT
+  }
+}
+
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
 const card  = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px' } as const
@@ -171,27 +193,9 @@ const INV_STATUS: Record<string, { bg: string; fg: string; label: string }> = {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function DashboardWidgets(props: DashboardProps) {
-  const [editMode, setEditMode] = useState(false)
-  const [layout, setLayout]     = useState<LayoutItem[]>(LAYOUT_DEFAULT)
-
-  // Restore saved layout
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(STORAGE_KEY)
-      if (saved) {
-        const parsed: LayoutItem[] = JSON.parse(saved)
-        const ids    = LAYOUT_DEFAULT.map(l => l.id)
-        const validC = new Set<string>(['left', 'right', 'full'])
-        if (
-          parsed.length === ids.length &&
-          ids.every(id => parsed.find(p => p.id === id)) &&
-          parsed.every(p => ids.includes(p.id) && validC.has(p.col))
-        ) {
-          setLayout(parsed)
-        }
-      }
-    } catch {}
-  }, [])
+  const [editMode,       setEditMode]       = useState(false)
+  const [layout,         setLayout]         = useState<LayoutItem[]>(getInitialLayout)
+  const [alertDismissed, setAlertDismissed] = useState(false)
 
   function saveLayout(next: LayoutItem[]) {
     setLayout(next)
@@ -1194,7 +1198,7 @@ export default function DashboardWidgets(props: DashboardProps) {
 
         {/* Today's client list */}
         <div style={{ padding: '0.875rem 1.25rem 0.25rem' }}>
-          <p style={{ ...sxn, marginBottom: todayClients.length ? '0' : '8px' }}>Today's clients</p>
+          <p style={{ ...sxn, marginBottom: todayClients.length ? '0' : '8px' }}>Today&apos;s clients</p>
         </div>
         {todayClients.length === 0 ? (
           <div style={{ padding: '0.5rem 1.25rem 1rem' }}>
@@ -1276,6 +1280,77 @@ export default function DashboardWidgets(props: DashboardProps) {
         </button>
       </div>
 
+      {/* ── Category date alert banner ─────────────────────────────────────────── */}
+      {(() => {
+        if (alertDismissed) return null
+        const urgent = props.upcomingOccasions.filter(o => {
+          const d = daysUntil(o.event_date)
+          return d !== null && d <= 7
+        })
+        if (!urgent.length) return null
+
+        const todayOnes  = urgent.filter(o => daysUntil(o.event_date) === 0)
+        const tomorrowOnes = urgent.filter(o => daysUntil(o.event_date) === 1)
+        const isAnyToday = todayOnes.length > 0
+
+        return (
+          <div style={{
+            marginBottom: '1.25rem', padding: '12px 16px',
+            background: isAnyToday ? '#fef3c7' : '#fef9ec',
+            border: `1px solid ${isAnyToday ? '#f59e0b' : '#fcd34d'}`,
+            borderRadius: '10px',
+            display: 'flex', alignItems: 'flex-start', gap: '12px',
+          }}>
+            <span style={{ fontSize: '18px', flexShrink: 0, marginTop: '1px' }}>
+              {isAnyToday ? '🎉' : '📅'}
+            </span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <p style={{ fontSize: '13px', fontWeight: '600', color: '#92400e', margin: '0 0 4px' }}>
+                {isAnyToday
+                  ? `${todayOnes.length} occasion${todayOnes.length > 1 ? 's' : ''} today — consider reaching out`
+                  : tomorrowOnes.length > 0
+                    ? `${urgent.length} upcoming occasion${urgent.length > 1 ? 's' : ''} — including 1 tomorrow`
+                    : `${urgent.length} upcoming occasion${urgent.length > 1 ? 's' : ''} within the next 7 days`
+                }
+              </p>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
+                {urgent.slice(0, 3).map(o => {
+                  const days = daysUntil(o.event_date) ?? 0
+                  const label = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`
+                  return (
+                    <Link
+                      key={o.booking_id}
+                      href={`/dashboard/sessions/${o.booking_id}`}
+                      style={{
+                        fontSize: '12px', padding: '2px 8px', borderRadius: '6px',
+                        background: '#fde68a', color: '#78350f',
+                        textDecoration: 'none', fontWeight: '500', whiteSpace: 'nowrap' as const,
+                      }}
+                    >
+                      {o.shoot_type ?? 'Occasion'} — {o.clients?.full_name ?? '?'} ({label})
+                    </Link>
+                  )
+                })}
+                {urgent.length > 3 && (
+                  <span style={{ fontSize: '12px', color: '#92400e' }}>+{urgent.length - 3} more</span>
+                )}
+              </div>
+            </div>
+            <button
+              onClick={() => setAlertDismissed(true)}
+              style={{
+                background: 'none', border: 'none', cursor: 'pointer',
+                color: '#b45309', fontSize: '16px', padding: '0 2px',
+                lineHeight: 1, flexShrink: 0,
+              }}
+              title="Dismiss"
+            >
+              ×
+            </button>
+          </div>
+        )
+      })()}
+
       {/* Alerts */}
       {(props.pendingCount > 0 || props.overdueCount > 0 || props.draftCount > 0) && (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
@@ -1310,7 +1385,7 @@ export default function DashboardWidgets(props: DashboardProps) {
 
       {/* Segmented layout */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {getSegments().map((seg, si) => {
+        {getSegments().map((seg) => {
           if (seg.type === 'full') {
             return <div key={seg.item.id}>{renderWidget(seg.item)}</div>
           }

@@ -16,6 +16,7 @@ const OWNER_NAV_DEFAULT: NavItem[] = [
   { label: 'Calendar',     href: '/dashboard/calendar' },
   { label: 'Clients',      href: '/dashboard/clients' },
   { label: 'Packages',     href: '/dashboard/packages' },
+  { label: 'Services',     href: '/dashboard/services' },
   { label: 'Staff',        href: '/dashboard/staff' },
   { label: 'Attendance',   href: '/dashboard/attendance' },
   { label: 'Galleries',    href: '/dashboard/galleries' },
