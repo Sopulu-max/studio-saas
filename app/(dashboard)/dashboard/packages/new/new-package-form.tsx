@@ -1,12 +1,10 @@
 'use client'
 
-import Link from 'next/link'
 import { useState, useRef } from 'react'
-type TemplateOption = { template_id: string; name: string; session_type: string | null }
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { updatePackage } from '@/app/actions/packages'
+import { addPackage } from '@/app/actions/packages'
 import { useStudioConfig } from '@/components/studio-config-provider'
-import CoverUpload from '@/components/cover-upload'
 
 const CATEGORY_SUGGESTIONS = [
   'Portrait', 'Wedding', 'Maternity', 'Corporate', 'Fashion',
@@ -25,62 +23,7 @@ const INCLUSION_SUGGESTIONS = [
 type Addon = { name: string; description: string; price: string }
 type Section = { title: string; body: string; image_url: string }
 type TypedInclusion = { label: string; type: 'service' | 'product' | 'digital' }
-type LinkedService = { service_id: string; is_addon: boolean; addon_price: string }
-
-type PackageAddonRecord = { name?: string | null; description?: string | null; price?: number | string | null }
-type PackageSectionRecord = { section_id: string; title: string; body?: string | null; image_url?: string | null; display_order: number }
-type PackageInclusionRecord = { inclusion_id: string; label: string; type: string; display_order: number }
-
-type EditPackageRecord = {
-  package_id:           string
-  name?:                string | null
-  description?:         string | null
-  base_price?:          number | string | null
-  duration_mins?:       number | null
-  shoot_type?:          string | null
-  outfits_count?:       number | null
-  edited_photos?:       number | null
-  coverage_hours?:      number | null
-  contract_template?:   string | null
-  contract_template_id?: string | null
-  session_type?:        string | null
-  service_type?:        string | null
-  pricing_type?:        'fixed' | 'per_project' | null
-  inclusions?:          string[] | null
-  tagline?:             string | null
-  cover_url?:           string | null
-  is_public?:           boolean | null
-  display_order?:       number | null
-  package_addons?:      PackageAddonRecord[] | null
-  package_sections?:    PackageSectionRecord[] | null
-  package_inclusions?:  PackageInclusionRecord[] | null
-}
-
-type AvailableService = {
-  service_id:   string
-  name:         string
-  type:         string
-  price?:       number | null
-  description?: string | null
-}
-
-type LinkedPackageService = {
-  service_id:   string
-  is_addon:     boolean
-  addon_price?: number | null
-  display_order: number
-}
-
-const SVC_TYPE_ICONS: Record<string, string> = {
-  service: '🎯',
-  product: '📦',
-  digital: '💻',
-}
-const SVC_TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-  service: { bg: '#eeedfe', color: '#534ab7' },
-  product: { bg: '#faeeda', color: '#854f0b' },
-  digital: { bg: '#e6f1fb', color: '#185fa5' },
-}
+type TemplateOption = { template_id: string; name: string; session_type: string | null }
 
 const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
 const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
@@ -92,66 +35,51 @@ const INCLUSION_TYPES: { value: 'service' | 'product' | 'digital'; label: string
   { value: 'digital',  label: 'Digital',  icon: '💻' },
 ]
 
-export default function EditPackageForm({
-  pkg,
-  availableServices = [],
-  linkedPkgServices = [],
+export default function NewPackageForm({
   templates = [],
+  defaultOutfits,
+  defaultPhotos,
+  defaultPrice,
+  defaultSessionType,
 }: {
-  pkg: EditPackageRecord
-  availableServices?: AvailableService[]
-  linkedPkgServices?: LinkedPackageService[]
   templates?: TemplateOption[]
+  defaultOutfits?: string
+  defaultPhotos?: string
+  defaultPrice?: string
+  defaultSessionType?: string
 }) {
   const router = useRouter()
   const config = useStudioConfig()
+  const initialSessionType = defaultSessionType && config.sessionTypes.some(t => t.value === defaultSessionType)
+    ? defaultSessionType
+    : config.sessionTypes[0]?.value ?? 'studio'
+
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState('')
   const [dupPackageId, setDupPackageId] = useState('')
 
-  const [contractTemplateId, setContractTemplateId] = useState(pkg.contract_template_id ?? '')
+  const [contractTemplateId, setContractTemplateId] = useState('')
 
   const [form, setForm] = useState({
-    name:              pkg.name           ?? '',
-    description:       pkg.description    ?? '',
-    base_price:        String(pkg.base_price    ?? ''),
-    duration_mins:     String(pkg.duration_mins ?? ''),
-    shoot_type:        pkg.shoot_type     ?? '',
-    outfits_count:     pkg.outfits_count   != null ? String(pkg.outfits_count)  : '',
-    edited_photos:     pkg.edited_photos   != null ? String(pkg.edited_photos)  : '',
-    coverage_hours:    pkg.coverage_hours  != null ? String(pkg.coverage_hours) : '',
-    tagline:           pkg.tagline         ?? '',
-    display_order:     String(pkg.display_order ?? '0'),
+    name: '', description: '', base_price: defaultPrice ?? '', duration_mins: '',
+    shoot_type: '', outfits_count: defaultOutfits ?? '', edited_photos: defaultPhotos ?? '',
+    coverage_hours: '', tagline: '', display_order: '0',
   })
 
-  const [sessionType,    setSessionType]    = useState<string>(pkg.session_type   ?? config.sessionTypes[0]?.value ?? 'studio')
-  const [serviceType,    setServiceType]    = useState<string>(pkg.service_type   ?? config.serviceTypes[0]?.value ?? 'photo')
-  const [pricingType,    setPricingType]    = useState<'fixed' | 'per_project'>(pkg.pricing_type ?? 'fixed')
-  const [isPublic,       setIsPublic]       = useState<boolean>(pkg.is_public     ?? true)
-  const [inclusions,     setInclusions]     = useState<string[]>(pkg.inclusions   ?? [])
-  const [inclusionInput, setInclusionInput] = useState('')
-  const [addons,         setAddons]         = useState<Addon[]>(
-    (pkg.package_addons ?? []).map(a => ({ name: a.name ?? '', description: a.description ?? '', price: String(a.price) }))
-  )
-  const [sections,       setSections]       = useState<Section[]>(
-    (pkg.package_sections ?? []).map(s => ({ title: s.title, body: s.body ?? '', image_url: s.image_url ?? '' }))
-  )
-  const [typedInclusions, setTypedInclusions] = useState<TypedInclusion[]>(
-    (pkg.package_inclusions ?? []).map(i => ({ label: i.label, type: i.type as 'service' | 'product' | 'digital' }))
-  )
-  // Linked catalog services — keyed by service_id
-  const [linkedServices, setLinkedServices] = useState<LinkedService[]>(
-    linkedPkgServices.map(ps => ({
-      service_id: ps.service_id,
-      is_addon:   ps.is_addon,
-      addon_price: ps.addon_price != null ? String(ps.addon_price) : '',
-    }))
-  )
+  const [sessionType,     setSessionType]     = useState(initialSessionType)
+  const [serviceType,     setServiceType]     = useState(config.serviceTypes[0]?.value ?? 'photo')
+  const [pricingType,     setPricingType]     = useState<'fixed' | 'per_project'>('fixed')
+  const [isPublic,        setIsPublic]        = useState(true)
+  const [inclusions,      setInclusions]      = useState<string[]>([])
+  const [inclusionInput,  setInclusionInput]  = useState('')
+  const [addons,          setAddons]          = useState<Addon[]>([])
+  const [sections,        setSections]        = useState<Section[]>([])
+  const [typedInclusions, setTypedInclusions] = useState<TypedInclusion[]>([])
   const inclusionInputRef = useRef<HTMLInputElement>(null)
 
   function update(field: string, value: string) { setForm(prev => ({ ...prev, [field]: value })) }
 
-  // ─── Inclusions (text array) ─────────────────────────────────────
+  // ─── Inclusions ──────────────────────────────────────────────────
   function addInclusion() {
     const val = inclusionInput.trim()
     if (!val || inclusions.includes(val)) return
@@ -161,7 +89,7 @@ export default function EditPackageForm({
   }
   function removeInclusion(item: string) { setInclusions(prev => prev.filter(i => i !== item)) }
 
-  // ─── Add-ons ─────────────────────────────────────────────────────
+  // ─── Addons ──────────────────────────────────────────────────────
   function addAddon() { setAddons(prev => [...prev, { name: '', description: '', price: '' }]) }
   function updateAddon(i: number, field: keyof Addon, value: string) {
     setAddons(prev => prev.map((a, idx) => idx === i ? { ...a, [field]: value } : a))
@@ -191,27 +119,6 @@ export default function EditPackageForm({
   }
   function removeTypedInclusion(i: number) { setTypedInclusions(prev => prev.filter((_, idx) => idx !== i)) }
 
-  // ─── Linked catalog services ─────────────────────────────────────
-  function getServiceLink(serviceId: string): LinkedService | undefined {
-    return linkedServices.find(ls => ls.service_id === serviceId)
-  }
-  function setServiceMode(serviceId: string, mode: 'none' | 'included' | 'addon') {
-    if (mode === 'none') {
-      setLinkedServices(prev => prev.filter(ls => ls.service_id !== serviceId))
-    } else {
-      setLinkedServices(prev => {
-        const existing = prev.find(ls => ls.service_id === serviceId)
-        if (existing) {
-          return prev.map(ls => ls.service_id === serviceId ? { ...ls, is_addon: mode === 'addon' } : ls)
-        }
-        return [...prev, { service_id: serviceId, is_addon: mode === 'addon', addon_price: '' }]
-      })
-    }
-  }
-  function setServiceAddonPrice(serviceId: string, price: string) {
-    setLinkedServices(prev => prev.map(ls => ls.service_id === serviceId ? { ...ls, addon_price: price } : ls))
-  }
-
   // ─── Submit ──────────────────────────────────────────────────────
   async function handleSubmit(forceDuplicate = false) {
     if (!form.name)       { setError('Package name is required'); return }
@@ -221,7 +128,7 @@ export default function EditPackageForm({
     setError('')
     setDupPackageId('')
 
-    const { error, existingPackageId } = await updatePackage(pkg.package_id, {
+    const { error, existingPackageId, packageId } = await addPackage({
       ...form,
       session_type:         sessionType,
       service_type:         serviceType,
@@ -232,7 +139,6 @@ export default function EditPackageForm({
       display_order:        parseInt(form.display_order) || 0,
       sections,
       typed_inclusions:     typedInclusions,
-      linked_services:      linkedServices,
       contract_template_id: contractTemplateId || null,
       force_duplicate:      forceDuplicate,
     })
@@ -244,7 +150,7 @@ export default function EditPackageForm({
       setError(error)
       setLoading(false)
     } else {
-      router.push(`/dashboard/packages/${pkg.package_id}`)
+      router.push(packageId ? `/dashboard/packages/${packageId}/edit` : '/dashboard/packages')
     }
   }
 
@@ -255,24 +161,14 @@ export default function EditPackageForm({
   return (
     <div style={{ maxWidth: '560px' }}>
       <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Edit package</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{pkg.name}</p>
+        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>New package</h1>
+        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Define a shoot package for your studio</p>
       </div>
 
-      {/* Cover image */}
-      <div style={sectionStyle}>
-        <div style={{ marginBottom: '12px' }}>
-          <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Cover image</p>
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Shown in the public catalog and on the package detail page</p>
-        </div>
-        <CoverUpload packageId={pkg.package_id} currentUrl={pkg.cover_url} />
-      </div>
-
-      {/* Visibility + catalog settings */}
+      {/* Catalog settings */}
       <div style={sectionStyle}>
         <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 14px' }}>Catalog settings</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-          {/* Public toggle */}
           <div>
             <label style={labelStyle}>Visibility</label>
             <div style={{ display: 'flex', gap: '6px' }}>
@@ -290,7 +186,6 @@ export default function EditPackageForm({
               ))}
             </div>
           </div>
-          {/* Display order */}
           <div>
             <label style={labelStyle}>Display order</label>
             <input type="number" min="0" value={form.display_order}
@@ -298,7 +193,6 @@ export default function EditPackageForm({
               placeholder="0" style={inputStyle} />
           </div>
         </div>
-        {/* Tagline */}
         <div style={{ marginTop: '14px' }}>
           <label style={labelStyle}>Tagline</label>
           <input type="text" value={form.tagline}
@@ -306,6 +200,9 @@ export default function EditPackageForm({
             placeholder="e.g. Perfect for families who want timeless portraits"
             style={inputStyle} />
         </div>
+        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '10px 0 0' }}>
+          You can add a cover image after saving.
+        </p>
       </div>
 
       {/* Session type + service type */}
@@ -354,22 +251,18 @@ export default function EditPackageForm({
 
       {/* Main details */}
       <div style={sectionStyle}>
-        {/* Name */}
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Package name <span style={{ color: '#e24b4a' }}>*</span></label>
           <input type="text" value={form.name} onChange={e => update('name', e.target.value)}
             placeholder="e.g. 3-outfit portrait session" style={inputStyle} />
         </div>
-
-        {/* Description */}
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Description</label>
           <textarea value={form.description} onChange={e => update('description', e.target.value)}
-            placeholder="Brief description..." rows={2}
+            placeholder="Brief description of what's included..." rows={2}
             style={{ ...inputStyle, resize: 'vertical' }} />
         </div>
 
-        {/* Pricing basis */}
         <div style={{ marginBottom: '16px', padding: '12px', background: 'var(--hover)', borderRadius: '8px' }}>
           <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
             {isVideoSession ? 'Pricing type' : 'Pricing basis'}
@@ -407,7 +300,6 @@ export default function EditPackageForm({
           )}
         </div>
 
-        {/* Price + Duration */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           <div>
             <label style={labelStyle}>Base price (₦) <span style={{ color: '#e24b4a' }}>*</span></label>
@@ -421,19 +313,18 @@ export default function EditPackageForm({
           </div>
         </div>
 
-        {/* Category + Coverage hours */}
         <div style={{ display: 'grid', gridTemplateColumns: (isEvent || isOutdoor) ? '1fr 1fr' : '1fr', gap: '12px' }}>
           <div>
             <label style={labelStyle}>Category <span style={{ color: '#e24b4a' }}>*</span></label>
             <input
               type="text"
-              list="category-suggestions-edit"
+              list="category-suggestions"
               value={form.shoot_type}
               onChange={e => update('shoot_type', e.target.value)}
               placeholder="e.g. Portrait, Wedding, Fashion..."
               style={inputStyle}
             />
-            <datalist id="category-suggestions-edit">
+            <datalist id="category-suggestions">
               {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
             </datalist>
           </div>
@@ -448,13 +339,12 @@ export default function EditPackageForm({
         </div>
       </div>
 
-      {/* What&apos;s included (text bullets) */}
+      {/* What's included (text bullets) */}
       <div style={sectionStyle}>
         <div style={{ marginBottom: '12px' }}>
           <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>What&apos;s included</p>
           <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Quick bullet list of what clients get</p>
         </div>
-
         {inclusions.length > 0 && (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '12px' }}>
             {inclusions.map(item => (
@@ -472,20 +362,19 @@ export default function EditPackageForm({
             ))}
           </div>
         )}
-
         <div style={{ display: 'flex', gap: '8px' }}>
           <div style={{ flex: 1 }}>
             <input
               ref={inclusionInputRef}
               type="text"
-              list="inclusion-suggestions-edit"
+              list="inclusion-suggestions"
               value={inclusionInput}
               onChange={e => setInclusionInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addInclusion() } }}
               placeholder="e.g. 30 edited photos, online gallery..."
               style={inputStyle}
             />
-            <datalist id="inclusion-suggestions-edit">
+            <datalist id="inclusion-suggestions">
               {INCLUSION_SUGGESTIONS.map(s => <option key={s} value={s} />)}
             </datalist>
           </div>
@@ -496,7 +385,7 @@ export default function EditPackageForm({
         </div>
       </div>
 
-      {/* Package deliverables (typed inclusions) */}
+      {/* Package deliverables (typed) */}
       <div style={sectionStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div>
@@ -505,35 +394,30 @@ export default function EditPackageForm({
           </div>
           <button onClick={addTypedInclusion} type="button" style={{ padding: '6px 12px', fontSize: '13px' }}>+ Add</button>
         </div>
-
         {typedInclusions.length === 0 && (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', textAlign: 'center', padding: '1rem 0' }}>No deliverables yet</p>
         )}
-
         {typedInclusions.map((inc, i) => (
           <div key={i} style={{ border: '1px solid var(--line-inner)', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
-            <div style={{ display: 'flex', gap: '10px', marginBottom: '8px' }}>
-              {/* Type selector */}
-              <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                {INCLUSION_TYPES.map(t => (
-                  <button key={t.value} type="button" onClick={() => updateTypedInclusion(i, 'type', t.value)}
-                    title={t.label}
-                    style={{
-                      padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
-                      border: '0.5px solid',
-                      borderColor: inc.type === t.value ? 'var(--text)' : 'var(--line)',
-                      background: inc.type === t.value ? 'var(--btn)' : 'var(--surface)',
-                      color: inc.type === t.value ? 'var(--btn-fg)' : 'var(--text-2)',
-                    }}>
-                    {t.icon} {t.label}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display: 'flex', gap: '4px', marginBottom: '8px', flexWrap: 'wrap' as const }}>
+              {INCLUSION_TYPES.map(t => (
+                <button key={t.value} type="button" onClick={() => updateTypedInclusion(i, 'type', t.value)}
+                  title={t.label}
+                  style={{
+                    padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer',
+                    border: '0.5px solid',
+                    borderColor: inc.type === t.value ? 'var(--text)' : 'var(--line)',
+                    background: inc.type === t.value ? 'var(--btn)' : 'var(--surface)',
+                    color: inc.type === t.value ? 'var(--btn-fg)' : 'var(--text-2)',
+                  }}>
+                  {t.icon} {t.label}
+                </button>
+              ))}
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input type="text" value={inc.label}
                 onChange={e => updateTypedInclusion(i, 'label', e.target.value)}
-                placeholder="e.g. 40 edited high-res images, printed 8x10 album..."
+                placeholder="e.g. 40 edited high-res images..."
                 style={{ ...inputStyle, flex: 1 }} />
               <button onClick={() => removeTypedInclusion(i)} type="button"
                 style={{ fontSize: '12px', color: '#e24b4a', background: 'transparent', border: 'none', cursor: 'pointer', padding: '0 4px', flexShrink: 0 }}>
@@ -544,94 +428,6 @@ export default function EditPackageForm({
         ))}
       </div>
 
-      {/* Catalog services */}
-      {availableServices.length > 0 && (
-        <div style={sectionStyle}>
-          <div style={{ marginBottom: '14px' }}>
-            <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Catalog services</p>
-            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
-              Link services from your catalog — mark as included or as an optional add-on
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {availableServices.map(svc => {
-              const link = getServiceLink(svc.service_id)
-              const mode = link ? (link.is_addon ? 'addon' : 'included') : 'none'
-              const tc   = SVC_TYPE_COLORS[svc.type] ?? SVC_TYPE_COLORS.service
-
-              return (
-                <div key={svc.service_id} style={{
-                  border: '1px solid',
-                  borderColor: mode !== 'none' ? 'var(--text)' : 'var(--line-inner)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  background: mode !== 'none' ? 'var(--active)' : 'transparent',
-                }}>
-                  {/* Service info + mode buttons */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' as const }}>
-                    <span style={{
-                      fontSize: '11px', padding: '2px 7px', borderRadius: '20px',
-                      background: tc.bg, color: tc.color, fontWeight: '500', flexShrink: 0,
-                    }}>
-                      {SVC_TYPE_ICONS[svc.type]} {svc.type}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: '13px', fontWeight: '500' }}>{svc.name}</span>
-                      {svc.price != null && (
-                        <span style={{ fontSize: '12px', color: 'var(--text-3)', marginLeft: '6px' }}>
-                          ₦{Number(svc.price).toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-                    {/* Mode selector */}
-                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                      {(['none', 'included', 'addon'] as const).map(m => (
-                        <button key={m} type="button"
-                          onClick={() => setServiceMode(svc.service_id, m)}
-                          style={{
-                            padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '500',
-                            border: '0.5px solid', cursor: 'pointer',
-                            borderColor: mode === m ? 'var(--text)' : 'var(--line)',
-                            background:  mode === m ? 'var(--btn)' : 'var(--surface)',
-                            color:       mode === m ? 'var(--btn-fg)' : 'var(--text-2)',
-                          }}>
-                          {m === 'none' ? 'None' : m === 'included' ? 'Included' : 'Add-on'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Add-on price override */}
-                  {mode === 'addon' && (
-                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <label style={{ fontSize: '12px', color: 'var(--text-3)', flexShrink: 0 }}>
-                        Price override (₦)
-                      </label>
-                      <input
-                        type="number" min="0"
-                        value={link?.addon_price ?? ''}
-                        onChange={e => setServiceAddonPrice(svc.service_id, e.target.value)}
-                        placeholder={svc.price != null ? `Default: ${Number(svc.price).toLocaleString()}` : 'e.g. 15000'}
-                        style={{ width: '160px', boxSizing: 'border-box' as const }}
-                      />
-                      <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>Leave blank to use catalog price</span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-
-          {linkedServices.length > 0 && (
-            <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '10px 0 0' }}>
-              {linkedServices.filter(ls => !ls.is_addon).length} included ·{' '}
-              {linkedServices.filter(ls => ls.is_addon).length} add-on
-            </p>
-          )}
-        </div>
-      )}
-
       {/* Add-ons */}
       <div style={sectionStyle}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
@@ -641,11 +437,9 @@ export default function EditPackageForm({
           </div>
           <button onClick={addAddon} type="button" style={{ padding: '6px 12px', fontSize: '13px' }}>+ Add</button>
         </div>
-
         {addons.length === 0 && (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', textAlign: 'center', padding: '1rem 0' }}>No add-ons yet</p>
         )}
-
         {addons.map((addon, i) => (
           <div key={i} style={{ border: '1px solid var(--line-inner)', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
@@ -682,14 +476,11 @@ export default function EditPackageForm({
           </div>
           <button onClick={addSection} type="button" style={{ padding: '6px 12px', fontSize: '13px' }}>+ Add section</button>
         </div>
-
         {sections.length === 0 && (
-          <p style={{ fontSize: '13px', color: 'var(--text-4)', textAlign: 'center', padding: '1rem 0' }}>No sections yet — add one to build the public detail page</p>
+          <p style={{ fontSize: '13px', color: 'var(--text-4)', textAlign: 'center', padding: '1rem 0' }}>No sections yet</p>
         )}
-
         {sections.map((sec, i) => (
           <div key={i} style={{ border: '1px solid var(--line-inner)', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
-            {/* Header row with move + remove */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: 0 }}>SECTION {i + 1}</p>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -717,8 +508,8 @@ export default function EditPackageForm({
               <label style={labelStyle}>Body text</label>
               <textarea value={sec.body}
                 onChange={e => updateSection(i, 'body', e.target.value)}
-                placeholder="Detailed description for this section..."
-                rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                placeholder="Detailed description for this section..." rows={3}
+                style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
             <div>
               <label style={labelStyle}>Image URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
@@ -763,10 +554,10 @@ export default function EditPackageForm({
 
       {error && <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '12px' }}>{error}</p>}
 
-      {dupPackageId && dupPackageId !== pkg.package_id && (
+      {dupPackageId && (
         <div style={{ marginBottom: '12px', padding: '12px 14px', background: '#fffbea', border: '1px solid #f5e07a', borderRadius: '10px' }}>
           <p style={{ fontSize: '13px', color: '#7a5800', margin: '0 0 8px', fontWeight: '500' }}>
-            Another package already has this name.
+            A package with this name already exists.
           </p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
             <Link href={`/dashboard/packages/${dupPackageId}`}
@@ -784,9 +575,9 @@ export default function EditPackageForm({
 
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={() => handleSubmit(false)} disabled={loading} style={{ flex: 1, padding: '10px' }}>
-          {loading ? 'Saving...' : 'Save changes'}
+          {loading ? 'Saving...' : 'Save package'}
         </button>
-        <button onClick={() => router.push(`/dashboard/packages/${pkg.package_id}`)} type="button"
+        <button onClick={() => router.back()} type="button"
           style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
           Cancel
         </button>

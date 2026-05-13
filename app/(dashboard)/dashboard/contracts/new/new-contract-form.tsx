@@ -15,7 +15,7 @@ type Booking = {
   status:       string | null
   session_type?: string | null
   clients?:     { full_name?: string | null; phone?: string | null } | null
-  packages?:    { package_id: string; name?: string | null } | null
+  packages?:    { package_id: string; name?: string | null; contract_template_id?: string | null } | null
 }
 
 type StudioInfo = {
@@ -98,7 +98,14 @@ export default function NewContractForm({
 
   function handleSessionChange(id: string) {
     setSelectedId(id)
-    if (selectedTplId) applyTemplate(id, selectedTplId)
+    const booking = bookings.find(b => b.booking_id === id)
+    const pkgTplId = booking?.packages?.contract_template_id
+    if (pkgTplId && templates.some(t => t.template_id === pkgTplId)) {
+      setSelectedTplId(pkgTplId)
+      applyTemplate(id, pkgTplId)
+    } else if (selectedTplId) {
+      applyTemplate(id, selectedTplId)
+    }
   }
 
   function handleTemplateChange(templateId: string) {

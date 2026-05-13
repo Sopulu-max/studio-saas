@@ -23,7 +23,7 @@ export default async function NewContractPage({
     status: string | null
     session_type: string | null
     clients: { full_name: string | null; phone: string | null } | null
-    packages: { package_id: string; name: string | null } | null
+    packages: { package_id: string; name: string | null; contract_template_id: string | null } | null
   }
 
   type TemplateRow = { template_id: string; name: string; description: string | null; session_type: string | null; display_order: number }
@@ -31,7 +31,7 @@ export default async function NewContractPage({
 
   let bookingsQuery = context.admin
     .from('bookings')
-    .select('booking_id, booking_ref, session_date, status, session_type, clients(full_name, phone), packages(package_id, name)')
+    .select('booking_id, booking_ref, session_date, status, session_type, clients(full_name, phone), packages(package_id, name, contract_template_id)')
     .eq('studio_id', context.studioId)
     .order('session_date', { ascending: false })
   for (const v of cancelValues) { bookingsQuery = bookingsQuery.neq('status', v) }

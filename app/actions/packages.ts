@@ -54,6 +54,7 @@ export async function addPackage(form: {
   edited_photos?: string
   coverage_hours?: string
   contract_template?: string
+  contract_template_id?: string | null
   pricing_type?: string
   tagline?: string
   is_public?: boolean
@@ -95,6 +96,7 @@ export async function addPackage(form: {
       edited_photos:  form.edited_photos  ? parseInt(form.edited_photos,  10) : null,
       coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
+      contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',
       tagline:        form.tagline        || null,
       is_public:      form.is_public      ?? true,
@@ -182,6 +184,7 @@ export async function updatePackage(packageId: string, form: {
   edited_photos?: string
   coverage_hours?: string
   contract_template?: string
+  contract_template_id?: string | null
   pricing_type?: string
   tagline?: string
   is_public?: boolean
@@ -228,6 +231,7 @@ export async function updatePackage(packageId: string, form: {
       edited_photos:  form.edited_photos  ? parseInt(form.edited_photos,  10) : null,
       coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
+      contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',
       tagline:        form.tagline        || null,
       is_public:      form.is_public      ?? true,
