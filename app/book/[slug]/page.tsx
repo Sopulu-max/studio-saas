@@ -189,7 +189,11 @@ export default async function PublicBookingPage({
               studioId={studio.studio_id}
               studioName={studio.name ?? ''}
               sessionTypes={config.sessionTypes.map(t => ({ value: t.value, label: t.label }))}
-              serviceTypes={config.serviceTypes.map(t => ({ value: t.value, label: t.label }))}
+              serviceTypes={config.serviceTypes.map(t => ({
+                value:          t.value,
+                label:          t.label,
+                booking_fields: t.booking_fields ?? [],
+              }))}
               catalogServices={catalogServices}
               preselectedPackage={preselectedPackage}
               packageLinkedServices={packageLinkedServices}

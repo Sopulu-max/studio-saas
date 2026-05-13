@@ -8,12 +8,37 @@ export type SessionTypeConfig = {
   icon?:     string   // optional emoji prefix
 }
 
-export type ServiceTypeConfig = {
-  value:    string   // stored in DB, e.g. "photo", "video", "photo_video"
-  label:    string   // display name, e.g. "Photography"
-  color_bg: string
-  color_fg: string
+export type BookingField = {
+  key:      string   // e.g. "outfits_count", "video_duration"
+  required: boolean
 }
+
+export type ServiceTypeConfig = {
+  value:          string   // stored in DB, e.g. "photo", "video", "photo_video"
+  label:          string   // display name, e.g. "Photography"
+  color_bg:       string
+  color_fg:       string
+  booking_fields?: BookingField[]
+}
+
+// All fields a studio can configure per service type
+export type BookingFieldDef = {
+  key:         string
+  label:       string
+  description: string
+  inputType:   'text' | 'number' | 'date' | 'suggest'
+}
+
+export const BOOKING_FIELD_DEFINITIONS: BookingFieldDef[] = [
+  { key: 'outfits_count',    label: 'Number of outfits',    description: 'How many outfit changes the client wants',       inputType: 'number'  },
+  { key: 'shoot_type',       label: 'Occasion / category',  description: 'e.g. Birthday, Graduation, Anniversary',         inputType: 'suggest' },
+  { key: 'event_date',       label: 'Occasion date',        description: 'Date of the occasion being photographed',        inputType: 'date'    },
+  { key: 'location_address', label: 'Preferred location',   description: 'Venue, area, or address for the shoot',          inputType: 'text'    },
+  { key: 'event_name',       label: 'Event name',           description: 'e.g. Sandra & Emeka\'s Wedding',                 inputType: 'text'    },
+  { key: 'video_duration',   label: 'Desired video length', description: 'e.g. 3–5 min highlight, full ceremony',          inputType: 'text'    },
+  { key: 'coverage_hours',   label: 'Hours of coverage',    description: 'How many hours of shooting are needed',          inputType: 'number'  },
+  { key: 'crew_size',        label: 'Crew size needed',     description: 'Number of photographers/videographers required',  inputType: 'number'  },
+]
 
 export type BookingStatusConfig = {
   value:    string   // stored in DB, e.g. "confirmed", "colour_grading"
@@ -45,9 +70,37 @@ export const DEFAULT_SESSION_TYPES: SessionTypeConfig[] = [
 ]
 
 export const DEFAULT_SERVICE_TYPES: ServiceTypeConfig[] = [
-  { value: 'photo',       label: 'Photography',    color_bg: '#dce8f5', color_fg: '#1a4a7a' },
-  { value: 'video',       label: 'Videography',    color_bg: '#e8dcf5', color_fg: '#4a1a7a' },
-  { value: 'photo_video', label: 'Photo + Video',  color_bg: '#f5f0dc', color_fg: '#7a5a1a' },
+  {
+    value: 'photo', label: 'Photography', color_bg: '#dce8f5', color_fg: '#1a4a7a',
+    booking_fields: [
+      { key: 'outfits_count',    required: false },
+      { key: 'shoot_type',       required: false },
+      { key: 'event_date',       required: false },
+      { key: 'location_address', required: false },
+    ],
+  },
+  {
+    value: 'video', label: 'Videography', color_bg: '#e8dcf5', color_fg: '#4a1a7a',
+    booking_fields: [
+      { key: 'event_name',       required: false },
+      { key: 'event_date',       required: false },
+      { key: 'location_address', required: false },
+      { key: 'video_duration',   required: false },
+      { key: 'coverage_hours',   required: false },
+    ],
+  },
+  {
+    value: 'photo_video', label: 'Photo + Video', color_bg: '#f5f0dc', color_fg: '#7a5a1a',
+    booking_fields: [
+      { key: 'outfits_count',    required: false },
+      { key: 'shoot_type',       required: false },
+      { key: 'event_date',       required: false },
+      { key: 'location_address', required: false },
+      { key: 'event_name',       required: false },
+      { key: 'video_duration',   required: false },
+      { key: 'coverage_hours',   required: false },
+    ],
+  },
 ]
 
 export const DEFAULT_BOOKING_STATUSES: BookingStatusConfig[] = [
@@ -123,6 +176,22 @@ export function getStatusConfig(
     config.bookingStatuses.find(s => s.value === value) ??
     { value: value ?? '', label: value ?? '', color_bg: '#e0dcc8', color_fg: '#4a4530', order: 0 }
   )
+}
+
+/**
+ * Returns the booking_fields for a given service type value.
+ * Falls back to the default config for that value, then to photo defaults.
+ */
+export function getServiceTypeBookingFields(
+  config: StudioConfig,
+  serviceTypeValue: string | null | undefined,
+): BookingField[] {
+  const svc = config.serviceTypes.find(t => t.value === serviceTypeValue)
+  if (svc?.booking_fields?.length) return svc.booking_fields
+  // fall back to the static defaults
+  const def = DEFAULT_SERVICE_TYPES.find(t => t.value === serviceTypeValue)
+  if (def?.booking_fields?.length) return def.booking_fields
+  return DEFAULT_SERVICE_TYPES[0].booking_fields ?? []
 }
 
 /** Returns the next non-cancellation status in the pipeline, or null if terminal. */

@@ -15,6 +15,8 @@ const TYPE_ICONS: Record<string, string> = {
   digital: '💻',
 }
 
+type BookingFieldConfig = { key: string; required: boolean }
+
 type CatalogService = {
   service_id:   string
   name:         string
@@ -56,7 +58,7 @@ export default function BookingForm({
   studioId:               string
   studioName:             string
   sessionTypes:           { value: string; label: string }[]
-  serviceTypes:           { value: string; label: string }[]
+  serviceTypes:           { value: string; label: string; booking_fields: BookingFieldConfig[] }[]
   catalogServices?:       CatalogService[]
   preselectedPackage?:    PreselectedPackage | null
   packageLinkedServices?: PackageLinkedService[]
@@ -79,13 +81,16 @@ export default function BookingForm({
     phone:            '',
     email:            '',
     session_type:     preselectedPackage?.session_type ?? sessionTypes[0]?.value ?? '',
-    service_type:     preselectedPackage?.service_type ?? serviceTypes[0]?.value ?? 'photo',
+    service_type:     preselectedPackage?.service_type ?? serviceTypes[0]?.value ?? '',
     preferred_date:   '',
     outfits_count:    preselectedPackage?.outfits_count != null ? String(preselectedPackage.outfits_count) : '',
     location_address: '',
     shoot_type:       '',
     event_name:       '',
     event_date:       '',
+    video_duration:   '',
+    coverage_hours:   '',
+    crew_size:        '',
     notes:            '',
   })
 
@@ -105,8 +110,23 @@ export default function BookingForm({
     )
   }
 
-  const isEvent   = form.session_type === 'event'
-  const isOutdoor = form.session_type === 'outdoor'
+  const isEvent = form.session_type === 'event'
+
+  // Derive the active service type's field config
+  const activeServiceType  = serviceTypes.find(t => t.value === form.service_type) ?? serviceTypes[0]
+  const serviceBookingFields: BookingFieldConfig[] = activeServiceType?.booking_fields ?? []
+  const fieldEnabled  = (key: string) => serviceBookingFields.some(f => f.key === key)
+  const fieldRequired = (key: string) => serviceBookingFields.find(f => f.key === key)?.required ?? false
+
+  // Event sessions always show event_name + event_date + location regardless of service config
+  const showOutfits  = !isEvent && fieldEnabled('outfits_count')
+  const showOccasion = !isEvent && fieldEnabled('shoot_type')
+  const showOccDate  = !isEvent && fieldEnabled('event_date')
+  const showLocation = isEvent  || fieldEnabled('location_address')
+  const showEventName = isEvent || fieldEnabled('event_name')
+  const showVideoDuration = fieldEnabled('video_duration')
+  const showCoverageHours = fieldEnabled('coverage_hours')
+  const showCrewSize      = fieldEnabled('crew_size')
 
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
@@ -135,6 +155,14 @@ export default function BookingForm({
     if (!form.phone.trim())                  { setError('Please enter your phone number'); return }
     if (!form.preferred_date)                { setError('Please select a preferred date'); return }
     if (isEvent && !form.event_name.trim())  { setError('Please enter the event name');    return }
+
+    // Validate required dynamic fields
+    if (showOutfits    && fieldRequired('outfits_count')    && !form.outfits_count.trim())    { setError('Please enter the number of outfits'); return }
+    if (showOccasion   && fieldRequired('shoot_type')       && !form.shoot_type.trim())       { setError('Please enter the occasion type'); return }
+    if (showEventName  && !isEvent && fieldRequired('event_name')  && !form.event_name.trim())  { setError('Please enter the event name'); return }
+    if (showVideoDuration && fieldRequired('video_duration') && !form.video_duration.trim())  { setError('Please enter the desired video length'); return }
+    if (showCoverageHours && fieldRequired('coverage_hours') && !form.coverage_hours.trim())  { setError('Please enter the hours of coverage'); return }
+    if (showLocation   && !isEvent && fieldRequired('location_address') && !form.location_address.trim()) { setError('Please enter the preferred location'); return }
 
     setLoading(true)
     setError('')
@@ -322,11 +350,16 @@ export default function BookingForm({
         </p>
       </div>
 
+      {/* ── Dynamic fields from service type config ─────────────────────── */}
+
       {/* Outfits */}
-      {!isEvent && (
+      {showOutfits && (
         <div style={row}>
           <label style={label}>
-            Number of outfits <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
+            Number of outfits{' '}
+            {fieldRequired('outfits_count')
+              ? <span style={req}>*</span>
+              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
           </label>
           <input type="number" min="1" max="20" value={form.outfits_count}
             onChange={e => set('outfits_count', e.target.value)}
@@ -335,36 +368,103 @@ export default function BookingForm({
       )}
 
       {/* Occasion */}
-      {!isEvent && (
-        <>
-          <div style={row}>
-            <label style={label}>
-              What&apos;s the occasion? <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
-            </label>
-            <input type="text" list="category-list" value={form.shoot_type}
-              onChange={e => set('shoot_type', e.target.value)}
-              placeholder="e.g. Birthday, Anniversary, Graduation…" style={input} autoComplete="off" />
-            <datalist id="category-list">
-              {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
-            </datalist>
-          </div>
-          {form.shoot_type.trim() && (
-            <div style={row}>
-              <label style={label}>
-                {form.shoot_type} date <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
-              </label>
-              <input type="date" value={form.event_date}
-                onChange={e => set('event_date', e.target.value)} style={{ ...input, maxWidth: '200px' }} />
-            </div>
-          )}
-        </>
-      )}
-
-      {/* Outdoor */}
-      {isOutdoor && (
+      {showOccasion && (
         <div style={row}>
           <label style={label}>
-            Preferred location <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
+            What&apos;s the occasion?{' '}
+            {fieldRequired('shoot_type')
+              ? <span style={req}>*</span>
+              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+          </label>
+          <input type="text" list="category-list" value={form.shoot_type}
+            onChange={e => set('shoot_type', e.target.value)}
+            placeholder="e.g. Birthday, Anniversary, Graduation…" style={input} autoComplete="off" />
+          <datalist id="category-list">
+            {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+          </datalist>
+        </div>
+      )}
+
+      {/* Occasion date (non-event) */}
+      {showOccDate && form.shoot_type.trim() && (
+        <div style={row}>
+          <label style={label}>
+            {form.shoot_type} date{' '}
+            <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
+          </label>
+          <input type="date" value={form.event_date}
+            onChange={e => set('event_date', e.target.value)} style={{ ...input, maxWidth: '200px' }} />
+        </div>
+      )}
+
+      {/* Event name (event session OR service type has it enabled) */}
+      {showEventName && !isEvent && (
+        <div style={row}>
+          <label style={label}>
+            Event name{' '}
+            {fieldRequired('event_name')
+              ? <span style={req}>*</span>
+              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+          </label>
+          <input type="text" value={form.event_name}
+            onChange={e => set('event_name', e.target.value)}
+            placeholder="e.g. Sandra & Emeka's Wedding" style={input} />
+        </div>
+      )}
+
+      {/* Video duration */}
+      {showVideoDuration && (
+        <div style={row}>
+          <label style={label}>
+            Desired video length{' '}
+            {fieldRequired('video_duration')
+              ? <span style={req}>*</span>
+              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+          </label>
+          <input type="text" value={form.video_duration ?? ''}
+            onChange={e => set('video_duration', e.target.value)}
+            placeholder="e.g. 3–5 min highlight, full ceremony" style={input} />
+        </div>
+      )}
+
+      {/* Coverage hours */}
+      {showCoverageHours && (
+        <div style={row}>
+          <label style={label}>
+            Hours of coverage{' '}
+            {fieldRequired('coverage_hours')
+              ? <span style={req}>*</span>
+              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+          </label>
+          <input type="number" min="1" max="24" value={form.coverage_hours ?? ''}
+            onChange={e => set('coverage_hours', e.target.value)}
+            placeholder="e.g. 4" style={{ ...input, maxWidth: '160px' }} />
+        </div>
+      )}
+
+      {/* Crew size */}
+      {showCrewSize && (
+        <div style={row}>
+          <label style={label}>
+            Crew size needed{' '}
+            {fieldRequired('crew_size')
+              ? <span style={req}>*</span>
+              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+          </label>
+          <input type="number" min="1" max="20" value={form.crew_size ?? ''}
+            onChange={e => set('crew_size', e.target.value)}
+            placeholder="e.g. 2" style={{ ...input, maxWidth: '160px' }} />
+        </div>
+      )}
+
+      {/* Location (outdoor/event always show it; other sessions show if enabled) */}
+      {showLocation && !isEvent && (
+        <div style={row}>
+          <label style={label}>
+            Preferred location{' '}
+            {fieldRequired('location_address')
+              ? <span style={req}>*</span>
+              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
           </label>
           <input type="text" value={form.location_address}
             onChange={e => set('location_address', e.target.value)}
@@ -372,7 +472,7 @@ export default function BookingForm({
         </div>
       )}
 
-      {/* Event */}
+      {/* Event session: event name + date + venue always shown */}
       {isEvent && (
         <>
           <div style={row}>
@@ -393,6 +493,32 @@ export default function BookingForm({
                 placeholder="Venue name or address" style={input} />
             </div>
           </div>
+          {showVideoDuration && (
+            <div style={row}>
+              <label style={label}>
+                Desired video length{' '}
+                {fieldRequired('video_duration')
+                  ? <span style={req}>*</span>
+                  : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+              </label>
+              <input type="text" value={form.video_duration ?? ''}
+                onChange={e => set('video_duration', e.target.value)}
+                placeholder="e.g. 3–5 min highlight, full ceremony" style={input} />
+            </div>
+          )}
+          {showCoverageHours && (
+            <div style={row}>
+              <label style={label}>
+                Hours of coverage{' '}
+                {fieldRequired('coverage_hours')
+                  ? <span style={req}>*</span>
+                  : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+              </label>
+              <input type="number" min="1" max="24" value={form.coverage_hours ?? ''}
+                onChange={e => set('coverage_hours', e.target.value)}
+                placeholder="e.g. 4" style={{ ...input, maxWidth: '160px' }} />
+            </div>
+          )}
         </>
       )}
 

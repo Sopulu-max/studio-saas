@@ -19,6 +19,9 @@ const bookingRequestSchema = z.object({
   shoot_type:       z.string().optional(),
   event_name:       z.string().optional(),
   event_date:       z.string().optional(),
+  video_duration:   z.string().optional(),
+  coverage_hours:   z.string().optional(),
+  crew_size:        z.string().optional(),
   notes:            z.string().optional(),
 })
 
@@ -32,19 +35,22 @@ type PublicStudioRow = {
 }
 
 export async function submitBookingRequest(form: {
-  studio_id: string
-  full_name: string
-  phone: string
-  email: string
-  session_type: string
-  service_type: string
-  preferred_date: string
-  outfits_count: string
+  studio_id:        string
+  full_name:        string
+  phone:            string
+  email:            string
+  session_type:     string
+  service_type:     string
+  preferred_date:   string
+  outfits_count:    string
   location_address: string
-  shoot_type: string
-  event_name: string
-  event_date: string
-  notes: string
+  shoot_type:       string
+  event_name:       string
+  event_date:       string
+  video_duration?:  string
+  coverage_hours?:  string
+  crew_size?:       string
+  notes:            string
   selected_service_ids?: string[]
   package_id?: string
 }) {
@@ -144,7 +150,10 @@ export async function submitBookingRequest(form: {
   if (form.shoot_type) insertData.shoot_type = form.shoot_type.trim()
   if (form.event_name) insertData.event_name = form.event_name.trim()
   if (form.event_date)  insertData.event_date  = form.event_date
-  if (form.package_id)  insertData.package_id  = form.package_id
+  if (form.package_id)     insertData.package_id     = form.package_id
+  if (form.video_duration) insertData.video_duration = form.video_duration.trim()
+  if (form.coverage_hours) insertData.coverage_hours = parseInt(form.coverage_hours, 10)
+  if (form.crew_size)      insertData.crew_size      = parseInt(form.crew_size, 10)
 
   const { data: newBookingRaw, error: bookingError } = await admin
     .from('bookings')
