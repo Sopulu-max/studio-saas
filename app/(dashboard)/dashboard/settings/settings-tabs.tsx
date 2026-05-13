@@ -10,10 +10,7 @@ import ContractTemplatesForm from './contract-templates-form'
 import SettingsForm from './settings-form'
 import TeamForm from './team-form'
 import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
-
-type ContractTemplates = {
-  studio: string; outdoor: string; event: string
-}
+import type { ContractTemplate } from '@/app/actions/contract-templates'
 
 type StaffMember = {
   staff_id: string
@@ -57,7 +54,7 @@ export default function SettingsTabs({
   bookingStatuses:     BookingStatusConfig[]
   equipmentCategories: EquipmentCategoryConfig[]
   staffRoles:          StaffRoleConfig[]
-  contractTemplates:   ContractTemplates
+  contractTemplates:   ContractTemplate[]
   teamMembers:         StaffMember[]
   studioId:  string
   name:      string

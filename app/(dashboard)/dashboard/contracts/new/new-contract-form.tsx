@@ -6,51 +6,105 @@ import { useRouter } from 'next/navigation'
 import { addContract } from '@/app/actions/contracts'
 import SearchableSelect from '@/components/searchable-select'
 import { sessionName } from '@/lib/session-title'
+import type { ContractTemplate } from '@/app/actions/contract-templates'
 
 type Booking = {
-  booking_id: string
+  booking_id:   string
   booking_ref?: number | null
   session_date?: string | null
-  status: string | null
+  status:       string | null
   session_type?: string | null
-  clients?: { full_name?: string | null; phone?: string | null } | null
-  packages?: { package_id: string; contract_template?: string | null } | null
+  clients?:     { full_name?: string | null; phone?: string | null } | null
+  packages?:    { package_id: string; name?: string | null } | null
 }
 
-type Templates = { studio: string; outdoor: string; event: string }
-
-function resolveTemplate(booking: Booking | undefined, templates: Templates): string {
-  if (!booking) return ''
-  // Package-level template takes priority
-  if (booking.packages?.contract_template) return booking.packages.contract_template
-  // Fall back to session-type default
-  const type = (booking.session_type ?? 'studio') as keyof Templates
-  return templates[type] ?? templates.studio ?? ''
+type StudioInfo = {
+  name:    string
+  email:   string
+  phone:   string
+  address: string
 }
+
+// ── Variable resolution ──────────────────────────────────────────────────────
+
+function resolveVariables(text: string, vars: Record<string, string>): string {
+  return text.replace(/\{\{(\w+)\}\}/g, (match, key) => vars[key] !== undefined ? vars[key] : match)
+}
+
+function fmtDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function assembleTemplate(
+  template: ContractTemplate,
+  booking:  Booking | undefined,
+  studio:   StudioInfo,
+): string {
+  const vars: Record<string, string> = {
+    client_name:    booking?.clients?.full_name ?? '',
+    studio_name:    studio.name,
+    studio_email:   studio.email,
+    studio_phone:   studio.phone,
+    studio_address: studio.address,
+    session_date:   fmtDate(booking?.session_date),
+    session_type:   booking?.session_type ?? '',
+    booking_ref:    booking?.booking_ref ? `#${booking.booking_ref}` : '',
+    package_name:   booking?.packages?.name ?? '',
+    // These remain as placeholders for staff to fill in
+    total_amount:   '',
+    deposit_amount: '',
+  }
+
+  const body = template.clauses
+    .map(c => `${c.title.toUpperCase()}\n\n${c.body}`)
+    .join('\n\n\n')
+
+  return resolveVariables(body, vars)
+}
+
+// ── Component ────────────────────────────────────────────────────────────────
 
 export default function NewContractForm({
   bookings,
   preselectedSessionId = '',
   templates,
+  studio,
 }: {
-  bookings: Booking[]
+  bookings:              Booking[]
   preselectedSessionId?: string
-  templates: Templates
+  templates:             ContractTemplate[]
+  studio:                StudioInfo
 }) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loading, setLoading]     = useState(false)
+  const [error, setError]         = useState('')
   const [dupContractId, setDupContractId] = useState('')
 
   const preselectedBooking = bookings.find(b => b.booking_id === preselectedSessionId)
-  const [selectedId, setSelectedId] = useState(preselectedSessionId)
-  const [content, setContent] = useState(() => resolveTemplate(preselectedBooking, templates))
+  const [selectedId, setSelectedId]     = useState(preselectedSessionId)
+  const [selectedTplId, setSelectedTplId] = useState('')
+  const [content, setContent]           = useState('')
+  const [autoSource, setAutoSource]     = useState('')
+
+  function applyTemplate(bookingId: string, templateId: string) {
+    const booking  = bookings.find(b => b.booking_id === bookingId)
+    const template = templates.find(t => t.template_id === templateId)
+    if (!template) { setAutoSource(''); return }
+    const assembled = assembleTemplate(template, booking, studio)
+    setContent(assembled)
+    setAutoSource(template.name)
+  }
 
   function handleSessionChange(id: string) {
     setSelectedId(id)
-    const booking = bookings.find(b => b.booking_id === id)
-    const tpl = resolveTemplate(booking, templates)
-    if (tpl) setContent(tpl)
+    if (selectedTplId) applyTemplate(id, selectedTplId)
+  }
+
+  function handleTemplateChange(templateId: string) {
+    setSelectedTplId(templateId)
+    if (templateId) applyTemplate(selectedId, templateId)
+    else { setContent(''); setAutoSource('') }
   }
 
   async function handleSubmit(forceDuplicate = false) {
@@ -59,7 +113,11 @@ export default function NewContractForm({
     setLoading(true)
     setError('')
     setDupContractId('')
-    const { error, contractId, existingContractId } = await addContract({ booking_id: selectedId, content, force_duplicate: forceDuplicate })
+    const { error, contractId, existingContractId } = await addContract({
+      booking_id:      selectedId,
+      content,
+      force_duplicate: forceDuplicate,
+    })
     if (error === '__DUPLICATE__') {
       setDupContractId(existingContractId ?? '')
       setLoading(false)
@@ -74,12 +132,7 @@ export default function NewContractForm({
   const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
   const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
 
-  const selectedBooking = bookings.find(b => b.booking_id === selectedId)
-  const templateSource = selectedBooking
-    ? selectedBooking.packages?.contract_template
-      ? 'package template'
-      : `${selectedBooking.session_type ?? 'studio'} session default`
-    : null
+  const hasTemplates = templates.length > 0
 
   return (
     <div style={{ maxWidth: '680px' }}>
@@ -89,6 +142,7 @@ export default function NewContractForm({
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+        {/* Session picker */}
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Booking <span style={{ color: '#e24b4a' }}>*</span></label>
           {bookings.length === 0 ? (
@@ -97,13 +151,10 @@ export default function NewContractForm({
             </p>
           ) : (
             <SearchableSelect
-              options={bookings.map((b) => ({
-                value: b.booking_id,
-                label: sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date),
-                sublabel: [
-                  b.clients?.phone,
-                  b.status,
-                ].filter(Boolean).join(' · '),
+              options={bookings.map(b => ({
+                value:    b.booking_id,
+                label:    sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date),
+                sublabel: [b.clients?.phone, b.status].filter(Boolean).join(' · '),
               }))}
               value={selectedId}
               onChange={handleSessionChange}
@@ -113,22 +164,59 @@ export default function NewContractForm({
           )}
         </div>
 
+        {/* Template picker */}
+        <div style={{ marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
+            <label style={{ ...labelStyle, marginBottom: 0 }}>Template</label>
+            {!hasTemplates && (
+              <Link href="/dashboard/settings" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
+                Build templates in Settings →
+              </Link>
+            )}
+          </div>
+          {hasTemplates ? (
+            <select
+              value={selectedTplId}
+              onChange={e => handleTemplateChange(e.target.value)}
+              style={inputStyle}
+            >
+              <option value="">— No template, write manually —</option>
+              {templates.map(t => (
+                <option key={t.template_id} value={t.template_id}>
+                  {t.name}{t.session_type ? ` (${t.session_type})` : ''}
+                  {t.clauses.length ? ` · ${t.clauses.length} clause${t.clauses.length !== 1 ? 's' : ''}` : ''}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
+              No templates yet. You can type the contract directly, or{' '}
+              <Link href="/dashboard/settings" style={{ color: 'var(--link)' }}>create reusable templates</Link> in Settings.
+            </p>
+          )}
+        </div>
+
+        {/* Content textarea */}
         <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
             <label style={{ ...labelStyle, marginBottom: 0 }}>
               Contract content <span style={{ color: '#e24b4a' }}>*</span>
             </label>
-            {templateSource && (
+            {autoSource && (
               <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>
-                Auto-filled from {templateSource}
+                Auto-filled from "{autoSource}"
               </span>
             )}
           </div>
           <textarea
             value={content}
             onChange={e => setContent(e.target.value)}
-            rows={22}
-            placeholder="Select a booking above to auto-fill from its template, or type your contract…"
+            rows={24}
+            placeholder={
+              hasTemplates
+                ? 'Select a booking and template above to auto-fill, or type directly…'
+                : 'Type your contract content…'
+            }
             style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: '1.6' }}
           />
         </div>
@@ -157,9 +245,9 @@ export default function NewContractForm({
 
       <div style={{ display: 'flex', gap: '8px' }}>
         <button onClick={() => handleSubmit(false)} disabled={loading} style={{ flex: 1, padding: '10px' }}>
-          {loading ? 'Saving...' : 'Create contract'}
+          {loading ? 'Saving…' : 'Create contract'}
         </button>
-        <button onClick={() => router.back()} style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)' }}>
+        <button onClick={() => router.back()} style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
           Cancel
         </button>
       </div>
