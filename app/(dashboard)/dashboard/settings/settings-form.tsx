@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { updateStudio, updateStudioLogo } from '@/app/actions/studio'
+import { compressImage } from '@/lib/compress-image'
 
 const TIMEZONES = [
   'Africa/Lagos',
@@ -70,16 +71,16 @@ export default function SettingsForm({
   }
 
   async function handleLogoFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) { toast.error('Max file size is 5 MB'); return }
+    const raw = e.target.files?.[0]
+    if (!raw) return
 
     setLogoLoading(true)
 
-    const path = `studio/${studioId}`
+    const file = await compressImage(raw, 'avatar').catch(() => raw)
+    const path = `studio/${studioId}.jpg`
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true, contentType: file.type })
+      .upload(path, file, { upsert: true, contentType: 'image/jpeg' })
 
     if (uploadError) {
       toast.error(uploadError.message)
