@@ -4,6 +4,15 @@ import ContractActions from './contract-actions'
 import { getStudioContext } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
 
+function parseContent(text: string | null | undefined): { title: string; body: string }[] {
+  if (!text?.trim()) return []
+  return text.split(/\n{3,}/).map(block => {
+    const sep = block.indexOf('\n\n')
+    if (sep === -1) return { title: '', body: block.trim() }
+    return { title: block.slice(0, sep).trim(), body: block.slice(sep + 2).trim() }
+  }).filter(c => c.title || c.body)
+}
+
 export default async function ContractDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const context = await getStudioContext()
@@ -138,10 +147,33 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
-        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>CONTRACT CONTENT</p>
-        <pre style={{ fontSize: '13px', lineHeight: '1.8', color: 'var(--text-2)', margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--font-mono)' }}>
-          {contract.content}
-        </pre>
+        <p style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '.08em', color: 'var(--text-4)', margin: '0 0 20px', textTransform: 'uppercase' }}>
+          Contract content
+        </p>
+        {(() => {
+          const clauses = parseContent(contract.content)
+          if (!clauses.length) return <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No content</p>
+          return (
+            <div>
+              {clauses.map((clause, i) => (
+                <div key={i} style={{
+                  paddingBottom: '1.25rem',
+                  marginBottom: i < clauses.length - 1 ? '1.25rem' : 0,
+                  borderBottom: i < clauses.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                }}>
+                  {clause.title && (
+                    <p style={{ fontSize: '10px', fontWeight: '700', letterSpacing: '.1em', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase' }}>
+                      {i + 1}. {clause.title}
+                    </p>
+                  )}
+                  <p style={{ fontSize: '14px', lineHeight: '1.85', color: 'var(--text)', margin: 0, whiteSpace: 'pre-wrap' }}>
+                    {clause.body}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )
+        })()}
       </div>
 
       <ContractActions

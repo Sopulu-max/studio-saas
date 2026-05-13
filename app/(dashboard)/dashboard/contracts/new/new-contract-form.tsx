@@ -9,13 +9,13 @@ import { sessionName } from '@/lib/session-title'
 import type { ContractTemplate } from '@/app/actions/contract-templates'
 
 type Booking = {
-  booking_id:   string
-  booking_ref?: number | null
+  booking_id:    string
+  booking_ref?:  number | null
   session_date?: string | null
-  status:       string | null
+  status:        string | null
   session_type?: string | null
-  clients?:     { full_name?: string | null; phone?: string | null } | null
-  packages?:    { package_id: string; name?: string | null; contract_template_id?: string | null } | null
+  clients?:      { full_name?: string | null; phone?: string | null } | null
+  packages?:     { package_id: string; name?: string | null; contract_template_id?: string | null } | null
 }
 
 type StudioInfo = {
@@ -24,6 +24,12 @@ type StudioInfo = {
   phone:   string
   address: string
 }
+
+type EditClause = { _key: string; title: string; body: string }
+
+let _key = 0
+function nextKey() { return String(++_key) }
+function blankClause(): EditClause { return { _key: nextKey(), title: '', body: '' } }
 
 // ── Variable resolution ──────────────────────────────────────────────────────
 
@@ -36,12 +42,8 @@ function fmtDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function assembleTemplate(
-  template: ContractTemplate,
-  booking:  Booking | undefined,
-  studio:   StudioInfo,
-): string {
-  const vars: Record<string, string> = {
+function buildVars(booking: Booking | undefined, studio: StudioInfo): Record<string, string> {
+  return {
     client_name:    booking?.clients?.full_name ?? '',
     studio_name:    studio.name,
     studio_email:   studio.email,
@@ -51,16 +53,16 @@ function assembleTemplate(
     session_type:   booking?.session_type ?? '',
     booking_ref:    booking?.booking_ref ? `#${booking.booking_ref}` : '',
     package_name:   booking?.packages?.name ?? '',
-    // These remain as placeholders for staff to fill in
     total_amount:   '',
     deposit_amount: '',
   }
+}
 
-  const body = template.clauses
+function assembleContent(clauses: EditClause[]): string {
+  return clauses
+    .filter(c => c.title.trim() || c.body.trim())
     .map(c => `${c.title.toUpperCase()}\n\n${c.body}`)
     .join('\n\n\n')
-
-  return resolveVariables(body, vars)
 }
 
 // ── Component ────────────────────────────────────────────────────────────────
@@ -77,28 +79,55 @@ export default function NewContractForm({
   studio:                StudioInfo
 }) {
   const router = useRouter()
-  const [loading, setLoading]     = useState(false)
-  const [error, setError]         = useState('')
+  const [loading, setLoading]             = useState(false)
+  const [error, setError]                 = useState('')
   const [dupContractId, setDupContractId] = useState('')
 
-  const preselectedBooking = bookings.find(b => b.booking_id === preselectedSessionId)
-  const [selectedId, setSelectedId]     = useState(preselectedSessionId)
+  const [selectedId, setSelectedId]       = useState(preselectedSessionId)
   const [selectedTplId, setSelectedTplId] = useState('')
-  const [content, setContent]           = useState('')
-  const [autoSource, setAutoSource]     = useState('')
+  const [clauses, setClauses]             = useState<EditClause[]>([blankClause()])
+  const [autoSource, setAutoSource]       = useState('')
+
+  const hasTemplates = templates.length > 0
+
+  // ── Clause helpers ───────────────────────────────────────────────────────
+
+  function updateClause(key: string, field: 'title' | 'body', value: string) {
+    setClauses(prev => prev.map(c => c._key === key ? { ...c, [field]: value } : c))
+  }
+  function addClause() { setClauses(prev => [...prev, blankClause()]) }
+  function removeClause(key: string) {
+    setClauses(prev => prev.length > 1 ? prev.filter(c => c._key !== key) : prev)
+  }
+  function moveClause(key: string, dir: -1 | 1) {
+    setClauses(prev => {
+      const idx = prev.findIndex(c => c._key === key)
+      const next = idx + dir
+      if (idx < 0 || next < 0 || next >= prev.length) return prev
+      const arr = [...prev]
+      ;[arr[idx], arr[next]] = [arr[next], arr[idx]]
+      return arr
+    })
+  }
+
+  // ── Template application ─────────────────────────────────────────────────
 
   function applyTemplate(bookingId: string, templateId: string) {
     const booking  = bookings.find(b => b.booking_id === bookingId)
     const template = templates.find(t => t.template_id === templateId)
-    if (!template) { setAutoSource(''); return }
-    const assembled = assembleTemplate(template, booking, studio)
-    setContent(assembled)
+    if (!template) { setClauses([blankClause()]); setAutoSource(''); return }
+    const vars = buildVars(booking, studio)
+    setClauses(template.clauses.map(c => ({
+      _key: nextKey(),
+      title: c.title,
+      body:  resolveVariables(c.body, vars),
+    })))
     setAutoSource(template.name)
   }
 
   function handleSessionChange(id: string) {
     setSelectedId(id)
-    const booking = bookings.find(b => b.booking_id === id)
+    const booking  = bookings.find(b => b.booking_id === id)
     const pkgTplId = booking?.packages?.contract_template_id
     if (pkgTplId && templates.some(t => t.template_id === pkgTplId)) {
       setSelectedTplId(pkgTplId)
@@ -111,12 +140,15 @@ export default function NewContractForm({
   function handleTemplateChange(templateId: string) {
     setSelectedTplId(templateId)
     if (templateId) applyTemplate(selectedId, templateId)
-    else { setContent(''); setAutoSource('') }
+    else { setClauses([blankClause()]); setAutoSource('') }
   }
+
+  // ── Submit ───────────────────────────────────────────────────────────────
 
   async function handleSubmit(forceDuplicate = false) {
     if (!selectedId) { setError('Please select a booking'); return }
-    if (!content)    { setError('Contract content cannot be empty'); return }
+    const content = assembleContent(clauses)
+    if (!content) { setError('Add at least one clause with content'); return }
     setLoading(true)
     setError('')
     setDupContractId('')
@@ -136,10 +168,9 @@ export default function NewContractForm({
     }
   }
 
-  const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
-  const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
-
-  const hasTemplates = templates.length > 0
+  const inputStyle  = { width: '100%', boxSizing: 'border-box' as const }
+  const labelStyle  = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
+  const cardStyle   = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }
 
   return (
     <div style={{ maxWidth: '680px' }}>
@@ -148,8 +179,8 @@ export default function NewContractForm({
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Create a contract for a booking</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
-        {/* Session picker */}
+      {/* Booking + template selectors */}
+      <div style={cardStyle}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Booking <span style={{ color: '#e24b4a' }}>*</span></label>
           {bookings.length === 0 ? (
@@ -171,8 +202,7 @@ export default function NewContractForm({
           )}
         </div>
 
-        {/* Template picker */}
-        <div style={{ marginBottom: '16px' }}>
+        <div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
             <label style={{ ...labelStyle, marginBottom: 0 }}>Template</label>
             {!hasTemplates && (
@@ -197,42 +227,73 @@ export default function NewContractForm({
             </select>
           ) : (
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
-              No templates yet. You can type the contract directly, or{' '}
+              No templates yet. You can type the contract directly below, or{' '}
               <Link href="/dashboard/settings" style={{ color: 'var(--link)' }}>create reusable templates</Link> in Settings.
             </p>
           )}
         </div>
-
-        {/* Content textarea */}
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '6px' }}>
-            <label style={{ ...labelStyle, marginBottom: 0 }}>
-              Contract content <span style={{ color: '#e24b4a' }}>*</span>
-            </label>
-            {autoSource && (
-              <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>
-                Auto-filled from "{autoSource}"
-              </span>
-            )}
-          </div>
-          <textarea
-            value={content}
-            onChange={e => setContent(e.target.value)}
-            rows={24}
-            placeholder={
-              hasTemplates
-                ? 'Select a booking and template above to auto-fill, or type directly…'
-                : 'Type your contract content…'
-            }
-            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'var(--font-mono)', fontSize: '13px', lineHeight: '1.6' }}
-          />
-        </div>
       </div>
 
-      {error && <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '12px' }}>{error}</p>}
+      {/* Clause editor */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '10px' }}>
+          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)', margin: 0 }}>
+            Clauses <span style={{ fontWeight: '400', color: 'var(--text-4)' }}>— each becomes a headed section in the contract</span>
+          </p>
+          {autoSource && (
+            <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>
+              Auto-filled from &ldquo;{autoSource}&rdquo;
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          {clauses.map((clause, idx) => (
+            <div key={clause._key} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '1rem' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
+                <input
+                  type="text"
+                  value={clause.title}
+                  onChange={e => updateClause(clause._key, 'title', e.target.value)}
+                  placeholder="Clause title (e.g. Payment Terms)"
+                  style={{ flex: 1, boxSizing: 'border-box', fontSize: '13px', fontWeight: '500' }}
+                />
+                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                  <button onClick={() => moveClause(clause._key, -1)} type="button" disabled={idx === 0}
+                    style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: idx === 0 ? 'var(--text-4)' : 'var(--text-2)', cursor: idx === 0 ? 'default' : 'pointer' }}
+                    title="Move up">↑</button>
+                  <button onClick={() => moveClause(clause._key, 1)} type="button" disabled={idx === clauses.length - 1}
+                    style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: idx === clauses.length - 1 ? 'var(--text-4)' : 'var(--text-2)', cursor: idx === clauses.length - 1 ? 'default' : 'pointer' }}
+                    title="Move down">↓</button>
+                  <button onClick={() => removeClause(clause._key)} type="button" disabled={clauses.length === 1}
+                    style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: clauses.length === 1 ? 'var(--text-4)' : '#e24b4a', cursor: clauses.length === 1 ? 'default' : 'pointer' }}
+                    title="Remove clause">×</button>
+                </div>
+              </div>
+              <textarea
+                value={clause.body}
+                onChange={e => updateClause(clause._key, 'body', e.target.value)}
+                placeholder="Clause body. Variables like {{client_name}} auto-fill from the booking."
+                rows={5}
+                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', fontSize: '13px', lineHeight: '1.7' }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={addClause}
+          type="button"
+          style={{ marginTop: '8px', padding: '8px 14px', fontSize: '13px', background: 'transparent', border: '1px dashed var(--line)', color: 'var(--text-3)', width: '100%', cursor: 'pointer', borderRadius: '8px' }}
+        >
+          + Add clause
+        </button>
+      </div>
+
+      {error && <p style={{ fontSize: '13px', color: '#e24b4a', margin: '12px 0 0' }}>{error}</p>}
 
       {dupContractId && (
-        <div style={{ marginBottom: '12px', padding: '12px 14px', background: '#fffbea', border: '1px solid #f5e07a', borderRadius: '10px' }}>
+        <div style={{ marginTop: '12px', padding: '12px 14px', background: '#fffbea', border: '1px solid #f5e07a', borderRadius: '10px' }}>
           <p style={{ fontSize: '13px', color: '#7a5800', margin: '0 0 8px', fontWeight: '500' }}>
             This session already has a contract.
           </p>
@@ -250,11 +311,12 @@ export default function NewContractForm({
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
         <button onClick={() => handleSubmit(false)} disabled={loading} style={{ flex: 1, padding: '10px' }}>
           {loading ? 'Saving…' : 'Create contract'}
         </button>
-        <button onClick={() => router.back()} style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
+        <button onClick={() => router.back()} type="button"
+          style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
           Cancel
         </button>
       </div>
