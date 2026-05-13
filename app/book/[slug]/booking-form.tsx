@@ -57,7 +57,7 @@ export default function BookingForm({
 }: {
   studioId:               string
   studioName:             string
-  sessionTypes:           { value: string; label: string }[]
+  sessionTypes:           { value: string; label: string; is_event?: boolean }[]
   serviceTypes:           { value: string; label: string; booking_fields: BookingFieldConfig[] }[]
   catalogServices?:       CatalogService[]
   preselectedPackage?:    PreselectedPackage | null
@@ -108,7 +108,7 @@ export default function BookingForm({
     )
   }
 
-  const isEvent = form.session_type === 'event'
+  const isEvent = sessionTypes.find(t => t.value === form.session_type)?.is_event ?? false
 
   const activeServiceType  = serviceTypes.find(t => t.value === form.service_type) ?? serviceTypes[0]
   const serviceBookingFields: BookingFieldConfig[] = activeServiceType?.booking_fields ?? []

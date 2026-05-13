@@ -36,8 +36,7 @@ const CATEGORY_SUGGESTIONS = [
   'Boudoir', 'Product', 'Lifestyle', 'Family', 'Other',
 ]
 
-function isEventType(t: string)   { return t === 'event' }
-function isOutdoorType(t: string) { return t === 'outdoor' }
+// Resolved from config flags — no hardcoded string comparisons
 
 export default function NewSessionForm({ clients, packages, staff }: {
   clients: Client[]
@@ -133,7 +132,8 @@ export default function NewSessionForm({ clients, packages, staff }: {
       setError('Client and session date are required')
       return
     }
-    if (form.session_type === 'event' && !form.event_name) {
+    const activeSessionCfg = config.sessionTypes.find(t => t.value === form.session_type)
+    if (activeSessionCfg?.is_event && !form.event_name) {
       setError('Event name is required for event sessions')
       return
     }
@@ -236,9 +236,11 @@ export default function NewSessionForm({ clients, packages, staff }: {
   const labelStyle  = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
   const sectionStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }
 
-  const isOutdoor      = isOutdoorType(form.session_type)
-  const isEvent        = isEventType(form.session_type)
-  const isVideoSession = form.service_type === 'video' || form.service_type === 'photo_video'
+  const activeSessionType = config.sessionTypes.find(t => t.value === form.session_type)
+  const activeServiceType = config.serviceTypes.find(t => t.value === form.service_type)
+  const isOutdoor         = activeSessionType?.is_outdoor ?? false
+  const isEvent           = activeSessionType?.is_event   ?? false
+  const isVideoSession    = activeServiceType?.has_video_crew ?? false
 
   return (
     <div style={{ maxWidth: '600px' }}>

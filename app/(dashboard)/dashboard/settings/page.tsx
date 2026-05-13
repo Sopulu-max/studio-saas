@@ -73,6 +73,7 @@ export default async function SettingsPage() {
         timezone={studio.timezone ?? ''}
         logoUrl={studio.logo_url ?? null}
         siteUrl={siteUrl}
+        theme={studio.theme}
       />
     </div>
   )

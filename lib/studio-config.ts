@@ -1,11 +1,13 @@
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type SessionTypeConfig = {
-  value:     string   // stored in DB, e.g. "studio", "outdoor", "event"
-  label:     string   // display name, e.g. "Outdoor"
-  color_bg:  string
-  color_fg:  string
-  icon?:     string   // optional emoji prefix
+  value:      string   // stored in DB, e.g. "studio", "outdoor", "event"
+  label:      string   // display name, e.g. "Outdoor"
+  color_bg:   string
+  color_fg:   string
+  icon?:      string   // optional emoji prefix
+  is_event?:  boolean  // event-specific fields (name, venue, event date)
+  is_outdoor?: boolean // outdoor-specific fields (location)
 }
 
 export type BookingField = {
@@ -14,11 +16,12 @@ export type BookingField = {
 }
 
 export type ServiceTypeConfig = {
-  value:          string   // stored in DB, e.g. "photo", "video", "photo_video"
-  label:          string   // display name, e.g. "Photography"
-  color_bg:       string
-  color_fg:       string
+  value:           string   // stored in DB, e.g. "photo", "video", "photo_video"
+  label:           string   // display name, e.g. "Photography"
+  color_bg:        string
+  color_fg:        string
   booking_fields?: BookingField[]
+  has_video_crew?: boolean  // shows videographer/video_editor assignment fields
 }
 
 // All fields a studio can configure per service type
@@ -81,8 +84,8 @@ export type StudioConfig = {
 
 export const DEFAULT_SESSION_TYPES: SessionTypeConfig[] = [
   { value: 'studio',  label: 'Studio',  color_bg: '#e0dcc8', color_fg: '#4a4530' },
-  { value: 'outdoor', label: 'Outdoor', color_bg: '#b8dfa0', color_fg: '#245a0a' },
-  { value: 'event',   label: 'Event',   color_bg: '#c4c0f8', color_fg: '#2e28a8' },
+  { value: 'outdoor', label: 'Outdoor', color_bg: '#b8dfa0', color_fg: '#245a0a', is_outdoor: true },
+  { value: 'event',   label: 'Event',   color_bg: '#c4c0f8', color_fg: '#2e28a8', is_event: true },
 ]
 
 export const DEFAULT_SERVICE_TYPES: ServiceTypeConfig[] = [
@@ -96,7 +99,7 @@ export const DEFAULT_SERVICE_TYPES: ServiceTypeConfig[] = [
     ],
   },
   {
-    value: 'video', label: 'Videography', color_bg: '#e8dcf5', color_fg: '#4a1a7a',
+    value: 'video', label: 'Videography', color_bg: '#e8dcf5', color_fg: '#4a1a7a', has_video_crew: true,
     booking_fields: [
       { key: 'event_name',       required: false },
       { key: 'event_date',       required: false },
@@ -106,7 +109,7 @@ export const DEFAULT_SERVICE_TYPES: ServiceTypeConfig[] = [
     ],
   },
   {
-    value: 'photo_video', label: 'Photo + Video', color_bg: '#f5f0dc', color_fg: '#7a5a1a',
+    value: 'photo_video', label: 'Photo + Video', color_bg: '#f5f0dc', color_fg: '#7a5a1a', has_video_crew: true,
     booking_fields: [
       { key: 'outfits_count',    required: false },
       { key: 'shoot_type',       required: false },

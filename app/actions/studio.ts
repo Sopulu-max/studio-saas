@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext } from '@/lib/studio'
+import type { StudioTheme } from '@/lib/studio-theme'
 
 const updateStudioSchema = z.object({
   name:     z.string().min(2, 'Studio name must be at least 2 characters'),
@@ -49,6 +50,21 @@ export async function updateStudio(form: {
       address:  form.address  || null,
       timezone: form.timezone || null,
     })
+    .eq('owner_id', context.userId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard', 'layout')
+  return { error: null }
+}
+
+export async function updateStudioTheme(theme: StudioTheme) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  const { error } = await context.admin
+    .from('studios')
+    .update({ theme })
     .eq('owner_id', context.userId)
 
   if (error) return { error: error.message }

@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { buildTheme, themeCssVars } from '@/lib/studio-theme'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -10,6 +11,7 @@ type StudioMeta = {
   name:      string | null
   slug:      string | null
   logo_url:  string | null
+  theme?:    unknown
 }
 
 type PublicSection = {
@@ -120,7 +122,7 @@ export default async function PublicPackageDetailPage({
   const admin = createAdminClient()
 
   const [{ data: studioRaw }, { data: pkgRaw }] = await Promise.all([
-    admin.from('studios').select('studio_id, name, slug, logo_url').eq('slug', studioSlug).maybeSingle(),
+    admin.from('studios').select('studio_id, name, slug, logo_url, theme').eq('slug', studioSlug).maybeSingle(),
     admin
       .from('packages')
       .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, video_url, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
@@ -130,6 +132,9 @@ export default async function PublicPackageDetailPage({
 
   const studio = studioRaw as unknown as StudioMeta | null
   if (!studio) notFound()
+
+  const theme   = buildTheme(studio.theme)
+  const cssVars = themeCssVars(theme)
 
   const pkg = pkgRaw as unknown as PublicPackage | null
   if (!pkg || pkg.is_public === false) notFound()
@@ -155,12 +160,13 @@ export default async function PublicPackageDetailPage({
   return (
     <>
       <style>{`
+        :root { ${cssVars} }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
         body {
           font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
-          background: #f5f3ef;
-          color: #1a1814;
+          background: var(--bg);
+          color: var(--text-main);
           -webkit-font-smoothing: antialiased;
         }
         a { color: inherit; text-decoration: none; }
@@ -169,20 +175,20 @@ export default async function PublicPackageDetailPage({
         /* Nav */
         .nav {
           position: sticky; top: 0; z-index: 100;
-          background: rgba(255,255,255,0.95);
+          background: var(--nav-bg);
           backdrop-filter: blur(12px);
-          border-bottom: 1px solid #ede9e1;
+          border-bottom: 1px solid var(--primary-border);
           padding: 14px 24px;
           display: flex; justify-content: space-between; align-items: center;
         }
         .nav-studio { display: flex; align-items: center; gap: 10px; }
         .nav-logo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
-        .nav-name { font-size: 14px; color: #6b6358; }
+        .nav-name { font-size: 14px; color: var(--text-muted); }
         .nav-back-arrow { margin-right: 4px; opacity: .6; }
         .nav-book {
           font-size: 13px; font-weight: 600;
           padding: 9px 20px; border-radius: 100px;
-          background: #1a1814; color: #f5f3ef;
+          background: var(--primary); color: var(--on-primary);
           letter-spacing: .01em;
           transition: opacity .15s;
         }
@@ -213,7 +219,7 @@ export default async function PublicPackageDetailPage({
           max-width: 760px; margin: 0 auto; width: 100%;
         }
         .hero-name {
-          font-family: Georgia, 'Times New Roman', serif;
+          font-family: var(--heading-font);
           font-size: clamp(32px, 5vw, 52px);
           font-weight: 400; line-height: 1.15;
           color: #fff; letter-spacing: -.01em;
@@ -225,10 +231,10 @@ export default async function PublicPackageDetailPage({
           display: inline-block; margin-top: 28px;
           font-size: 15px; font-weight: 600; letter-spacing: .01em;
           padding: 14px 32px; border-radius: 100px;
-          background: #c9a96e; color: #1a1814;
-          transition: background .15s;
+          background: var(--primary); color: var(--on-primary);
+          transition: opacity .15s;
         }
-        .hero-cta:hover { background: #d4ba85; }
+        .hero-cta:hover { opacity: .85; }
 
         /* No-cover header */
         .pkg-header {
@@ -237,7 +243,7 @@ export default async function PublicPackageDetailPage({
           text-align: center;
         }
         .pkg-header-name {
-          font-family: Georgia, 'Times New Roman', serif;
+          font-family: var(--heading-font);
           font-size: clamp(28px, 4vw, 46px);
           font-weight: 400; color: #fff;
           margin-bottom: 10px;
@@ -247,7 +253,7 @@ export default async function PublicPackageDetailPage({
           display: inline-block;
           font-size: 14px; font-weight: 600;
           padding: 12px 28px; border-radius: 100px;
-          background: #c9a96e; color: #1a1814;
+          background: var(--primary); color: var(--on-primary);
         }
 
         /* Content container */
@@ -256,36 +262,36 @@ export default async function PublicPackageDetailPage({
         /* Section label */
         .section-label {
           font-size: 10px; font-weight: 700; letter-spacing: .14em;
-          text-transform: uppercase; color: #c9a96e;
+          text-transform: uppercase; color: var(--primary);
           margin-bottom: 16px;
         }
 
         /* Stats bar */
         .stats-bar {
-          background: #fff;
-          border: 1px solid #ede9e1;
-          border-radius: 16px;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: var(--radius);
           padding: 24px 28px;
           margin-bottom: 16px;
         }
-        .stats-price { font-size: 32px; font-weight: 700; letter-spacing: -.02em; color: #1a1814; margin-bottom: 4px; }
-        .stats-price-label { font-size: 11px; color: #9c9187; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
-        .stats-grid { display: flex; gap: 32px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid #f0ede8; }
+        .stats-price { font-size: 32px; font-weight: 700; letter-spacing: -.02em; color: var(--text-main); margin-bottom: 4px; }
+        .stats-price-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+        .stats-grid { display: flex; gap: 32px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid var(--card-border); }
         .stat-item {}
-        .stat-value { font-size: 20px; font-weight: 600; color: #1a1814; line-height: 1; margin-bottom: 4px; }
-        .stat-label { font-size: 11px; color: #9c9187; text-transform: uppercase; letter-spacing: .06em; }
-        .stats-desc { font-size: 14px; color: #6b6358; line-height: 1.75; margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0ede8; }
+        .stat-value { font-size: 20px; font-weight: 600; color: var(--text-main); line-height: 1; margin-bottom: 4px; }
+        .stat-label { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+        .stats-desc { font-size: 14px; color: var(--text-muted); line-height: 1.75; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--card-border); }
 
         /* Inclusions card */
         .card {
-          background: #fff;
-          border: 1px solid #ede9e1;
-          border-radius: 16px;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: var(--radius);
           padding: 24px 28px;
           margin-bottom: 16px;
         }
         .inclusion-row { display: flex; align-items: flex-start; gap: 12px; padding: 6px 0; }
-        .inclusion-check { color: #c9a96e; font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+        .inclusion-check { color: var(--primary); font-size: 16px; flex-shrink: 0; margin-top: 1px; }
         .inclusion-text { font-size: 14px; color: #2a2520; line-height: 1.55; }
 
         .type-badge {
@@ -309,9 +315,9 @@ export default async function PublicPackageDetailPage({
 
         /* Content sections */
         .content-section {
-          background: #fff;
-          border: 1px solid #ede9e1;
-          border-radius: 16px;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: var(--radius);
           overflow: hidden;
           margin-bottom: 16px;
         }
@@ -325,11 +331,11 @@ export default async function PublicPackageDetailPage({
         }
         .section-body-pad { padding: 28px 32px; }
         .section-title {
-          font-family: Georgia, 'Times New Roman', serif;
-          font-size: 22px; font-weight: 400; color: #1a1814;
+          font-family: var(--heading-font);
+          font-size: 22px; font-weight: 400; color: var(--text-main);
           margin-bottom: 10px; line-height: 1.3;
         }
-        .section-text { font-size: 14px; color: #6b6358; line-height: 1.85; white-space: pre-line; }
+        .section-text { font-size: 14px; color: var(--text-muted); line-height: 1.85; white-space: pre-line; }
 
         /* Add-ons */
         .addon-row {
@@ -343,25 +349,26 @@ export default async function PublicPackageDetailPage({
 
         /* CTA */
         .cta-block {
-          background: #1a1814;
-          border-radius: 20px;
+          background: var(--primary-dim);
+          border: 1px solid var(--primary-border);
+          border-radius: var(--radius);
           padding: 48px 32px;
           text-align: center;
           margin-bottom: 20px;
         }
         .cta-title {
-          font-family: Georgia, 'Times New Roman', serif;
-          font-size: 28px; font-weight: 400; color: #fff;
+          font-family: var(--heading-font);
+          font-size: 28px; font-weight: 400; color: var(--text-main);
           margin-bottom: 8px;
         }
-        .cta-sub { font-size: 14px; color: rgba(255,255,255,.5); margin-bottom: 28px; }
+        .cta-sub { font-size: 14px; color: var(--text-muted); margin-bottom: 28px; }
         .cta-btn {
           display: inline-block; font-size: 15px; font-weight: 600;
           padding: 15px 36px; border-radius: 100px;
-          background: #c9a96e; color: #1a1814;
-          letter-spacing: .01em; transition: background .15s;
+          background: var(--primary); color: var(--on-primary);
+          letter-spacing: .01em; transition: opacity .15s;
         }
-        .cta-btn:hover { background: #d4ba85; }
+        .cta-btn:hover { opacity: .85; }
 
         /* Footer link */
         .footer-link { text-align: center; padding: 8px 0 24px; }

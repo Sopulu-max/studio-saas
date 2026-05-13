@@ -12,7 +12,7 @@ const bookingRequestSchema = z.object({
   phone:            z.string().min(7, 'Please enter a valid phone number'),
   email:            z.string().email('Please enter a valid email').optional().or(z.literal('')),
   session_type:     z.string().min(1, 'Please select a session type'),
-  service_type:     z.string().optional().default('photo'),
+  service_type:     z.string().optional().default(''),
   preferred_date:   z.string().min(1, 'Please select a preferred date'),
   outfits_count:    z.string().optional(),
   location_address: z.string().optional(),

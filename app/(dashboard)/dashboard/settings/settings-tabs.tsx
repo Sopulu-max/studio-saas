@@ -9,6 +9,7 @@ import StaffRolesForm from './staff-roles-form'
 import ContractTemplatesForm from './contract-templates-form'
 import SettingsForm from './settings-form'
 import TeamForm from './team-form'
+import ThemeForm from './theme-form'
 import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
 import type { ContractTemplate } from '@/app/actions/contract-templates'
 
@@ -22,13 +23,14 @@ type StaffMember = {
   user_id: string | null
 }
 
-type Tab = 'studio' | 'workflow' | 'contracts' | 'team'
+type Tab = 'studio' | 'appearance' | 'workflow' | 'contracts' | 'team'
 
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'studio',    label: 'Studio profile' },
-  { value: 'workflow',  label: 'Workflow' },
-  { value: 'contracts', label: 'Contracts' },
-  { value: 'team',      label: 'Team' },
+  { value: 'studio',     label: 'Studio profile' },
+  { value: 'appearance', label: 'Appearance' },
+  { value: 'workflow',   label: 'Workflow' },
+  { value: 'contracts',  label: 'Contracts' },
+  { value: 'team',       label: 'Team' },
 ]
 
 export default function SettingsTabs({
@@ -48,6 +50,7 @@ export default function SettingsTabs({
   timezone,
   logoUrl,
   siteUrl,
+  theme,
 }: {
   sessionTypes:        SessionTypeConfig[]
   serviceTypes:        ServiceTypeConfig[]
@@ -65,6 +68,7 @@ export default function SettingsTabs({
   timezone:  string
   logoUrl:   string | null
   siteUrl:   string
+  theme:     unknown
 }) {
   const [active, setActive] = useState<Tab>('studio')
 
@@ -107,6 +111,10 @@ export default function SettingsTabs({
           logoUrl={logoUrl}
           siteUrl={siteUrl}
         />
+      )}
+
+      {active === 'appearance' && (
+        <ThemeForm initial={theme} />
       )}
 
       {active === 'workflow' && (

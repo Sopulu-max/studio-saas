@@ -9,7 +9,7 @@ import { sendStatusUpdateEmail, sendBookingConfirmationEmail } from '@/lib/email
 const addSessionSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
   session_type: z.string().min(1, 'Session type is required'),
-  service_type: z.string().optional().default('photo'),
+  service_type: z.string().optional().default(''),
   session_date: z.string().min(1, 'Session date is required'),
   package_id: z.string().optional().default(''),
   outfits_count: z.string().optional().default(''),
@@ -349,7 +349,7 @@ export async function recordSelections(sessionId: string, count: number) {
   const selIdx        = sortedPipeline.findIndex(s => s.requires_selection_count)
   const nextStatus    = selIdx >= 0 && selIdx + 1 < sortedPipeline.length
     ? sortedPipeline[selIdx + 1].value
-    : 'editing' // safe fallback
+    : sortedPipeline[selIdx - 1]?.value ?? sortedPipeline[0]?.value ?? ''
 
   const { error } = await context.admin
     .from('bookings')
@@ -472,6 +472,10 @@ export async function updateSession(sessionId: string, form: {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
+  const studioRow   = await fetchStudio(context.admin, context.studioId)
+  const config      = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+  const activeSvcCfg = config.serviceTypes.find(t => t.value === form.service_type)
+
   // All ownership checks in parallel
   const [bookingOk, clientOk, pkgOk, photogOk, editorOk] = await Promise.all([
     ownsBooking(context.admin, context.studioId, sessionId),
@@ -490,7 +494,7 @@ export async function updateSession(sessionId: string, form: {
     client_id:        form.client_id,
     session_date:     form.session_date,
     session_type:     form.session_type,
-    service_type:     form.service_type      || 'photo',
+    service_type:     form.service_type      || config.serviceTypes[0]?.value || '',
     shoot_type:       form.shoot_type        || null,
     notes:            form.notes             || null,
     package_id:       form.package_id        || null,
@@ -509,8 +513,8 @@ export async function updateSession(sessionId: string, form: {
   if (updateError) return { error: updateError.message }
 
   // Replace crew assignments — delete all then re-insert
-  const isPhotoVideo = form.service_type === 'photo_video'
-  const rolesToDelete = isPhotoVideo
+  const hasVideoCrew  = activeSvcCfg?.has_video_crew ?? false
+  const rolesToDelete = hasVideoCrew
     ? ['photographer', 'editor', 'videographer', 'video_editor']
     : ['photographer', 'editor']
 
@@ -529,7 +533,7 @@ export async function updateSession(sessionId: string, form: {
     usedStaffIds.add(staffId)
   }
 
-  if (isPhotoVideo) {
+  if (hasVideoCrew) {
     addStaff(form.photographer_id, 'photographer')
     addStaff(form.editor_id, 'editor')
     addStaff(form.videographer_id, 'videographer')

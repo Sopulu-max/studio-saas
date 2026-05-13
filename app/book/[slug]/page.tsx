@@ -5,6 +5,7 @@ import type { StudioRow } from '@/lib/studio'
 import BookingForm from './booking-form'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { buildTheme, themeCssVars } from '@/lib/studio-theme'
 
 export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
@@ -61,13 +62,15 @@ export default async function PublicBookingPage({
 
   const { data: studioRaw } = await admin
     .from('studios')
-    .select('studio_id, name, email, slug, session_types, service_types, booking_statuses, logo_url')
+    .select('studio_id, name, email, slug, session_types, service_types, booking_statuses, logo_url, theme')
     .eq('slug', slug)
     .maybeSingle()
   const studio = studioRaw as unknown as StudioRow | null
   if (!studio) notFound()
 
-  const config = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types)
+  const config   = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types)
+  const theme    = buildTheme(studio.theme)
+  const cssVars  = themeCssVars(theme)
 
   type PublicService = {
     service_id:   string
@@ -148,33 +151,34 @@ export default async function PublicBookingPage({
   return (
     <>
       <style>{`
+        :root { ${cssVars} }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
         body {
           font-family: system-ui, -apple-system, sans-serif;
-          background: #f5f3ef;
-          color: #1a1a1a;
+          background: var(--bg);
+          color: var(--text-main);
           -webkit-font-smoothing: antialiased;
         }
         a { color: inherit; text-decoration: none; }
         input, select, textarea, button {
           font-family: inherit;
           font-size: 14px;
-          border: 1px solid #ddd8cf;
-          border-radius: 10px;
+          border: 1px solid var(--card-border);
+          border-radius: var(--radius-sm);
           padding: 10px 13px;
           outline: none;
-          color: #1a1a1a;
-          background: #fff;
+          color: var(--text-main);
+          background: var(--card-bg);
           transition: border-color .15s, box-shadow .15s;
         }
         button { display: block; white-space: normal; text-align: center; }
         input:focus, select:focus, textarea:focus {
-          border-color: #c9a96e;
-          box-shadow: 0 0 0 3px rgba(201,169,110,.12);
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px var(--primary-dim);
         }
-        input::placeholder, textarea::placeholder { color: #c4bdb4; }
-        select option { background: #fff; }
+        input::placeholder, textarea::placeholder { color: var(--text-faint); }
+        select option { background: var(--card-bg); }
       `}</style>
 
       <div style={{ minHeight: '100vh', paddingBottom: '80px' }}>
@@ -182,10 +186,10 @@ export default async function PublicBookingPage({
         {/* Sticky nav */}
         <header style={{
           position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(245,243,239,.9)',
+          background: 'var(--nav-bg)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(201,169,110,.2)',
+          borderBottom: '1px solid var(--primary-border)',
           padding: '0 1.5rem',
           height: '56px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -217,35 +221,35 @@ export default async function PublicBookingPage({
                   boxShadow: '0 4px 16px rgba(0,0,0,.08)',
                 }} />
             )}
-            <p style={{ fontSize: '11px', color: '#c9a96e', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>
+            <p style={{ fontSize: '11px', color: 'var(--primary)', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>
               Book a session
             </p>
             <h1 style={{
-              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontFamily: 'var(--heading-font)',
               fontSize: '28px', fontWeight: '400', letterSpacing: '-.01em',
-              lineHeight: '1.2', color: '#1a1a1a', marginBottom: '16px',
+              lineHeight: '1.2', color: 'var(--text-main)', marginBottom: '16px',
             }}>
               {studio.name}
             </h1>
-            {/* Gold rule */}
+            {/* Rule */}
             <div style={{
               width: '40px', height: '1px', margin: '0 auto',
-              background: 'linear-gradient(90deg, #c9a96e 0%, #e8d5a3 50%, #c9a96e 100%)',
+              background: 'var(--rule)',
             }} />
           </div>
 
           {/* Form card */}
           <div style={{
-            background: '#fff',
-            border: '1px solid #e8e3da',
-            borderRadius: '20px',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--card-border)',
+            borderRadius: 'var(--radius)',
             padding: '28px 28px 32px',
             boxShadow: '0 2px 20px rgba(0,0,0,.04)',
           }}>
             <BookingForm
               studioId={studio.studio_id}
               studioName={studio.name ?? ''}
-              sessionTypes={config.sessionTypes.map(t => ({ value: t.value, label: t.label }))}
+              sessionTypes={config.sessionTypes.map(t => ({ value: t.value, label: t.label, is_event: t.is_event }))}
               serviceTypes={config.serviceTypes.map(t => ({
                 value:          t.value,
                 label:          t.label,

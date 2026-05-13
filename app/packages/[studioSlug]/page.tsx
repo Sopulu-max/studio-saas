@@ -2,6 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
+import { buildTheme, themeCssVars } from '@/lib/studio-theme'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -10,6 +11,7 @@ type StudioMeta = {
   name:      string | null
   slug:      string | null
   logo_url:  string | null
+  theme?:    unknown
 }
 
 type PublicPackage = {
@@ -61,11 +63,14 @@ export default async function PublicPackageCatalogPage({
 
   const { data: studioRaw } = await admin
     .from('studios')
-    .select('studio_id, name, slug, logo_url')
+    .select('studio_id, name, slug, logo_url, theme')
     .eq('slug', studioSlug)
     .maybeSingle()
   const studio = studioRaw as unknown as StudioMeta | null
   if (!studio) notFound()
+
+  const theme   = buildTheme(studio.theme)
+  const cssVars = themeCssVars(theme)
 
   const { data: packagesRaw } = await admin
     .from('packages')
@@ -80,20 +85,21 @@ export default async function PublicPackageCatalogPage({
   return (
     <>
       <style>{`
+        :root { ${cssVars} }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         html { scroll-behavior: smooth; }
         body {
           font-family: system-ui, -apple-system, sans-serif;
-          background: #f5f3ef;
-          color: #1a1a1a;
+          background: var(--bg);
+          color: var(--text-main);
           -webkit-font-smoothing: antialiased;
         }
         a { color: inherit; text-decoration: none; }
 
         .pkg-card {
-          background: #fff;
-          border: 1px solid #e8e3da;
-          border-radius: 16px;
+          background: var(--card-bg);
+          border: 1px solid var(--card-border);
+          border-radius: var(--radius);
           overflow: hidden;
           display: block;
           transition: transform .2s ease, box-shadow .2s ease;
@@ -103,20 +109,20 @@ export default async function PublicPackageCatalogPage({
           box-shadow: 0 12px 40px rgba(0,0,0,.1);
         }
         .pkg-card:hover .pkg-cta {
-          background: #b8943a;
+          opacity: .85;
         }
         .pkg-cta {
           display: block;
           width: 100%;
           text-align: center;
           padding: 11px 16px;
-          border-radius: 10px;
-          background: #c9a96e;
-          color: #fff;
+          border-radius: var(--radius-sm);
+          background: var(--primary);
+          color: var(--on-primary);
           font-size: 13px;
           font-weight: 600;
           letter-spacing: .03em;
-          transition: background .2s;
+          transition: opacity .2s;
         }
 
         @media (max-width: 640px) {
@@ -130,10 +136,10 @@ export default async function PublicPackageCatalogPage({
         {/* ── Sticky nav ───────────────────────────────────────── */}
         <header style={{
           position: 'sticky', top: 0, zIndex: 50,
-          background: 'rgba(245, 243, 239, 0.88)',
+          background: 'var(--nav-bg)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(201,169,110,.25)',
+          borderBottom: '1px solid var(--primary-border)',
           padding: '0 1.5rem',
           height: '60px',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -152,7 +158,7 @@ export default async function PublicPackageCatalogPage({
             href={`/book/${studioSlug}`}
             style={{
               fontSize: '13px', fontWeight: '600', padding: '8px 18px',
-              background: '#1a1a1a', color: '#fff', borderRadius: '8px',
+              background: 'var(--primary)', color: 'var(--on-primary)', borderRadius: '8px',
               letterSpacing: '.02em',
             }}
           >
@@ -163,25 +169,25 @@ export default async function PublicPackageCatalogPage({
         {/* ── Hero ─────────────────────────────────────────────── */}
         <div style={{ maxWidth: '760px', margin: '0 auto', padding: '72px 20px 56px', textAlign: 'center' }}>
           <p style={{
-            fontSize: '11px', color: '#c9a96e', letterSpacing: '.14em',
+            fontSize: '11px', color: 'var(--primary)', letterSpacing: '.14em',
             textTransform: 'uppercase', fontWeight: '600', marginBottom: '18px',
           }}>
             {studio.name}
           </p>
           <h1 className="hero-title" style={{
-            fontFamily: 'Georgia, "Times New Roman", serif',
+            fontFamily: 'var(--heading-font)',
             fontSize: '38px', fontWeight: '400', letterSpacing: '-.02em',
-            lineHeight: '1.15', color: '#1a1a1a', marginBottom: '18px',
+            lineHeight: '1.15', color: 'var(--text-main)', marginBottom: '18px',
           }}>
             Our Packages
           </h1>
-          {/* gold rule */}
+          {/* rule */}
           <div style={{
             width: '48px', height: '1px', margin: '0 auto 20px',
-            background: 'linear-gradient(90deg, #c9a96e 0%, #e8d5a3 50%, #c9a96e 100%)',
+            background: 'var(--rule)',
           }} />
           <p style={{
-            fontSize: '15px', color: '#5a5650', maxWidth: '440px',
+            fontSize: '15px', color: 'var(--text-muted)', maxWidth: '440px',
             margin: '0 auto', lineHeight: '1.7',
           }}>
             Choose a package below to see what&apos;s included, then book your session online.
@@ -236,7 +242,7 @@ export default async function PublicPackageCatalogPage({
                     {/* Category pill */}
                     {pkg.shoot_type && (
                       <p style={{
-                        fontSize: '10px', color: '#c9a96e', fontWeight: '600',
+                        fontSize: '10px', color: 'var(--primary)', fontWeight: '600',
                         letterSpacing: '.1em', textTransform: 'uppercase',
                         marginBottom: '8px',
                       }}>
@@ -245,16 +251,16 @@ export default async function PublicPackageCatalogPage({
                     )}
 
                     <h2 style={{
-                      fontFamily: 'Georgia, "Times New Roman", serif',
+                      fontFamily: 'var(--heading-font)',
                       fontSize: '20px', fontWeight: '400', lineHeight: '1.25',
-                      color: '#1a1a1a', marginBottom: '8px',
+                      color: 'var(--text-main)', marginBottom: '8px',
                     }}>
                       {pkg.name}
                     </h2>
 
                     {(pkg.tagline || pkg.description) && (
                       <p style={{
-                        fontSize: '13px', color: '#6b6660', lineHeight: '1.6',
+                        fontSize: '13px', color: 'var(--text-muted)', lineHeight: '1.6',
                         marginBottom: '18px',
                         overflow: 'hidden',
                         display: '-webkit-box',
@@ -269,30 +275,30 @@ export default async function PublicPackageCatalogPage({
                     <div style={{
                       display: 'flex', gap: '20px', flexWrap: 'wrap',
                       paddingBottom: '18px', marginBottom: '18px',
-                      borderBottom: '1px solid #f0ece4',
+                      borderBottom: '1px solid var(--card-border)',
                     }}>
                       <div>
-                        <p style={{ fontSize: '10px', color: '#a09890', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Price</p>
-                        <p style={{ fontSize: '19px', fontWeight: '700', color: '#1a1a1a', letterSpacing: '-.01em' }}>
+                        <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Price</p>
+                        <p style={{ fontSize: '19px', fontWeight: '700', color: 'var(--text-main)', letterSpacing: '-.01em' }}>
                           ₦{Number(pkg.base_price ?? 0).toLocaleString()}
                         </p>
                       </div>
                       {pkg.duration_mins != null && (
                         <div>
-                          <p style={{ fontSize: '10px', color: '#a09890', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Duration</p>
-                          <p style={{ fontSize: '19px', fontWeight: '600', color: '#1a1a1a' }}>{pkg.duration_mins} mins</p>
+                          <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Duration</p>
+                          <p style={{ fontSize: '19px', fontWeight: '600', color: 'var(--text-main)' }}>{pkg.duration_mins} mins</p>
                         </div>
                       )}
                       {pkg.outfits_count != null && (
                         <div>
-                          <p style={{ fontSize: '10px', color: '#a09890', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Outfits</p>
-                          <p style={{ fontSize: '19px', fontWeight: '600', color: '#1a1a1a' }}>{pkg.outfits_count}</p>
+                          <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Outfits</p>
+                          <p style={{ fontSize: '19px', fontWeight: '600', color: 'var(--text-main)' }}>{pkg.outfits_count}</p>
                         </div>
                       )}
                       {pkg.edited_photos != null && (
                         <div>
-                          <p style={{ fontSize: '10px', color: '#a09890', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Photos</p>
-                          <p style={{ fontSize: '19px', fontWeight: '600', color: '#1a1a1a' }}>{pkg.edited_photos}</p>
+                          <p style={{ fontSize: '10px', color: 'var(--text-faint)', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Photos</p>
+                          <p style={{ fontSize: '19px', fontWeight: '600', color: 'var(--text-main)' }}>{pkg.edited_photos}</p>
                         </div>
                       )}
                     </div>
