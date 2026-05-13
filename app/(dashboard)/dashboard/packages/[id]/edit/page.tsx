@@ -23,7 +23,7 @@ type EditPackageRecord = {
   is_public?:           boolean | null
   display_order?:       number | null
   package_addons?:      { name?: string | null; description?: string | null; price?: number | string | null }[] | null
-  package_sections?:    { section_id: string; title: string; body?: string | null; image_url?: string | null; display_order: number }[] | null
+  package_sections?:    { section_id: string; title: string; body?: string | null; image_url?: string | null; video_url?: string | null; display_order: number }[] | null
   package_inclusions?:  { inclusion_id: string; label: string; type: string; display_order: number }[] | null
 }
 
@@ -52,7 +52,7 @@ export default async function EditPackagePage({ params }: { params: Promise<{ id
   const [{ data: pkgRaw }, { data: servicesRaw }, { data: pkgServicesRaw }, { data: templatesRaw }] = await Promise.all([
     context.admin
       .from('packages')
-      .select('*, package_addons(*), package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
+      .select('*, package_addons(*), package_sections(section_id, title, body, image_url, video_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
       .eq('package_id', id)
       .eq('studio_id', context.studioId)
       .single(),

@@ -4,6 +4,16 @@ import PackageActions from './package-actions'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig } from '@/lib/studio-config'
 
+function parseVideo(url: string | null | undefined): { type: 'iframe' | 'video'; src: string } | null {
+  if (!url?.trim()) return null
+  const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/)
+  if (yt) return { type: 'iframe', src: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1` }
+  const vimeo = url.match(/vimeo\.com\/(\d+)/)
+  if (vimeo) return { type: 'iframe', src: `https://player.vimeo.com/video/${vimeo[1]}?byline=0&portrait=0&title=0&dnt=1` }
+  if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) return { type: 'video', src: url }
+  return null
+}
+
 type PackageAddon = {
   addon_id: string
   name: string
@@ -16,6 +26,7 @@ type PackageSection = {
   title:         string
   body?:         string | null
   image_url?:    string | null
+  video_url?:    string | null
   display_order: number
 }
 
@@ -93,7 +104,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
     fetchStudio(context.admin, context.studioId),
     context.admin
       .from('packages')
-      .select('*, package_addons(*), package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
+      .select('*, package_addons(*), package_sections(section_id, title, body, image_url, video_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
       .eq('package_id', id)
       .eq('studio_id', context.studioId)
       .single(),
@@ -364,23 +375,44 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {/* Content sections */}
-      {sections.length > 0 && sections.map((sec) => (
-        <div key={sec.section_id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
-          {sec.image_url && (
-            <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
-              <img src={sec.image_url} alt={sec.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+      {sections.length > 0 && sections.map((sec) => {
+        const videoInfo = parseVideo(sec.video_url)
+        return (
+          <div key={sec.section_id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+            {videoInfo ? (
+              <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: '#000' }}>
+                {videoInfo.type === 'iframe' ? (
+                  <iframe
+                    src={videoInfo.src}
+                    style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+                    allow="autoplay; fullscreen; picture-in-picture"
+                    allowFullScreen
+                  />
+                ) : (
+                  <video
+                    src={videoInfo.src}
+                    poster={sec.image_url ?? undefined}
+                    controls
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                )}
+              </div>
+            ) : sec.image_url ? (
+              <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
+                <img src={sec.image_url} alt={sec.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              </div>
+            ) : null}
+            <div style={{ padding: '1.25rem' }}>
+              {sec.title && (
+                <p style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 8px' }}>{sec.title}</p>
+              )}
+              {sec.body && (
+                <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: 0, lineHeight: '1.65', whiteSpace: 'pre-line' }}>{sec.body}</p>
+              )}
             </div>
-          )}
-          <div style={{ padding: '1.25rem' }}>
-            {sec.title && (
-              <p style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 8px' }}>{sec.title}</p>
-            )}
-            {sec.body && (
-              <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: 0, lineHeight: '1.65', whiteSpace: 'pre-line' }}>{sec.body}</p>
-            )}
           </div>
-        </div>
-      ))}
+        )
+      })}
 
       <PackageActions packageId={id} />
     </div>

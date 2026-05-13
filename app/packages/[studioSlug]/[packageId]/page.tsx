@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 
-// ─── Types ──────────────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 type StudioMeta = {
   studio_id: string
@@ -17,6 +17,7 @@ type PublicSection = {
   title:         string
   body?:         string | null
   image_url?:    string | null
+  video_url?:    string | null
   display_order: number
 }
 
@@ -67,15 +68,19 @@ type PublicPackage = {
   package_services?:   PublicPkgService[] | null
 }
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
+// ─── Video embed helper ───────────────────────────────────────────────────────
 
-const INCLUSION_TYPE_META: Record<string, { label: string; icon: string; bg: string; color: string }> = {
-  service: { label: 'Service',  icon: '🎯', bg: '#eeedfe', color: '#534ab7' },
-  product: { label: 'Product',  icon: '📦', bg: '#faeeda', color: '#854f0b' },
-  digital: { label: 'Digital',  icon: '💻', bg: '#e6f1fb', color: '#185fa5' },
+function parseVideo(url: string | null | undefined): { type: 'iframe' | 'video'; src: string } | null {
+  if (!url?.trim()) return null
+  const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/)
+  if (yt) return { type: 'iframe', src: `https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1&color=white` }
+  const vimeo = url.match(/vimeo\.com\/(\d+)/)
+  if (vimeo) return { type: 'iframe', src: `https://player.vimeo.com/video/${vimeo[1]}?byline=0&portrait=0&title=0&dnt=1` }
+  if (/\.(mp4|webm|ogg|mov)(\?|$)/i.test(url)) return { type: 'video', src: url }
+  return null
 }
 
-// ─── SEO ────────────────────────────────────────────────────────────────────
+// ─── SEO ─────────────────────────────────────────────────────────────────────
 
 export async function generateMetadata(
   { params }: { params: Promise<{ studioSlug: string; packageId: string }> }
@@ -104,7 +109,7 @@ export async function generateMetadata(
   }
 }
 
-// ─── Page ────────────────────────────────────────────────────────────────────
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default async function PublicPackageDetailPage({
   params,
@@ -118,7 +123,7 @@ export default async function PublicPackageDetailPage({
     admin.from('studios').select('studio_id, name, slug, logo_url').eq('slug', studioSlug).maybeSingle(),
     admin
       .from('packages')
-      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
+      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, video_url, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
       .eq('package_id', packageId)
       .maybeSingle(),
   ])
@@ -129,304 +134,465 @@ export default async function PublicPackageDetailPage({
   const pkg = pkgRaw as unknown as PublicPackage | null
   if (!pkg || pkg.is_public === false) notFound()
 
-  // Sort / split related data
   const sections        = [...(pkg.package_sections   ?? [])].sort((a, b) => a.display_order - b.display_order)
   const typedInclusions = [...(pkg.package_inclusions ?? [])].sort((a, b) => a.display_order - b.display_order)
   const textAddons      = pkg.package_addons ?? []
+  const pkgServices     = [...(pkg.package_services ?? [])].sort((a, b) => a.display_order - b.display_order)
+  const includedCatalog = pkgServices.filter(s => !s.is_addon && s.services)
+  const addonCatalog    = pkgServices.filter(s =>  s.is_addon && s.services)
+  const price           = Number(pkg.base_price ?? 0)
 
-  const pkgServices      = [...(pkg.package_services ?? [])].sort((a, b) => a.display_order - b.display_order)
-  const includedCatalog  = pkgServices.filter(s => !s.is_addon && s.services)
-  const addonCatalog     = pkgServices.filter(s => s.is_addon  && s.services)
+  const stats = [
+    pkg.duration_mins  != null ? { label: 'Duration',      value: `${pkg.duration_mins} mins` }  : null,
+    pkg.outfits_count  != null ? { label: 'Outfits',        value: String(pkg.outfits_count) }    : null,
+    pkg.edited_photos  != null ? { label: 'Edited photos',  value: String(pkg.edited_photos) }    : null,
+    pkg.coverage_hours != null ? { label: 'Coverage',       value: `${pkg.coverage_hours}h` }     : null,
+  ].filter(Boolean) as { label: string; value: string }[]
 
-  const price = Number(pkg.base_price ?? 0)
+  const hasInclusions  = (pkg.inclusions ?? []).length > 0 || typedInclusions.length > 0 || includedCatalog.length > 0
+  const hasAddons      = textAddons.length > 0 || addonCatalog.length > 0
 
   return (
     <>
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f7f7f5; color: #111; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+          font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+          background: #f5f3ef;
+          color: #1a1814;
+          -webkit-font-smoothing: antialiased;
+        }
         a { color: inherit; text-decoration: none; }
+        img { display: block; max-width: 100%; }
+
+        /* Nav */
+        .nav {
+          position: sticky; top: 0; z-index: 100;
+          background: rgba(255,255,255,0.95);
+          backdrop-filter: blur(12px);
+          border-bottom: 1px solid #ede9e1;
+          padding: 14px 24px;
+          display: flex; justify-content: space-between; align-items: center;
+        }
+        .nav-studio { display: flex; align-items: center; gap: 10px; }
+        .nav-logo { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+        .nav-name { font-size: 14px; color: #6b6358; }
+        .nav-back-arrow { margin-right: 4px; opacity: .6; }
+        .nav-book {
+          font-size: 13px; font-weight: 600;
+          padding: 9px 20px; border-radius: 100px;
+          background: #1a1814; color: #f5f3ef;
+          letter-spacing: .01em;
+          transition: opacity .15s;
+        }
+        .nav-book:hover { opacity: .85; }
+
+        /* Hero */
+        .hero {
+          position: relative;
+          width: 100%;
+          min-height: 68vh;
+          display: flex; flex-direction: column; justify-content: flex-end;
+          overflow: hidden;
+          background: #1a1814;
+        }
+        .hero-img {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+          object-fit: cover;
+          opacity: .75;
+        }
+        .hero-overlay {
+          position: absolute; inset: 0;
+          background: linear-gradient(to top, rgba(15,13,10,.9) 0%, rgba(15,13,10,.3) 60%, transparent 100%);
+        }
+        .hero-content {
+          position: relative; z-index: 1;
+          padding: 56px 32px 48px;
+          max-width: 760px; margin: 0 auto; width: 100%;
+        }
+        .hero-name {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: clamp(32px, 5vw, 52px);
+          font-weight: 400; line-height: 1.15;
+          color: #fff; letter-spacing: -.01em;
+          margin-bottom: 12px;
+        }
+        .hero-tagline { font-size: 16px; color: rgba(255,255,255,.7); line-height: 1.6; margin-bottom: 28px; max-width: 520px; }
+        .hero-price { font-size: 28px; font-weight: 700; color: #fff; letter-spacing: -.01em; }
+        .hero-cta {
+          display: inline-block; margin-top: 28px;
+          font-size: 15px; font-weight: 600; letter-spacing: .01em;
+          padding: 14px 32px; border-radius: 100px;
+          background: #c9a96e; color: #1a1814;
+          transition: background .15s;
+        }
+        .hero-cta:hover { background: #d4ba85; }
+
+        /* No-cover header */
+        .pkg-header {
+          background: #1a1814;
+          padding: 64px 24px 48px;
+          text-align: center;
+        }
+        .pkg-header-name {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: clamp(28px, 4vw, 46px);
+          font-weight: 400; color: #fff;
+          margin-bottom: 10px;
+        }
+        .pkg-header-tagline { font-size: 16px; color: rgba(255,255,255,.6); margin-bottom: 24px; }
+        .pkg-header-cta {
+          display: inline-block;
+          font-size: 14px; font-weight: 600;
+          padding: 12px 28px; border-radius: 100px;
+          background: #c9a96e; color: #1a1814;
+        }
+
+        /* Content container */
+        .container { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+
+        /* Section label */
+        .section-label {
+          font-size: 10px; font-weight: 700; letter-spacing: .14em;
+          text-transform: uppercase; color: #c9a96e;
+          margin-bottom: 16px;
+        }
+
+        /* Stats bar */
+        .stats-bar {
+          background: #fff;
+          border: 1px solid #ede9e1;
+          border-radius: 16px;
+          padding: 24px 28px;
+          margin-bottom: 16px;
+        }
+        .stats-price { font-size: 32px; font-weight: 700; letter-spacing: -.02em; color: #1a1814; margin-bottom: 4px; }
+        .stats-price-label { font-size: 11px; color: #9c9187; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+        .stats-grid { display: flex; gap: 32px; flex-wrap: wrap; padding-top: 16px; border-top: 1px solid #f0ede8; }
+        .stat-item {}
+        .stat-value { font-size: 20px; font-weight: 600; color: #1a1814; line-height: 1; margin-bottom: 4px; }
+        .stat-label { font-size: 11px; color: #9c9187; text-transform: uppercase; letter-spacing: .06em; }
+        .stats-desc { font-size: 14px; color: #6b6358; line-height: 1.75; margin-top: 16px; padding-top: 16px; border-top: 1px solid #f0ede8; }
+
+        /* Inclusions card */
+        .card {
+          background: #fff;
+          border: 1px solid #ede9e1;
+          border-radius: 16px;
+          padding: 24px 28px;
+          margin-bottom: 16px;
+        }
+        .inclusion-row { display: flex; align-items: flex-start; gap: 12px; padding: 6px 0; }
+        .inclusion-check { color: #c9a96e; font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+        .inclusion-text { font-size: 14px; color: #2a2520; line-height: 1.55; }
+
+        .type-badge {
+          font-size: 11px; padding: 3px 10px; border-radius: 100px;
+          font-weight: 600; white-space: nowrap; flex-shrink: 0;
+        }
+        .deliverable-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; }
+        .deliverable-text { font-size: 14px; color: #2a2520; }
+
+        /* Catalog services */
+        .service-row {
+          display: flex; justify-content: space-between; align-items: center;
+          gap: 12px; padding: 12px 0;
+          border-bottom: 1px solid #f5f2ec;
+        }
+        .service-row:last-child { border-bottom: none; }
+        .service-name { font-size: 14px; font-weight: 500; color: #1a1814; }
+        .service-desc { font-size: 12px; color: #9c9187; margin-top: 2px; }
+        .service-price { font-size: 14px; font-weight: 600; color: #1a1814; flex-shrink: 0; }
+        .service-included { font-size: 13px; font-weight: 600; color: #6a8c4f; flex-shrink: 0; }
+
+        /* Content sections */
+        .content-section {
+          background: #fff;
+          border: 1px solid #ede9e1;
+          border-radius: 16px;
+          overflow: hidden;
+          margin-bottom: 16px;
+        }
+        .media-wrap {
+          width: 100%; aspect-ratio: 16/9; overflow: hidden; background: #0f0d0a;
+          position: relative;
+        }
+        .media-wrap img { width: 100%; height: 100%; object-fit: cover; }
+        .media-wrap iframe, .media-wrap video {
+          width: 100%; height: 100%; border: none; display: block;
+        }
+        .section-body-pad { padding: 28px 32px; }
+        .section-title {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 22px; font-weight: 400; color: #1a1814;
+          margin-bottom: 10px; line-height: 1.3;
+        }
+        .section-text { font-size: 14px; color: #6b6358; line-height: 1.85; white-space: pre-line; }
+
+        /* Add-ons */
+        .addon-row {
+          display: flex; justify-content: space-between; align-items: center;
+          gap: 16px; padding: 14px 0; border-bottom: 1px solid #f5f2ec;
+        }
+        .addon-row:last-child { border-bottom: none; }
+        .addon-name { font-size: 14px; font-weight: 500; }
+        .addon-desc { font-size: 12px; color: #9c9187; margin-top: 2px; }
+        .addon-price { font-size: 15px; font-weight: 600; color: #1a1814; flex-shrink: 0; }
+
+        /* CTA */
+        .cta-block {
+          background: #1a1814;
+          border-radius: 20px;
+          padding: 48px 32px;
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .cta-title {
+          font-family: Georgia, 'Times New Roman', serif;
+          font-size: 28px; font-weight: 400; color: #fff;
+          margin-bottom: 8px;
+        }
+        .cta-sub { font-size: 14px; color: rgba(255,255,255,.5); margin-bottom: 28px; }
+        .cta-btn {
+          display: inline-block; font-size: 15px; font-weight: 600;
+          padding: 15px 36px; border-radius: 100px;
+          background: #c9a96e; color: #1a1814;
+          letter-spacing: .01em; transition: background .15s;
+        }
+        .cta-btn:hover { background: #d4ba85; }
+
+        /* Footer link */
+        .footer-link { text-align: center; padding: 8px 0 24px; }
+        .footer-link a { font-size: 13px; color: #9c9187; }
+        .powered { text-align: center; font-size: 11px; color: #ccc; padding-bottom: 8px; }
+
+        @media (max-width: 600px) {
+          .hero-content { padding: 40px 20px 40px; }
+          .stats-bar, .card { padding: 20px; }
+          .section-body-pad { padding: 20px 20px; }
+          .cta-block { padding: 36px 20px; }
+        }
       `}</style>
 
-      <div style={{ minHeight: '100vh', paddingBottom: '100px' }}>
-
-        {/* Sticky header */}
-        <div style={{ background: 'white', borderBottom: '0.5px solid #e5e5e5', padding: '1rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 50 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {studio.logo_url && (
-              <img src={studio.logo_url} alt={studio.name ?? ''} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '0.5px solid #e5e5e5' }} />
-            )}
-            <Link href={`/packages/${studioSlug}`} style={{ fontSize: '14px', color: '#666' }}>
-              ← {studio.name}
-            </Link>
-          </div>
-          <Link
-            href={`/book/${studioSlug}?package=${packageId}`}
-            style={{ fontSize: '13px', fontWeight: '500', padding: '8px 16px', background: '#111', color: 'white', borderRadius: '8px' }}
-          >
-            Book now →
+      {/* ── Nav ── */}
+      <nav className="nav">
+        <div className="nav-studio">
+          {studio.logo_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={studio.logo_url} alt={studio.name ?? ''} className="nav-logo" />
+          )}
+          <Link href={`/packages/${studioSlug}`} className="nav-name">
+            <span className="nav-back-arrow">←</span>{studio.name}
           </Link>
         </div>
+        <Link href={`/book/${studioSlug}?package=${packageId}`} className="nav-book">
+          Book now →
+        </Link>
+      </nav>
 
-        {/* Cover hero */}
-        {pkg.cover_url && (
-          <div style={{ width: '100%', maxHeight: '480px', overflow: 'hidden' }}>
-            <img src={pkg.cover_url} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', maxHeight: '480px' }} />
+      {/* ── Hero ── */}
+      {pkg.cover_url ? (
+        <div className="hero">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={pkg.cover_url} alt={pkg.name} className="hero-img" />
+          <div className="hero-overlay" />
+          <div className="hero-content">
+            <h1 className="hero-name">{pkg.name}</h1>
+            {pkg.tagline && <p className="hero-tagline">{pkg.tagline}</p>}
+            <p className="hero-price">₦{price.toLocaleString()}</p>
+            <Link href={`/book/${studioSlug}?package=${packageId}`} className="hero-cta">
+              Book this package →
+            </Link>
           </div>
-        )}
+        </div>
+      ) : (
+        <div className="pkg-header">
+          <h1 className="pkg-header-name">{pkg.name}</h1>
+          {pkg.tagline && <p className="pkg-header-tagline">{pkg.tagline}</p>}
+          <Link href={`/book/${studioSlug}?package=${packageId}`} className="pkg-header-cta">
+            Book now — ₦{price.toLocaleString()} →
+          </Link>
+        </div>
+      )}
 
-        <div style={{ maxWidth: '720px', margin: '0 auto', padding: '40px 20px 0' }}>
+      {/* ── Content ── */}
+      <div className="container">
 
-          {/* Title + tagline */}
-          <div style={{ marginBottom: '32px' }}>
-            <h1 style={{ fontSize: '30px', fontWeight: '700', letterSpacing: '-.02em', marginBottom: '8px', lineHeight: '1.2' }}>
-              {pkg.name}
-            </h1>
-            {pkg.tagline && (
-              <p style={{ fontSize: '16px', color: '#555', lineHeight: '1.6' }}>{pkg.tagline}</p>
-            )}
-          </div>
-
-          {/* Price + key stats */}
-          <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', padding: '22px 24px', marginBottom: '20px' }}>
-            <div style={{ display: 'flex', gap: '28px', flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: pkg.description ? '18px' : '0' }}>
-              <div>
-                <p style={{ fontSize: '11px', color: '#999', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Price</p>
-                <p style={{ fontSize: '28px', fontWeight: '700', letterSpacing: '-.01em' }}>₦{price.toLocaleString()}</p>
-              </div>
-              {pkg.duration_mins != null && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#999', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Duration</p>
-                  <p style={{ fontSize: '20px', fontWeight: '600' }}>{pkg.duration_mins} mins</p>
-                </div>
-              )}
-              {pkg.outfits_count != null && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#999', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Outfits</p>
-                  <p style={{ fontSize: '20px', fontWeight: '600' }}>{pkg.outfits_count}</p>
-                </div>
-              )}
-              {pkg.edited_photos != null && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#999', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Edited photos</p>
-                  <p style={{ fontSize: '20px', fontWeight: '600' }}>{pkg.edited_photos}</p>
-                </div>
-              )}
-              {pkg.coverage_hours != null && (
-                <div>
-                  <p style={{ fontSize: '11px', color: '#999', marginBottom: '3px', textTransform: 'uppercase', letterSpacing: '.04em' }}>Coverage</p>
-                  <p style={{ fontSize: '20px', fontWeight: '600' }}>{pkg.coverage_hours}h</p>
-                </div>
-              )}
-            </div>
-            {pkg.description && (
-              <p style={{ fontSize: '14px', color: '#555', lineHeight: '1.7', borderTop: '0.5px solid #f0f0f0', paddingTop: '16px' }}>{pkg.description}</p>
-            )}
-          </div>
-
-          {/* What's included — text bullets */}
-          {(pkg.inclusions ?? []).length > 0 && (
-            <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', padding: '22px 24px', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>
-                What&apos;s included
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {(pkg.inclusions ?? []).map((item: string, i: number) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px' }}>
-                    <span style={{ color: '#22c55e', fontSize: '15px', flexShrink: 0, marginTop: '1px' }}>✓</span>
-                    <span style={{ fontSize: '14px', color: '#333', lineHeight: '1.5' }}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Catalog services — included */}
-          {includedCatalog.length > 0 && (
-            <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', padding: '22px 24px', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>
-                Included services &amp; products
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {includedCatalog.map(ps => {
-                  const svc  = ps.services!
-                  const meta = INCLUSION_TYPE_META[svc.type] ?? INCLUSION_TYPE_META.service
-                  return (
-                    <div key={ps.service_id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <span style={{
-                          fontSize: '11px', padding: '3px 9px', borderRadius: '20px',
-                          background: meta.bg, color: meta.color, fontWeight: '600', flexShrink: 0,
-                        }}>
-                          {meta.icon} {meta.label}
-                        </span>
-                        <div>
-                          <p style={{ fontSize: '14px', color: '#333', margin: 0, fontWeight: '500' }}>{svc.name}</p>
-                          {svc.description && (
-                            <p style={{ fontSize: '12px', color: '#888', margin: '1px 0 0' }}>{svc.description}</p>
-                          )}
-                        </div>
-                      </div>
-                      {svc.price != null && (
-                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#22c55e', flexShrink: 0 }}>
-                          Included
-                        </p>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Typed deliverables */}
-          {typedInclusions.length > 0 && (
-            <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', padding: '22px 24px', marginBottom: '20px' }}>
-              <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '14px' }}>
-                Deliverables
-              </h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {typedInclusions.map(inc => {
-                  const meta = INCLUSION_TYPE_META[inc.type] ?? INCLUSION_TYPE_META.service
-                  return (
-                    <div key={inc.inclusion_id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{
-                        fontSize: '11px', padding: '3px 9px', borderRadius: '20px',
-                        background: meta.bg, color: meta.color, fontWeight: '600', flexShrink: 0, whiteSpace: 'nowrap',
-                      }}>
-                        {meta.icon} {meta.label}
-                      </span>
-                      <span style={{ fontSize: '14px', color: '#333' }}>{inc.label}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Content sections */}
-          {sections.map(sec => (
-            <div key={sec.section_id} style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', overflow: 'hidden', marginBottom: '20px' }}>
-              {sec.image_url && (
-                <div style={{ width: '100%', overflow: 'hidden' }}>
-                  <img src={sec.image_url} alt={sec.title} style={{ width: '100%', display: 'block', objectFit: 'cover', maxHeight: '400px' }} />
-                </div>
-              )}
-              {(sec.title || sec.body) && (
-                <div style={{ padding: '22px 24px' }}>
-                  {sec.title && (
-                    <h2 style={{ fontSize: '18px', fontWeight: '600', letterSpacing: '-.01em', marginBottom: sec.body ? '10px' : '0' }}>
-                      {sec.title}
-                    </h2>
-                  )}
-                  {sec.body && (
-                    <p style={{ fontSize: '14px', color: '#555', lineHeight: '1.75', whiteSpace: 'pre-line' }}>
-                      {sec.body}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* Add-ons: text addons + catalog add-on services merged */}
-          {(textAddons.length > 0 || addonCatalog.length > 0) && (
-            <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '14px', overflow: 'hidden', marginBottom: '20px' }}>
-              <div style={{ padding: '20px 24px', borderBottom: '0.5px solid #f0f0f0' }}>
-                <h2 style={{ fontSize: '14px', fontWeight: '600', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em' }}>
-                  Optional add-ons
-                </h2>
-              </div>
-
-              {/* Catalog add-on services */}
-              {addonCatalog.map((ps, i) => {
-                const svc      = ps.services!
-                const meta     = INCLUSION_TYPE_META[svc.type] ?? INCLUSION_TYPE_META.service
-                const showPrice = ps.addon_price != null ? ps.addon_price : svc.price
-                const isLast    = i === addonCatalog.length - 1 && textAddons.length === 0
-                return (
-                  <div key={ps.service_id} style={{
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '14px 24px',
-                    borderBottom: !isLast ? '0.5px solid #f0f0f0' : 'none',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <span style={{
-                        fontSize: '11px', padding: '2px 8px', borderRadius: '20px',
-                        background: meta.bg, color: meta.color, fontWeight: '600', flexShrink: 0,
-                      }}>
-                        {meta.icon}
-                      </span>
-                      <div>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{svc.name}</p>
-                        {svc.description && (
-                          <p style={{ fontSize: '12px', color: '#888', margin: '1px 0 0' }}>{svc.description}</p>
-                        )}
-                      </div>
-                    </div>
-                    {showPrice != null && (
-                      <p style={{ fontSize: '15px', fontWeight: '600', flexShrink: 0, marginLeft: '16px' }}>
-                        + ₦{Number(showPrice).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                )
-              })}
-
-              {/* Text addons */}
-              {textAddons.map((addon, i) => (
-                <div key={addon.addon_id} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '14px 24px',
-                  borderBottom: i < textAddons.length - 1 ? '0.5px solid #f0f0f0' : 'none',
-                }}>
-                  <div>
-                    <p style={{ fontSize: '14px', fontWeight: '500', marginBottom: addon.description ? '2px' : '0' }}>{addon.name}</p>
-                    {addon.description && (
-                      <p style={{ fontSize: '12px', color: '#888' }}>{addon.description}</p>
-                    )}
-                  </div>
-                  <p style={{ fontSize: '15px', fontWeight: '600', flexShrink: 0, marginLeft: '16px' }}>
-                    + ₦{Number(addon.price ?? 0).toLocaleString()}
-                  </p>
+        {/* Stats */}
+        <div className="stats-bar">
+          <p className="stats-price-label">Starting from</p>
+          <p className="stats-price">₦{price.toLocaleString()}</p>
+          {stats.length > 0 && (
+            <div className="stats-grid">
+              {stats.map(s => (
+                <div className="stat-item" key={s.label}>
+                  <p className="stat-value">{s.value}</p>
+                  <p className="stat-label">{s.label}</p>
                 </div>
               ))}
             </div>
           )}
-
-          {/* CTA block */}
-          <div style={{ background: '#111', borderRadius: '14px', padding: '28px 24px', textAlign: 'center', marginBottom: '20px' }}>
-            <p style={{ fontSize: '20px', fontWeight: '700', color: 'white', marginBottom: '6px', letterSpacing: '-.01em' }}>
-              Ready to book?
-            </p>
-            <p style={{ fontSize: '14px', color: '#aaa', marginBottom: '20px' }}>
-              Fill in a short form and {studio.name} will get back to you.
-            </p>
-            <Link
-              href={`/book/${studioSlug}?package=${packageId}`}
-              style={{
-                display: 'inline-block',
-                background: 'white', color: '#111',
-                fontSize: '15px', fontWeight: '600',
-                padding: '13px 32px', borderRadius: '10px',
-                letterSpacing: '-.01em',
-              }}
-            >
-              Book this package →
-            </Link>
-          </div>
-
-          {/* Back link */}
-          <div style={{ textAlign: 'center', marginBottom: '16px' }}>
-            <Link href={`/packages/${studioSlug}`} style={{ fontSize: '13px', color: '#888' }}>
-              ← Back to all packages
-            </Link>
-          </div>
-
-          <p style={{ textAlign: 'center', fontSize: '12px', color: '#ccc' }}>
-            Powered by Weave
-          </p>
+          {pkg.description && (
+            <p className="stats-desc">{pkg.description}</p>
+          )}
         </div>
+
+        {/* Inclusions */}
+        {hasInclusions && (
+          <div className="card">
+            <p className="section-label">What&apos;s included</p>
+
+            {(pkg.inclusions ?? []).map((item, i) => (
+              <div key={i} className="inclusion-row">
+                <span className="inclusion-check">✦</span>
+                <span className="inclusion-text">{item}</span>
+              </div>
+            ))}
+
+            {typedInclusions.length > 0 && (pkg.inclusions ?? []).length > 0 && (
+              <div style={{ height: '12px' }} />
+            )}
+
+            {typedInclusions.map(inc => {
+              const colors = inc.type === 'service'
+                ? { bg: '#eeedfe', color: '#534ab7' }
+                : inc.type === 'product'
+                ? { bg: '#faeeda', color: '#854f0b' }
+                : { bg: '#e6f1fb', color: '#185fa5' }
+              return (
+                <div key={inc.inclusion_id} className="deliverable-row">
+                  <span className="type-badge" style={{ background: colors.bg, color: colors.color }}>
+                    {inc.type}
+                  </span>
+                  <span className="deliverable-text">{inc.label}</span>
+                </div>
+              )
+            })}
+
+            {includedCatalog.length > 0 && (
+              <div style={{ marginTop: typedInclusions.length > 0 || (pkg.inclusions ?? []).length > 0 ? '16px' : '0', paddingTop: '16px', borderTop: typedInclusions.length > 0 || (pkg.inclusions ?? []).length > 0 ? '1px solid #f5f2ec' : 'none' }}>
+                {includedCatalog.map(ps => {
+                  const svc = ps.services!
+                  const colors = svc.type === 'service'
+                    ? { bg: '#eeedfe', color: '#534ab7' }
+                    : svc.type === 'product'
+                    ? { bg: '#faeeda', color: '#854f0b' }
+                    : { bg: '#e6f1fb', color: '#185fa5' }
+                  return (
+                    <div key={ps.service_id} className="service-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span className="type-badge" style={{ background: colors.bg, color: colors.color }}>{svc.type}</span>
+                        <div>
+                          <p className="service-name">{svc.name}</p>
+                          {svc.description && <p className="service-desc">{svc.description}</p>}
+                        </div>
+                      </div>
+                      <span className="service-included">Included</span>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Content sections */}
+        {sections.map(sec => {
+          const video = parseVideo(sec.video_url)
+          const hasMedia = video || sec.image_url
+          const hasText  = sec.title || sec.body
+          return (
+            <div key={sec.section_id} className="content-section">
+              {hasMedia && (
+                <div className="media-wrap">
+                  {video ? (
+                    video.type === 'iframe' ? (
+                      <iframe
+                        src={video.src}
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                        title={sec.title || 'Video'}
+                      />
+                    ) : (
+                      <video
+                        src={video.src}
+                        poster={sec.image_url ?? undefined}
+                        controls
+                        playsInline
+                      />
+                    )
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={sec.image_url!} alt={sec.title || ''} />
+                  )}
+                </div>
+              )}
+              {hasText && (
+                <div className="section-body-pad">
+                  {sec.title && <h2 className="section-title">{sec.title}</h2>}
+                  {sec.body  && <p  className="section-text">{sec.body}</p>}
+                </div>
+              )}
+            </div>
+          )
+        })}
+
+        {/* Add-ons */}
+        {hasAddons && (
+          <div className="card">
+            <p className="section-label">Optional add-ons</p>
+
+            {addonCatalog.map(ps => {
+              const svc = ps.services!
+              const displayPrice = ps.addon_price ?? svc.price
+              const colors = svc.type === 'service'
+                ? { bg: '#eeedfe', color: '#534ab7' }
+                : svc.type === 'product'
+                ? { bg: '#faeeda', color: '#854f0b' }
+                : { bg: '#e6f1fb', color: '#185fa5' }
+              return (
+                <div key={ps.service_id} className="addon-row">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span className="type-badge" style={{ background: colors.bg, color: colors.color }}>{svc.type}</span>
+                    <div>
+                      <p className="addon-name">{svc.name}</p>
+                      {svc.description && <p className="addon-desc">{svc.description}</p>}
+                    </div>
+                  </div>
+                  {displayPrice != null && (
+                    <span className="addon-price">+ ₦{Number(displayPrice).toLocaleString()}</span>
+                  )}
+                </div>
+              )
+            })}
+
+            {textAddons.map(addon => (
+              <div key={addon.addon_id} className="addon-row">
+                <div>
+                  <p className="addon-name">{addon.name}</p>
+                  {addon.description && <p className="addon-desc">{addon.description}</p>}
+                </div>
+                <span className="addon-price">+ ₦{Number(addon.price ?? 0).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* CTA */}
+        <div className="cta-block">
+          <p className="cta-title">Ready to book?</p>
+          <p className="cta-sub">Fill in a short form and {studio.name} will be in touch.</p>
+          <Link href={`/book/${studioSlug}?package=${packageId}`} className="cta-btn">
+            Book this package →
+          </Link>
+        </div>
+
+        <div className="footer-link">
+          <Link href={`/packages/${studioSlug}`}>← Back to all packages</Link>
+        </div>
+        <p className="powered">Powered by Weave</p>
       </div>
     </>
   )

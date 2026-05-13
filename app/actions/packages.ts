@@ -23,9 +23,10 @@ const packageSchema = z.object({
 })
 
 type Section = {
-  title: string
-  body: string
+  title:     string
+  body:      string
   image_url: string
+  video_url: string
 }
 
 type TypedInclusion = {
@@ -132,6 +133,7 @@ export async function addPackage(form: {
         title:         s.title,
         body:          s.body || null,
         image_url:     s.image_url || null,
+        video_url:     s.video_url || null,
         display_order: i,
       })))
     if (sectionsError) return { error: sectionsError.message }
@@ -265,6 +267,7 @@ export async function updatePackage(packageId: string, form: {
         title:         s.title,
         body:          s.body || null,
         image_url:     s.image_url || null,
+        video_url:     s.video_url || null,
         display_order: i,
       })))
     if (sectionsError) return { error: sectionsError.message }

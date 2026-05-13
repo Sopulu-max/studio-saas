@@ -21,7 +21,7 @@ const INCLUSION_SUGGESTIONS = [
 ]
 
 type Addon = { name: string; description: string; price: string }
-type Section = { title: string; body: string; image_url: string }
+type Section = { title: string; body: string; image_url: string; video_url: string }
 type TypedInclusion = { label: string; type: 'service' | 'product' | 'digital' }
 type TemplateOption = { template_id: string; name: string; session_type: string | null }
 
@@ -97,7 +97,7 @@ export default function NewPackageForm({
   function removeAddon(i: number) { setAddons(prev => prev.filter((_, idx) => idx !== i)) }
 
   // ─── Sections ────────────────────────────────────────────────────
-  function addSection() { setSections(prev => [...prev, { title: '', body: '', image_url: '' }]) }
+  function addSection() { setSections(prev => [...prev, { title: '', body: '', image_url: '', video_url: '' }]) }
   function updateSection(i: number, field: keyof Section, value: string) {
     setSections(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s))
   }
@@ -511,11 +511,19 @@ export default function NewPackageForm({
                 placeholder="Detailed description for this section..." rows={3}
                 style={{ ...inputStyle, resize: 'vertical' }} />
             </div>
-            <div>
-              <label style={labelStyle}>Image URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
-              <input type="url" value={sec.image_url}
-                onChange={e => updateSection(i, 'image_url', e.target.value)}
-                placeholder="https://..." style={inputStyle} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <div>
+                <label style={labelStyle}>Image URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
+                <input type="url" value={sec.image_url}
+                  onChange={e => updateSection(i, 'image_url', e.target.value)}
+                  placeholder="https://..." style={inputStyle} />
+              </div>
+              <div>
+                <label style={labelStyle}>Video URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(YouTube, Vimeo, or .mp4)</span></label>
+                <input type="url" value={sec.video_url}
+                  onChange={e => updateSection(i, 'video_url', e.target.value)}
+                  placeholder="https://youtube.com/watch?v=..." style={inputStyle} />
+              </div>
             </div>
           </div>
         ))}
