@@ -338,52 +338,69 @@ export default async function StaffPage({
           sub={q ? 'Try adjusting your search' : 'Add your photographers and team members'}
         />
       ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
-          {staff.map((member, i) => {
-            const effectiveRoles: string[] =
-              member.roles && member.roles.length > 0
-                ? member.roles
-                : member.role ? [member.role] : []
-            return (
-              <Link key={member.staff_id} href={`/dashboard/staff/${member.staff_id}`} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit',
-                borderBottom: i < staff.length - 1 ? '1px solid var(--line-inner)' : 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <AvatarUpload
-                    entityId={member.staff_id}
-                    entityType="staff"
-                    currentUrl={member.avatar_url ?? null}
-                    name={member.full_name}
-                    size={36}
-                    editable={false}
-                  />
-                  <div>
-                    <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{member.full_name}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{member.email}</p>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+            {staff.map((member) => {
+              const effectiveRoles: string[] =
+                member.roles && member.roles.length > 0
+                  ? member.roles
+                  : member.role ? [member.role] : []
+              return (
+                <Link key={member.staff_id} href={`/dashboard/staff/${member.staff_id}`} style={{
+                  background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
+                  padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
+                }}>
+                  {/* Avatar + name */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                    <AvatarUpload
+                      entityId={member.staff_id}
+                      entityType="staff"
+                      currentUrl={member.avatar_url ?? null}
+                      name={member.full_name}
+                      size={44}
+                      editable={false}
+                    />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {member.full_name}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {member.email ?? '—'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', justifyContent: 'flex-end', maxWidth: '55%' }}>
-                  {member.hire_date && (
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, marginRight: '6px' }}>
-                      Since {new Date(member.hire_date).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })}
-                    </p>
+
+                  {/* Role badges */}
+                  {effectiveRoles.length > 0 && (
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                      {effectiveRoles.map(role => {
+                        const rc = getStaffRoleConfig(config, role)
+                        return (
+                          <span key={role} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
+                            {rc.label || role.replace(/_/g, ' ')}
+                          </span>
+                        )
+                      })}
+                    </div>
                   )}
-                  {effectiveRoles.map(role => {
-                    const rc = getStaffRoleConfig(config, role)
-                    return (
-                      <span key={role} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
-                        {rc.label || role.replace(/_/g, ' ')}
+
+                  {/* Footer: hire date + working days */}
+                  <div style={{ display: 'flex', gap: '16px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)' }}>
+                    {member.hire_date && (
+                      <span>Since {new Date(member.hire_date).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })}</span>
+                    )}
+                    {member.working_days && member.working_days.length > 0 && (
+                      <span style={{ marginLeft: member.hire_date ? 'auto' : undefined }}>
+                        {member.working_days.length}d/wk
                       </span>
-                    )
-                  })}
-                </div>
-              </Link>
-            )
-          })}
+                    )}
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
           <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
-        </div>
+        </>
       )}
     </div>
   )

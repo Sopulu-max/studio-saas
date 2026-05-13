@@ -176,77 +176,89 @@ export default async function ServicesPage({
         {listTotal} service{listTotal !== 1 ? 's' : ''}
       </p>
 
-      {/* List */}
+      {/* Card grid */}
       {!services.length ? (
         <EmptyState
           message={q || type || active ? 'No services match your filters' : 'No services yet'}
           sub={q || type || active ? 'Try adjusting your search or filters' : 'Add photography packages, products, and digital delivery options that clients can book'}
         />
       ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{
-            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-            padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)',
-            fontSize: '12px', color: 'var(--text-3)', fontWeight: '500',
-          }}>
-            <span>Name</span><span>Type</span><span>Price</span><span>Status</span>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+            {services.map((svc) => {
+              const tc = TYPE_COLORS[svc.type] ?? TYPE_COLORS.service
+              return (
+                <Link
+                  key={svc.service_id}
+                  href={`/dashboard/services/${svc.service_id}`}
+                  style={{
+                    background: 'var(--surface)', border: '1px solid var(--line)',
+                    borderRadius: '12px', overflow: 'hidden',
+                    display: 'block', textDecoration: 'none', color: 'inherit',
+                  }}
+                >
+                  {/* Type color bar */}
+                  <div style={{ height: '5px', background: tc.color }} />
+
+                  <div style={{ padding: '1rem' }}>
+                    {/* Header row */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '20px', lineHeight: 1 }}>{TYPE_ICONS[svc.type]}</span>
+                      <span style={{
+                        fontSize: '10px', padding: '2px 7px', borderRadius: '20px', fontWeight: '600',
+                        background: svc.is_active ? '#eaf3de' : '#f3f3f3',
+                        color:      svc.is_active ? '#3b6d11' : '#888',
+                        flexShrink: 0,
+                      }}>
+                        {svc.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+
+                    {/* Name */}
+                    <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 4px', lineHeight: 1.3 }}>{svc.name}</p>
+
+                    {/* Description */}
+                    {svc.description && (
+                      <p style={{
+                        fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px', lineHeight: 1.5,
+                        overflow: 'hidden', display: '-webkit-box',
+                        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
+                      }}>
+                        {svc.description}
+                      </p>
+                    )}
+
+                    {/* Stats */}
+                    <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
+                      <div>
+                        <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Price</p>
+                        <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: 'var(--text)', lineHeight: 1.1 }}>
+                          {svc.price != null ? `₦${Number(svc.price).toLocaleString()}` : <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>—</span>}
+                        </p>
+                      </div>
+                      {svc.duration_mins != null && (
+                        <div>
+                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Duration</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: 'var(--text-2)', lineHeight: 1.1 }}>{svc.duration_mins} min</p>
+                        </div>
+                      )}
+                      <div style={{ marginLeft: 'auto' }}>
+                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: tc.bg, color: tc.color, fontWeight: '500' }}>
+                          {TYPE_LABELS[svc.type] ?? svc.type}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
-          {services.map((svc, i) => {
-            const tc = TYPE_COLORS[svc.type] ?? TYPE_COLORS.service
-            return (
-              <Link
-                key={svc.service_id}
-                href={`/dashboard/services/${svc.service_id}`}
-                style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                  padding: '0.875rem 1.25rem', alignItems: 'center',
-                  borderBottom: i < services.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  borderLeft: `4px solid ${tc.color}`,
-                  textDecoration: 'none', color: 'inherit',
-                }}
-              >
-                <div>
-                  <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{svc.name}</p>
-                  {svc.description && (
-                    <p style={{
-                      fontSize: '12px', color: 'var(--text-3)', margin: 0,
-                      overflow: 'hidden', display: '-webkit-box',
-                      WebkitLineClamp: 1, WebkitBoxOrient: 'vertical',
-                    }}>
-                      {svc.description}
-                    </p>
-                  )}
-                </div>
-                <span>
-                  <span style={{
-                    fontSize: '11px', padding: '2px 8px', borderRadius: '20px',
-                    background: tc.bg, color: tc.color, fontWeight: '500',
-                  }}>
-                    {TYPE_ICONS[svc.type]} {TYPE_LABELS[svc.type] ?? svc.type}
-                  </span>
-                </span>
-                <span style={{ fontSize: '14px', fontWeight: '500' }}>
-                  {svc.price != null
-                    ? `₦${Number(svc.price).toLocaleString()}`
-                    : <span style={{ color: 'var(--text-4)' }}>—</span>
-                  }
-                </span>
-                <span>
-                  <span style={{
-                    fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: '500',
-                    background: svc.is_active ? '#eaf3de' : '#f3f3f3',
-                    color:      svc.is_active ? '#3b6d11' : '#888',
-                  }}>
-                    {svc.is_active ? 'Active' : 'Inactive'}
-                  </span>
-                </span>
-              </Link>
-            )
-          })}
           {totalPages > 1 && (
-            <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
+            <div style={{ marginTop: '1rem' }}>
+              <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
+            </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )

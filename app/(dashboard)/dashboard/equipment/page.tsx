@@ -339,25 +339,51 @@ export default async function EquipmentPage({
           sub={q || category || status ? 'Try adjusting your search or filters' : 'Add your cameras, lenses, and lighting gear'}
         />
       ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
-            <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
+        <>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+            {equipment.map((item) => {
+              const catCfg = getEquipmentCategoryConfig(config, item.category)
+              const st     = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
+              return (
+                <Link key={item.equipment_id} href={`/dashboard/equipment/${item.equipment_id}`}
+                  style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                  {/* Status color bar */}
+                  <div style={{ height: '5px', background: st.color }} />
+
+                  <div style={{ padding: '1rem' }}>
+                    {/* Name + status badge */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                      <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, lineHeight: 1.3 }}>{item.name}</p>
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                        {STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    {/* Category */}
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: catCfg.color_bg, color: catCfg.color_fg, fontWeight: '500', textTransform: 'capitalize' }}>
+                      {catCfg.label || item.category}
+                    </span>
+
+                    {/* Footer */}
+                    <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                        {item.serial_number ? `S/N ${item.serial_number}` : 'No serial no.'}
+                      </p>
+                      {item.status === 'in_use' && item.assigned_to && (
+                        <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: 0 }}>→ {item.assigned_to}</p>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
-          {equipment.map((item, i) => {
-            const catCfg = getEquipmentCategoryConfig(config, item.category)
-            const st     = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
-            return (
-              <EquipmentCard
-                key={item.equipment_id}
-                item={item}
-                catStyle={{ bg: catCfg.color_bg, color: catCfg.color_fg }}
-                statusStyle={st}
-                isLast={i === equipment.length - 1}
-              />
-            )
-          })}
-          <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
-        </div>
+          {totalPages > 1 && (
+            <div style={{ marginTop: '1rem' }}>
+              <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
+            </div>
+          )}
+        </>
       )}
     </div>
   )
