@@ -63,7 +63,6 @@ export default function BookingForm({
   preselectedPackage?:    PreselectedPackage | null
   packageLinkedServices?: PackageLinkedService[]
 }) {
-  // IDs of services that are locked-included in the package
   const includedIds = new Set(
     packageLinkedServices.filter(s => !s.is_addon).map(s => s.service_id)
   )
@@ -94,7 +93,6 @@ export default function BookingForm({
     notes:            '',
   })
 
-  // Pre-select all included services; add-ons start unchecked
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(() =>
     packageLinkedServices.filter(s => !s.is_addon).map(s => s.service_id)
   )
@@ -104,7 +102,7 @@ export default function BookingForm({
   }
 
   function toggleService(id: string) {
-    if (includedIds.has(id)) return // included services are locked
+    if (includedIds.has(id)) return
     setSelectedServiceIds(prev =>
       prev.includes(id) ? prev.filter(s => s !== id) : [...prev, id]
     )
@@ -112,33 +110,29 @@ export default function BookingForm({
 
   const isEvent = form.session_type === 'event'
 
-  // Derive the active service type's field config
   const activeServiceType  = serviceTypes.find(t => t.value === form.service_type) ?? serviceTypes[0]
   const serviceBookingFields: BookingFieldConfig[] = activeServiceType?.booking_fields ?? []
   const fieldEnabled  = (key: string) => serviceBookingFields.some(f => f.key === key)
   const fieldRequired = (key: string) => serviceBookingFields.find(f => f.key === key)?.required ?? false
 
-  // Event sessions always show event_name + event_date + location regardless of service config
-  const showOutfits  = !isEvent && fieldEnabled('outfits_count')
-  const showOccasion = !isEvent && fieldEnabled('shoot_type')
-  const showOccDate  = !isEvent && fieldEnabled('event_date')
-  const showLocation = isEvent  || fieldEnabled('location_address')
-  const showEventName = isEvent || fieldEnabled('event_name')
-  const showVideoDuration = fieldEnabled('video_duration')
-  const showCoverageHours = fieldEnabled('coverage_hours')
-  const showCrewSize      = fieldEnabled('crew_size')
+  const showOutfits        = !isEvent && fieldEnabled('outfits_count')
+  const showOccasion       = !isEvent && fieldEnabled('shoot_type')
+  const showOccDate        = !isEvent && fieldEnabled('event_date')
+  const showLocation       = isEvent  || fieldEnabled('location_address')
+  const showEventName      = isEvent  || fieldEnabled('event_name')
+  const showVideoDuration  = fieldEnabled('video_duration')
+  const showCoverageHours  = fieldEnabled('coverage_hours')
+  const showCrewSize       = fieldEnabled('crew_size')
 
   const tomorrow = new Date()
   tomorrow.setDate(tomorrow.getDate() + 1)
   const minDate = tomorrow.toISOString().split('T')[0]
 
-  // Separate catalog services into pkg add-ons and other
   const pkgLinkedServiceIds = new Set(packageLinkedServices.map(s => s.service_id))
   const otherCatalogSvcs    = catalogServices.filter(s => !pkgLinkedServiceIds.has(s.service_id))
   const pkgAddonSvcs        = packageLinkedServices.filter(s => s.is_addon)
   const pkgIncludedSvcs     = packageLinkedServices.filter(s => !s.is_addon)
 
-  // Price tally
   const pkgBase = preselectedPackage?.base_price != null ? Number(preselectedPackage.base_price) : null
 
   const selectedOptional = selectedServiceIds.filter(id => !includedIds.has(id))
@@ -156,7 +150,6 @@ export default function BookingForm({
     if (!form.preferred_date)                { setError('Please select a preferred date'); return }
     if (isEvent && !form.event_name.trim())  { setError('Please enter the event name');    return }
 
-    // Validate required dynamic fields
     if (showOutfits    && fieldRequired('outfits_count')    && !form.outfits_count.trim())    { setError('Please enter the number of outfits'); return }
     if (showOccasion   && fieldRequired('shoot_type')       && !form.shoot_type.trim())       { setError('Please enter the occasion type'); return }
     if (showEventName  && !isEvent && fieldRequired('event_name')  && !form.event_name.trim())  { setError('Please enter the event name'); return }
@@ -183,27 +176,34 @@ export default function BookingForm({
     }
   }
 
-  const label: React.CSSProperties = { fontSize: '13px', color: '#555', display: 'block', marginBottom: '5px' }
+  // ── Style constants ──────────────────────────────────────────────────────────
+  const label: React.CSSProperties = { fontSize: '12px', color: '#8a8580', display: 'block', marginBottom: '6px', fontWeight: '500', letterSpacing: '.04em', textTransform: 'uppercase' }
   const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box' }
-  const req:   React.CSSProperties = { color: '#e24b4a' }
-  const row:   React.CSSProperties = { marginBottom: '16px' }
+  const req:   React.CSSProperties = { color: '#c9a96e' }
+  const row:   React.CSSProperties = { marginBottom: '18px' }
+  const opt:   React.CSSProperties = { color: '#c4bdb4', fontSize: '11px', fontWeight: '400', textTransform: 'none', letterSpacing: '0' }
 
-  // ── Already submitted ──────────────────────────────────────────────────────
+  // ── Duplicate ────────────────────────────────────────────────────────────────
   if (duplicate) {
     return (
-      <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-        <div style={{ fontSize: '36px', marginBottom: '20px' }}>✅</div>
-        <h2 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '10px', color: '#111' }}>Already received!</h2>
-        <p style={{ fontSize: '15px', color: '#666', lineHeight: '1.6', maxWidth: '340px', margin: '0 auto 28px' }}>
-          <strong>{form.full_name.split(' ')[0]}</strong>, we already have a booking request from you for this date.
+      <div style={{ textAlign: 'center', padding: '52px 24px' }}>
+        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#fdf6e8', border: '1px solid #e8d5a3', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '22px' }}>
+          ✦
+        </div>
+        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '22px', fontWeight: '400', marginBottom: '12px', color: '#1a1a1a' }}>
+          Already received
+        </h2>
+        <div style={{ width: '32px', height: '1px', background: 'linear-gradient(90deg,#c9a96e,#e8d5a3,#c9a96e)', margin: '0 auto 20px' }} />
+        <p style={{ fontSize: '14px', color: '#6b6660', lineHeight: '1.7', maxWidth: '320px', margin: '0 auto 28px' }}>
+          <strong style={{ color: '#1a1a1a' }}>{form.full_name.split(' ')[0]}</strong>, we already have a booking request from you for this date.{' '}
           {studioName} will be in touch to confirm — no need to submit again.
         </p>
-        <p style={{ fontSize: '13px', color: '#aaa' }}>You can close this page.</p>
+        <p style={{ fontSize: '12px', color: '#c4bdb4', letterSpacing: '.04em' }}>You can close this page.</p>
       </div>
     )
   }
 
-  // ── Success ────────────────────────────────────────────────────────────────
+  // ── Success ──────────────────────────────────────────────────────────────────
   if (submitted) {
     const allSelected = selectedServiceIds
       .map(id => {
@@ -218,60 +218,79 @@ export default function BookingForm({
       .filter(Boolean) as { name: string; type: string; price: number | null; included: boolean }[]
 
     return (
-      <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-        <div style={{ fontSize: '40px', marginBottom: '20px' }}>🎉</div>
-        <h2 style={{ fontSize: '22px', fontWeight: '600', marginBottom: '10px', color: '#111' }}>Request received!</h2>
-        <p style={{ fontSize: '15px', color: '#666', lineHeight: '1.6', maxWidth: '340px', margin: '0 auto 28px' }}>
-          Thanks, <strong>{form.full_name.split(' ')[0]}</strong>. {studioName} will be in touch to confirm your session.
+      <div style={{ textAlign: 'center', padding: '52px 24px' }}>
+        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: '#fdf6e8', border: '1px solid #e8d5a3', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '22px' }}>
+          ✦
+        </div>
+        <h2 style={{ fontFamily: 'Georgia, serif', fontSize: '24px', fontWeight: '400', marginBottom: '12px', color: '#1a1a1a' }}>
+          Request received
+        </h2>
+        <div style={{ width: '32px', height: '1px', background: 'linear-gradient(90deg,#c9a96e,#e8d5a3,#c9a96e)', margin: '0 auto 20px' }} />
+        <p style={{ fontSize: '14px', color: '#6b6660', lineHeight: '1.7', maxWidth: '320px', margin: '0 auto 24px' }}>
+          Thank you, <strong style={{ color: '#1a1a1a' }}>{form.full_name.split(' ')[0]}</strong>.{' '}
+          {studioName} will be in touch to confirm your session.
         </p>
         {allSelected.length > 0 && (
-          <div style={{ background: '#f7f7f5', borderRadius: '10px', padding: '14px', maxWidth: '300px', margin: '0 auto 20px', textAlign: 'left' }}>
-            <p style={{ fontSize: '12px', color: '#888', margin: '0 0 8px', fontWeight: '600' }}>REQUESTED SERVICES</p>
+          <div style={{ background: '#fdf8f0', borderRadius: '12px', border: '1px solid #e8d5a3', padding: '16px', maxWidth: '300px', margin: '0 auto 20px', textAlign: 'left' }}>
+            <p style={{ fontSize: '10px', color: '#c9a96e', margin: '0 0 10px', fontWeight: '600', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+              Requested Services
+            </p>
             {allSelected.map((s, i) => (
-              <p key={i} style={{ fontSize: '13px', color: '#444', margin: '0 0 4px' }}>
-                {TYPE_ICONS[s.type] ?? '•'} {s.name}
+              <p key={i} style={{ fontSize: '13px', color: '#5a5650', margin: '0 0 6px', display: 'flex', justifyContent: 'space-between' as const }}>
+                <span>{TYPE_ICONS[s.type] ?? '✦'} {s.name}</span>
                 {s.included
-                  ? <span style={{ color: '#22c55e', marginLeft: '4px' }}>✓ included</span>
-                  : s.price != null && <span style={{ color: '#888' }}> — ₦{Number(s.price).toLocaleString()}</span>
+                  ? <span style={{ color: '#c9a96e', fontSize: '11px' }}>✓ included</span>
+                  : s.price != null && <span style={{ color: '#8a8580' }}>₦{Number(s.price).toLocaleString()}</span>
                 }
               </p>
             ))}
           </div>
         )}
-        <p style={{ fontSize: '13px', color: '#aaa' }}>You can close this page.</p>
+        <p style={{ fontSize: '12px', color: '#c4bdb4', letterSpacing: '.04em' }}>You can close this page.</p>
       </div>
     )
   }
 
-  // ── Form ───────────────────────────────────────────────────────────────────
+  // ── Form ─────────────────────────────────────────────────────────────────────
   const hasServices = pkgIncludedSvcs.length > 0 || pkgAddonSvcs.length > 0 || otherCatalogSvcs.length > 0
+
+  const pillBase: React.CSSProperties = {
+    padding: '9px 18px', borderRadius: '10px', cursor: 'pointer',
+    fontSize: '14px', fontWeight: '500', transition: 'all .15s',
+  }
 
   return (
     <form onSubmit={handleSubmit} noValidate>
 
       {/* Package banner */}
       {preselectedPackage && (
-        <div style={{ background: '#111', borderRadius: '12px', padding: '16px 18px', marginBottom: '20px', color: 'white' }}>
-          <p style={{ fontSize: '11px', color: '#aaa', margin: '0 0 4px', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+        <div style={{
+          background: 'linear-gradient(135deg, #1c1208 0%, #2e1e0a 100%)',
+          borderRadius: '14px',
+          padding: '18px 20px',
+          marginBottom: '22px',
+          border: '1px solid #3d2a10',
+        }}>
+          <p style={{ fontSize: '10px', color: '#c9a96e', margin: '0 0 6px', letterSpacing: '.1em', textTransform: 'uppercase', fontWeight: '600' }}>
             You&apos;re booking
           </p>
-          <p style={{ fontSize: '17px', fontWeight: '700', margin: '0 0 2px', letterSpacing: '-.01em' }}>
+          <p style={{ fontFamily: 'Georgia, serif', fontSize: '20px', fontWeight: '400', margin: '0 0 4px', color: '#fff', letterSpacing: '-.01em' }}>
             {preselectedPackage.name}
           </p>
           {preselectedPackage.tagline && (
-            <p style={{ fontSize: '13px', color: '#ccc', margin: '0 0 8px' }}>{preselectedPackage.tagline}</p>
+            <p style={{ fontSize: '13px', color: '#a09070', margin: '0 0 10px', lineHeight: '1.5' }}>{preselectedPackage.tagline}</p>
           )}
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'baseline', flexWrap: 'wrap' }}>
             {preselectedPackage.base_price != null && (
-              <p style={{ fontSize: '20px', fontWeight: '700', margin: 0 }}>
+              <p style={{ fontSize: '22px', fontWeight: '700', margin: 0, color: '#e8d5a3', letterSpacing: '-.01em' }}>
                 ₦{Number(preselectedPackage.base_price).toLocaleString()}
               </p>
             )}
             {preselectedPackage.duration_mins != null && (
-              <p style={{ fontSize: '13px', color: '#aaa', margin: 0 }}>{preselectedPackage.duration_mins} mins</p>
+              <p style={{ fontSize: '13px', color: '#7a6a50', margin: 0 }}>{preselectedPackage.duration_mins} mins</p>
             )}
             {preselectedPackage.outfits_count != null && (
-              <p style={{ fontSize: '13px', color: '#aaa', margin: 0 }}>{preselectedPackage.outfits_count} outfits</p>
+              <p style={{ fontSize: '13px', color: '#7a6a50', margin: 0 }}>{preselectedPackage.outfits_count} outfits</p>
             )}
           </div>
         </div>
@@ -285,11 +304,10 @@ export default function BookingForm({
             <button key={t.value} type="button"
               onClick={() => { set('session_type', t.value); set('outfits_count', '') }}
               style={{
-                padding: '10px 16px', borderRadius: '10px', cursor: 'pointer',
-                fontSize: '14px', fontWeight: '500',
-                border: form.session_type === t.value ? '1.5px solid #111' : '0.5px solid #d5d5d5',
-                background: form.session_type === t.value ? '#111' : 'white',
-                color: form.session_type === t.value ? 'white' : '#555',
+                ...pillBase,
+                border: form.session_type === t.value ? '1.5px solid #c9a96e' : '1px solid #ddd8cf',
+                background: form.session_type === t.value ? '#c9a96e' : '#fff',
+                color: form.session_type === t.value ? '#fff' : '#5a5650',
               }}>
               {t.label}
             </button>
@@ -306,11 +324,10 @@ export default function BookingForm({
               <button key={t.value} type="button"
                 onClick={() => set('service_type', t.value)}
                 style={{
-                  padding: '10px 16px', borderRadius: '10px', cursor: 'pointer',
-                  fontSize: '14px', fontWeight: '500',
-                  border: form.service_type === t.value ? '1.5px solid #111' : '0.5px solid #d5d5d5',
-                  background: form.service_type === t.value ? '#111' : 'white',
-                  color: form.service_type === t.value ? 'white' : '#555',
+                  ...pillBase,
+                  border: form.service_type === t.value ? '1.5px solid #c9a96e' : '1px solid #ddd8cf',
+                  background: form.service_type === t.value ? '#c9a96e' : '#fff',
+                  color: form.service_type === t.value ? '#fff' : '#5a5650',
                 }}>
                 {t.label}
               </button>
@@ -320,7 +337,7 @@ export default function BookingForm({
       )}
 
       {/* Name + Phone */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
         <div>
           <label style={label}>Full name <span style={req}>*</span></label>
           <input type="text" value={form.full_name} onChange={e => set('full_name', e.target.value)}
@@ -335,7 +352,7 @@ export default function BookingForm({
 
       {/* Email */}
       <div style={row}>
-        <label style={label}>Email <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span></label>
+        <label style={label}>Email <span style={opt}>(optional)</span></label>
         <input type="email" value={form.email} onChange={e => set('email', e.target.value)}
           placeholder="you@example.com" style={input} autoComplete="email" />
       </div>
@@ -345,21 +362,17 @@ export default function BookingForm({
         <label style={label}>Preferred date <span style={req}>*</span></label>
         <input type="date" value={form.preferred_date} min={minDate}
           onChange={e => set('preferred_date', e.target.value)} style={input} />
-        <p style={{ fontSize: '12px', color: '#aaa', margin: '5px 0 0' }}>
+        <p style={{ fontSize: '12px', color: '#c4bdb4', margin: '6px 0 0', lineHeight: '1.5' }}>
           This is a request — the studio will confirm the final date with you.
         </p>
       </div>
-
-      {/* ── Dynamic fields from service type config ─────────────────────── */}
 
       {/* Outfits */}
       {showOutfits && (
         <div style={row}>
           <label style={label}>
             Number of outfits{' '}
-            {fieldRequired('outfits_count')
-              ? <span style={req}>*</span>
-              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+            {fieldRequired('outfits_count') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
           </label>
           <input type="number" min="1" max="20" value={form.outfits_count}
             onChange={e => set('outfits_count', e.target.value)}
@@ -372,9 +385,7 @@ export default function BookingForm({
         <div style={row}>
           <label style={label}>
             What&apos;s the occasion?{' '}
-            {fieldRequired('shoot_type')
-              ? <span style={req}>*</span>
-              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+            {fieldRequired('shoot_type') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
           </label>
           <input type="text" list="category-list" value={form.shoot_type}
             onChange={e => set('shoot_type', e.target.value)}
@@ -385,26 +396,23 @@ export default function BookingForm({
         </div>
       )}
 
-      {/* Occasion date (non-event) */}
+      {/* Occasion date */}
       {showOccDate && form.shoot_type.trim() && (
         <div style={row}>
           <label style={label}>
-            {form.shoot_type} date{' '}
-            <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
+            {form.shoot_type} date <span style={opt}>(optional)</span>
           </label>
           <input type="date" value={form.event_date}
             onChange={e => set('event_date', e.target.value)} style={{ ...input, maxWidth: '200px' }} />
         </div>
       )}
 
-      {/* Event name (event session OR service type has it enabled) */}
+      {/* Event name (non-event session) */}
       {showEventName && !isEvent && (
         <div style={row}>
           <label style={label}>
             Event name{' '}
-            {fieldRequired('event_name')
-              ? <span style={req}>*</span>
-              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+            {fieldRequired('event_name') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
           </label>
           <input type="text" value={form.event_name}
             onChange={e => set('event_name', e.target.value)}
@@ -417,9 +425,7 @@ export default function BookingForm({
         <div style={row}>
           <label style={label}>
             Desired video length{' '}
-            {fieldRequired('video_duration')
-              ? <span style={req}>*</span>
-              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+            {fieldRequired('video_duration') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
           </label>
           <input type="text" value={form.video_duration ?? ''}
             onChange={e => set('video_duration', e.target.value)}
@@ -432,9 +438,7 @@ export default function BookingForm({
         <div style={row}>
           <label style={label}>
             Hours of coverage{' '}
-            {fieldRequired('coverage_hours')
-              ? <span style={req}>*</span>
-              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+            {fieldRequired('coverage_hours') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
           </label>
           <input type="number" min="1" max="24" value={form.coverage_hours ?? ''}
             onChange={e => set('coverage_hours', e.target.value)}
@@ -447,9 +451,7 @@ export default function BookingForm({
         <div style={row}>
           <label style={label}>
             Crew size needed{' '}
-            {fieldRequired('crew_size')
-              ? <span style={req}>*</span>
-              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+            {fieldRequired('crew_size') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
           </label>
           <input type="number" min="1" max="20" value={form.crew_size ?? ''}
             onChange={e => set('crew_size', e.target.value)}
@@ -457,14 +459,12 @@ export default function BookingForm({
         </div>
       )}
 
-      {/* Location (outdoor/event always show it; other sessions show if enabled) */}
+      {/* Location (non-event) */}
       {showLocation && !isEvent && (
         <div style={row}>
           <label style={label}>
             Preferred location{' '}
-            {fieldRequired('location_address')
-              ? <span style={req}>*</span>
-              : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+            {fieldRequired('location_address') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
           </label>
           <input type="text" value={form.location_address}
             onChange={e => set('location_address', e.target.value)}
@@ -472,7 +472,7 @@ export default function BookingForm({
         </div>
       )}
 
-      {/* Event session: event name + date + venue always shown */}
+      {/* Event session block */}
       {isEvent && (
         <>
           <div style={row}>
@@ -481,13 +481,13 @@ export default function BookingForm({
               onChange={e => set('event_name', e.target.value)}
               placeholder="e.g. Sandra & Emeka's Wedding" style={input} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '18px' }}>
             <div>
-              <label style={label}>Event date <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span></label>
+              <label style={label}>Event date <span style={opt}>(optional)</span></label>
               <input type="date" value={form.event_date} onChange={e => set('event_date', e.target.value)} style={input} />
             </div>
             <div>
-              <label style={label}>Venue <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span></label>
+              <label style={label}>Venue <span style={opt}>(optional)</span></label>
               <input type="text" value={form.location_address}
                 onChange={e => set('location_address', e.target.value)}
                 placeholder="Venue name or address" style={input} />
@@ -497,9 +497,7 @@ export default function BookingForm({
             <div style={row}>
               <label style={label}>
                 Desired video length{' '}
-                {fieldRequired('video_duration')
-                  ? <span style={req}>*</span>
-                  : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+                {fieldRequired('video_duration') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
               </label>
               <input type="text" value={form.video_duration ?? ''}
                 onChange={e => set('video_duration', e.target.value)}
@@ -510,9 +508,7 @@ export default function BookingForm({
             <div style={row}>
               <label style={label}>
                 Hours of coverage{' '}
-                {fieldRequired('coverage_hours')
-                  ? <span style={req}>*</span>
-                  : <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>}
+                {fieldRequired('coverage_hours') ? <span style={req}>*</span> : <span style={opt}>(optional)</span>}
               </label>
               <input type="number" min="1" max="24" value={form.coverage_hours ?? ''}
                 onChange={e => set('coverage_hours', e.target.value)}
@@ -522,81 +518,82 @@ export default function BookingForm({
         </>
       )}
 
-      {/* ── Services section ──────────────────────────────────────────────── */}
+      {/* ── Services ─────────────────────────────────────────────────────────── */}
       {hasServices && (
-        <div style={{ borderTop: '0.5px solid #e5e5e5', paddingTop: '16px', marginTop: '4px', marginBottom: '16px' }}>
+        <div style={{ borderTop: '1px solid #ede8e0', paddingTop: '18px', marginTop: '4px', marginBottom: '18px' }}>
 
-          {/* Included in package — locked */}
+          {/* Included — locked gold */}
           {pkgIncludedSvcs.length > 0 && (
             <div style={{ marginBottom: pkgAddonSvcs.length > 0 || otherCatalogSvcs.length > 0 ? '14px' : '0' }}>
-              <p style={{ fontSize: '12px', fontWeight: '600', color: '#22c55e', margin: '0 0 8px', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                ✓ Included in your package
+              <p style={{ fontSize: '10px', fontWeight: '600', color: '#c9a96e', margin: '0 0 8px', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                ✦ Included in your package
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {pkgIncludedSvcs.map(svc => (
                   <div key={svc.service_id} style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '10px 12px', borderRadius: '10px',
-                    border: '1.5px solid #d1fae5',
-                    background: '#f0fdf4',
+                    padding: '11px 14px', borderRadius: '10px',
+                    border: '1px solid #e8d5a3',
+                    background: '#fdf8f0',
                     cursor: 'default',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '15px' }}>{TYPE_ICONS[svc.type] ?? '•'}</span>
+                      <span style={{ fontSize: '14px' }}>{TYPE_ICONS[svc.type] ?? '✦'}</span>
                       <div>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: '#166534' }}>{svc.name}</p>
+                        <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: '#5a3e10' }}>{svc.name}</p>
                         {svc.description && (
-                          <p style={{ fontSize: '12px', margin: 0, color: '#4ade80' }}>{svc.description}</p>
+                          <p style={{ fontSize: '12px', margin: 0, color: '#a08040' }}>{svc.description}</p>
                         )}
                       </div>
                     </div>
-                    <span style={{ fontSize: '12px', color: '#22c55e', fontWeight: '600' }}>Included</span>
+                    <span style={{ fontSize: '11px', color: '#c9a96e', fontWeight: '600', letterSpacing: '.04em' }}>Included</span>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          {/* Package add-ons — optional */}
+          {/* Package add-ons */}
           {pkgAddonSvcs.length > 0 && (
             <div style={{ marginBottom: otherCatalogSvcs.length > 0 ? '14px' : '0' }}>
-              <p style={{ fontSize: '12px', fontWeight: '600', color: '#888', margin: '0 0 8px', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                Package add-ons <span style={{ fontWeight: '400' }}>(optional)</span>
+              <p style={{ fontSize: '10px', fontWeight: '600', color: '#8a8580', margin: '0 0 8px', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                Package add-ons <span style={{ fontWeight: '400', textTransform: 'none', letterSpacing: '0', fontSize: '11px' }}>(optional)</span>
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {pkgAddonSvcs.map(svc => {
-                  const selected    = selectedServiceIds.includes(svc.service_id)
+                  const selected     = selectedServiceIds.includes(svc.service_id)
                   const displayPrice = svc.addon_price ?? svc.price
                   return (
                     <button key={svc.service_id} type="button" onClick={() => toggleService(svc.service_id)}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '10px 12px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer',
-                        border: selected ? '1.5px solid #111' : '0.5px solid #d5d5d5',
-                        background: selected ? '#111' : 'white',
+                        padding: '11px 14px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer',
+                        border: selected ? '1.5px solid #c9a96e' : '1px solid #ddd8cf',
+                        background: selected ? '#fdf8f0' : '#fff',
+                        transition: 'all .15s',
                       }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '15px' }}>{TYPE_ICONS[svc.type] ?? '•'}</span>
+                        <span style={{ fontSize: '14px' }}>{TYPE_ICONS[svc.type] ?? '✦'}</span>
                         <div style={{ textAlign: 'left' }}>
-                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: selected ? 'white' : '#111' }}>{svc.name}</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: selected ? '#5a3e10' : '#1a1a1a' }}>{svc.name}</p>
                           {svc.description && (
-                            <p style={{ fontSize: '12px', margin: 0, color: selected ? '#ccc' : '#888' }}>{svc.description}</p>
+                            <p style={{ fontSize: '12px', margin: 0, color: selected ? '#a08040' : '#8a8580' }}>{svc.description}</p>
                           )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                         {displayPrice != null && (
-                          <span style={{ fontSize: '13px', fontWeight: '500', color: selected ? '#ccc' : '#555' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '500', color: selected ? '#c9a96e' : '#8a8580' }}>
                             +₦{Number(displayPrice).toLocaleString()}
                           </span>
                         )}
                         <span style={{
-                          width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0,
-                          border: selected ? 'none' : '1.5px solid #ccc',
-                          background: selected ? '#fff' : 'transparent',
+                          width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0,
+                          border: selected ? 'none' : '1.5px solid #ddd8cf',
+                          background: selected ? '#c9a96e' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          {selected && <span style={{ color: '#111', fontSize: '12px', fontWeight: '700' }}>✓</span>}
+                          {selected && <span style={{ color: '#fff', fontSize: '11px', fontWeight: '700' }}>✓</span>}
                         </span>
                       </div>
                     </button>
@@ -609,11 +606,9 @@ export default function BookingForm({
           {/* Other catalog services */}
           {otherCatalogSvcs.length > 0 && (
             <div>
-              <p style={{ fontSize: '12px', fontWeight: '600', color: '#888', margin: '0 0 8px', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-                {pkgIncludedSvcs.length > 0 || pkgAddonSvcs.length > 0
-                  ? 'Additional services'
-                  : 'Services'}{' '}
-                <span style={{ fontWeight: '400' }}>(optional)</span>
+              <p style={{ fontSize: '10px', fontWeight: '600', color: '#8a8580', margin: '0 0 8px', letterSpacing: '.08em', textTransform: 'uppercase' }}>
+                {pkgIncludedSvcs.length > 0 || pkgAddonSvcs.length > 0 ? 'Additional services' : 'Services'}{' '}
+                <span style={{ fontWeight: '400', textTransform: 'none', letterSpacing: '0', fontSize: '11px' }}>(optional)</span>
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {otherCatalogSvcs.map(svc => {
@@ -622,32 +617,33 @@ export default function BookingForm({
                     <button key={svc.service_id} type="button" onClick={() => toggleService(svc.service_id)}
                       style={{
                         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                        padding: '10px 12px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer',
-                        border: selected ? '1.5px solid #111' : '0.5px solid #d5d5d5',
-                        background: selected ? '#111' : 'white',
+                        padding: '11px 14px', borderRadius: '10px', textAlign: 'left', cursor: 'pointer',
+                        border: selected ? '1.5px solid #c9a96e' : '1px solid #ddd8cf',
+                        background: selected ? '#fdf8f0' : '#fff',
+                        transition: 'all .15s',
                       }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '15px' }}>{TYPE_ICONS[svc.type] ?? '•'}</span>
+                        <span style={{ fontSize: '14px' }}>{TYPE_ICONS[svc.type] ?? '✦'}</span>
                         <div style={{ textAlign: 'left' }}>
-                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: selected ? 'white' : '#111' }}>{svc.name}</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: selected ? '#5a3e10' : '#1a1a1a' }}>{svc.name}</p>
                           {svc.description && (
-                            <p style={{ fontSize: '12px', margin: 0, color: selected ? '#ccc' : '#888' }}>{svc.description}</p>
+                            <p style={{ fontSize: '12px', margin: 0, color: selected ? '#a08040' : '#8a8580' }}>{svc.description}</p>
                           )}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                         {svc.price != null && (
-                          <span style={{ fontSize: '13px', fontWeight: '500', color: selected ? '#ccc' : '#555' }}>
+                          <span style={{ fontSize: '13px', fontWeight: '500', color: selected ? '#c9a96e' : '#8a8580' }}>
                             +₦{Number(svc.price).toLocaleString()}
                           </span>
                         )}
                         <span style={{
-                          width: '18px', height: '18px', borderRadius: '4px', flexShrink: 0,
-                          border: selected ? 'none' : '1.5px solid #ccc',
-                          background: selected ? '#fff' : 'transparent',
+                          width: '18px', height: '18px', borderRadius: '5px', flexShrink: 0,
+                          border: selected ? 'none' : '1.5px solid #ddd8cf',
+                          background: selected ? '#c9a96e' : 'transparent',
                           display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>
-                          {selected && <span style={{ color: '#111', fontSize: '12px', fontWeight: '700' }}>✓</span>}
+                          {selected && <span style={{ color: '#fff', fontSize: '11px', fontWeight: '700' }}>✓</span>}
                         </span>
                       </div>
                     </button>
@@ -659,23 +655,23 @@ export default function BookingForm({
 
           {/* Price summary */}
           {(pkgBase != null || optionalTotal > 0) && (
-            <div style={{ marginTop: '12px', padding: '12px', background: '#f7f7f5', borderRadius: '8px' }}>
+            <div style={{ marginTop: '14px', padding: '14px 16px', background: '#fdf8f0', borderRadius: '10px', border: '1px solid #e8d5a3' }}>
               {pkgBase != null && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: optionalTotal > 0 ? '6px' : '0' }}>
-                  <span style={{ fontSize: '13px', color: '#555' }}>Package</span>
-                  <span style={{ fontSize: '13px', fontWeight: '500' }}>₦{pkgBase.toLocaleString()}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: optionalTotal > 0 ? '8px' : '0' }}>
+                  <span style={{ fontSize: '13px', color: '#8a8580' }}>Package</span>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#5a5650' }}>₦{pkgBase.toLocaleString()}</span>
                 </div>
               )}
               {optionalTotal > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pkgBase != null ? '6px' : '0', paddingTop: pkgBase != null ? '6px' : '0', borderTop: pkgBase != null ? '0.5px solid #e5e5e5' : 'none' }}>
-                  <span style={{ fontSize: '13px', color: '#555' }}>Add-ons ({selectedOptional.length})</span>
-                  <span style={{ fontSize: '13px', fontWeight: '500' }}>+₦{optionalTotal.toLocaleString()}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: pkgBase != null ? '8px' : '0', paddingTop: pkgBase != null ? '8px' : '0', borderTop: pkgBase != null ? '1px solid #ede8da' : 'none' }}>
+                  <span style={{ fontSize: '13px', color: '#8a8580' }}>Add-ons ({selectedOptional.length})</span>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#5a5650' }}>+₦{optionalTotal.toLocaleString()}</span>
                 </div>
               )}
               {pkgBase != null && optionalTotal > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '0.5px solid #e5e5e5', paddingTop: '6px', marginTop: '2px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: '600' }}>Estimated total</span>
-                  <span style={{ fontSize: '14px', fontWeight: '700' }}>₦{(pkgBase + optionalTotal).toLocaleString()}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #ede8da', paddingTop: '8px', marginTop: '2px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#5a3e10' }}>Estimated total</span>
+                  <span style={{ fontSize: '15px', fontWeight: '700', color: '#c9a96e' }}>₦{(pkgBase + optionalTotal).toLocaleString()}</span>
                 </div>
               )}
             </div>
@@ -685,24 +681,30 @@ export default function BookingForm({
 
       {/* Notes */}
       <div style={row}>
-        <label style={label}>
-          Anything else? <span style={{ color: '#aaa', fontSize: '12px' }}>(optional)</span>
-        </label>
+        <label style={label}>Anything else? <span style={opt}>(optional)</span></label>
         <textarea value={form.notes} onChange={e => set('notes', e.target.value)}
           placeholder="Special requests, questions, or details about your shoot..."
           rows={3} style={{ ...input, resize: 'vertical' }} />
       </div>
 
       {error && (
-        <p style={{ fontSize: '13px', color: '#e24b4a', marginBottom: '14px' }}>{error}</p>
+        <p style={{ fontSize: '13px', color: '#c0392b', marginBottom: '14px', padding: '10px 12px', background: '#fef2f2', borderRadius: '8px', border: '1px solid #fecaca' }}>
+          {error}
+        </p>
       )}
 
       <button type="submit" disabled={loading}
-        style={{ width: '100%', padding: '12px', background: '#111', color: 'white', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '500', cursor: 'pointer' }}>
+        style={{
+          width: '100%', padding: '13px',
+          background: loading ? '#e0c990' : '#c9a96e',
+          color: '#fff', border: 'none', borderRadius: '12px',
+          fontSize: '15px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer',
+          letterSpacing: '.02em', transition: 'background .15s',
+        }}>
         {loading ? 'Sending request…' : 'Request this session'}
       </button>
 
-      <p style={{ fontSize: '12px', color: '#bbb', textAlign: 'center', marginTop: '14px' }}>
+      <p style={{ fontSize: '12px', color: '#c4bdb4', textAlign: 'center', marginTop: '14px', lineHeight: '1.5' }}>
         No payment required now. {studioName} will confirm availability and get back to you.
       </p>
     </form>

@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import { buildStudioConfig } from '@/lib/studio-config'
 import type { StudioRow } from '@/lib/studio'
 import BookingForm from './booking-form'
+import Link from 'next/link'
 import type { Metadata } from 'next'
 
 export async function generateMetadata(
@@ -94,7 +95,6 @@ export default async function PublicBookingPage({
     package_services?: RawPkgService[] | null
   }
 
-  // Fetch active services + package (with linked services) in parallel
   const [{ data: servicesRaw }, { data: pkgRaw }] = await Promise.all([
     admin
       .from('services')
@@ -117,7 +117,6 @@ export default async function PublicBookingPage({
   const catalogServices = (servicesRaw ?? []) as unknown as PublicService[]
   const rawPkg          = pkgRaw as unknown as RawPackage | null
 
-  // Split package data from its linked services
   const preselectedPackage: PreselectedPackage | null = rawPkg
     ? {
         package_id:    rawPkg.package_id,
@@ -149,42 +148,100 @@ export default async function PublicBookingPage({
   return (
     <>
       <style>{`
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f7f7f5; color: #111; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+          font-family: system-ui, -apple-system, sans-serif;
+          background: #f5f3ef;
+          color: #1a1a1a;
+          -webkit-font-smoothing: antialiased;
+        }
+        a { color: inherit; text-decoration: none; }
         input, select, textarea, button {
-          font-family: inherit; font-size: 14px;
-          border: 0.5px solid #d5d5d5; border-radius: 8px;
-          padding: 9px 12px; outline: none; color: #111;
-          background: white;
-          transition: border-color .15s;
+          font-family: inherit;
+          font-size: 14px;
+          border: 1px solid #ddd8cf;
+          border-radius: 10px;
+          padding: 10px 13px;
+          outline: none;
+          color: #1a1a1a;
+          background: #fff;
+          transition: border-color .15s, box-shadow .15s;
         }
         button { display: block; white-space: normal; text-align: center; }
-        input:focus, select:focus, textarea:focus { border-color: #111; }
-        input::placeholder, textarea::placeholder { color: #bbb; }
+        input:focus, select:focus, textarea:focus {
+          border-color: #c9a96e;
+          box-shadow: 0 0 0 3px rgba(201,169,110,.12);
+        }
+        input::placeholder, textarea::placeholder { color: #c4bdb4; }
+        select option { background: #fff; }
       `}</style>
 
-      <div style={{ minHeight: '100vh', padding: '40px 16px 80px' }}>
-        <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+      <div style={{ minHeight: '100vh', paddingBottom: '80px' }}>
 
-          {/* Studio header */}
-          <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        {/* Sticky nav */}
+        <header style={{
+          position: 'sticky', top: 0, zIndex: 50,
+          background: 'rgba(245,243,239,.9)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderBottom: '1px solid rgba(201,169,110,.2)',
+          padding: '0 1.5rem',
+          height: '56px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {studio.logo_url && (
               <img src={studio.logo_url ?? undefined} alt={studio.name ?? ''}
-                style={{ width: '60px', height: '60px', borderRadius: '50%', objectFit: 'cover', marginBottom: '12px' }} />
+                style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e8e3da' }} />
             )}
-            <p style={{ fontSize: '13px', color: '#aaa', marginBottom: '6px', letterSpacing: '.04em', textTransform: 'uppercase' }}>
-              Photography Studio
+            <span style={{ fontSize: '14px', fontWeight: '600', letterSpacing: '-.01em' }}>{studio.name}</span>
+          </div>
+          <Link href={`/packages/${slug}`} style={{
+            fontSize: '12px', color: '#8a8580', display: 'flex', alignItems: 'center', gap: '4px',
+          }}>
+            ← View packages
+          </Link>
+        </header>
+
+        <div style={{ maxWidth: '540px', margin: '0 auto', padding: '48px 16px 0' }}>
+
+          {/* Studio hero */}
+          <div style={{ textAlign: 'center', marginBottom: '36px' }}>
+            {studio.logo_url && (
+              <img src={studio.logo_url ?? undefined} alt={studio.name ?? ''}
+                style={{
+                  width: '72px', height: '72px', borderRadius: '50%',
+                  objectFit: 'cover', marginBottom: '16px',
+                  border: '3px solid #e8e3da',
+                  boxShadow: '0 4px 16px rgba(0,0,0,.08)',
+                }} />
+            )}
+            <p style={{ fontSize: '11px', color: '#c9a96e', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>
+              Book a session
             </p>
-            <h1 style={{ fontSize: '26px', fontWeight: '700', letterSpacing: '-.02em', marginBottom: '6px' }}>
+            <h1 style={{
+              fontFamily: 'Georgia, "Times New Roman", serif',
+              fontSize: '28px', fontWeight: '400', letterSpacing: '-.01em',
+              lineHeight: '1.2', color: '#1a1a1a', marginBottom: '16px',
+            }}>
               {studio.name}
             </h1>
-            <p style={{ fontSize: '14px', color: '#888' }}>
-              {preselectedPackage ? 'Book a package' : 'Book a session'}
-            </p>
+            {/* Gold rule */}
+            <div style={{
+              width: '40px', height: '1px', margin: '0 auto',
+              background: 'linear-gradient(90deg, #c9a96e 0%, #e8d5a3 50%, #c9a96e 100%)',
+            }} />
           </div>
 
-          {/* Card */}
-          <div style={{ background: 'white', border: '0.5px solid #e5e5e5', borderRadius: '16px', padding: '28px' }}>
+          {/* Form card */}
+          <div style={{
+            background: '#fff',
+            border: '1px solid #e8e3da',
+            borderRadius: '20px',
+            padding: '28px 28px 32px',
+            boxShadow: '0 2px 20px rgba(0,0,0,.04)',
+          }}>
             <BookingForm
               studioId={studio.studio_id}
               studioName={studio.name ?? ''}
@@ -200,7 +257,7 @@ export default async function PublicBookingPage({
             />
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: '12px', color: '#ccc', marginTop: '28px' }}>
+          <p style={{ textAlign: 'center', fontSize: '12px', color: '#c8c4bc', marginTop: '28px', letterSpacing: '.04em' }}>
             Powered by Weave
           </p>
         </div>
