@@ -4,10 +4,12 @@ import { useState } from 'react'
 import SessionTypesForm from './session-types-form'
 import ServiceTypesForm from './service-types-form'
 import BookingStatusesForm from './booking-statuses-form'
+import EquipmentCategoriesForm from './equipment-categories-form'
+import StaffRolesForm from './staff-roles-form'
 import ContractTemplatesForm from './contract-templates-form'
 import SettingsForm from './settings-form'
 import TeamForm from './team-form'
-import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig } from '@/lib/studio-config'
+import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
 
 type ContractTemplates = {
   studio: string; outdoor: string; event: string
@@ -36,6 +38,8 @@ export default function SettingsTabs({
   sessionTypes,
   serviceTypes,
   bookingStatuses,
+  equipmentCategories,
+  staffRoles,
   contractTemplates,
   teamMembers,
   studioId,
@@ -48,11 +52,13 @@ export default function SettingsTabs({
   logoUrl,
   siteUrl,
 }: {
-  sessionTypes:      SessionTypeConfig[]
-  serviceTypes:      ServiceTypeConfig[]
-  bookingStatuses:   BookingStatusConfig[]
-  contractTemplates: ContractTemplates
-  teamMembers:       StaffMember[]
+  sessionTypes:        SessionTypeConfig[]
+  serviceTypes:        ServiceTypeConfig[]
+  bookingStatuses:     BookingStatusConfig[]
+  equipmentCategories: EquipmentCategoryConfig[]
+  staffRoles:          StaffRoleConfig[]
+  contractTemplates:   ContractTemplates
+  teamMembers:         StaffMember[]
   studioId:  string
   name:      string
   email:     string
@@ -108,9 +114,11 @@ export default function SettingsTabs({
 
       {active === 'workflow' && (
         <>
-          <SessionTypesForm    initial={sessionTypes} />
-          <ServiceTypesForm    initial={serviceTypes} />
-          <BookingStatusesForm initial={bookingStatuses} />
+          <SessionTypesForm       initial={sessionTypes} />
+          <ServiceTypesForm       initial={serviceTypes} />
+          <BookingStatusesForm    initial={bookingStatuses} staffRoles={staffRoles} />
+          <StaffRolesForm         initial={staffRoles} />
+          <EquipmentCategoriesForm initial={equipmentCategories} />
         </>
       )}
 

@@ -50,13 +50,29 @@ export type BookingStatusConfig = {
   is_terminal?:               boolean  // no further transitions
   is_cancellation?:           boolean  // the "cancelled" terminal state
   requires_selection_count?:  boolean  // shows the photo-count selection form
-  staff_role?: 'shooter' | 'grader' | 'editor' | null
+  staff_role?: string | null           // references a StaffRoleConfig value
+}
+
+export type EquipmentCategoryConfig = {
+  value:    string
+  label:    string
+  color_bg: string
+  color_fg: string
+}
+
+export type StaffRoleConfig = {
+  value:    string
+  label:    string
+  color_bg: string
+  color_fg: string
 }
 
 export type StudioConfig = {
-  sessionTypes:    SessionTypeConfig[]
-  serviceTypes:    ServiceTypeConfig[]
-  bookingStatuses: BookingStatusConfig[]
+  sessionTypes:        SessionTypeConfig[]
+  serviceTypes:        ServiceTypeConfig[]
+  bookingStatuses:     BookingStatusConfig[]
+  equipmentCategories: EquipmentCategoryConfig[]
+  staffRoles:          StaffRoleConfig[]
 }
 
 // ─── Defaults ─────────────────────────────────────────────────────────────────
@@ -105,22 +121,42 @@ export const DEFAULT_SERVICE_TYPES: ServiceTypeConfig[] = [
 
 export const DEFAULT_BOOKING_STATUSES: BookingStatusConfig[] = [
   { value: 'pending_confirmation', label: 'Pending',        color_bg: '#f8cd80', color_fg: '#7a3800', order: 0 },
-  { value: 'confirmed',            label: 'Confirmed',      color_bg: '#90c4f0', color_fg: '#0a3d80', order: 1, staff_role: 'shooter' },
-  { value: 'in_progress',          label: 'In progress',    color_bg: '#c4c0f8', color_fg: '#2e28a8', order: 2, staff_role: 'shooter' },
-  { value: 'colour_grading',       label: 'Colour grading', color_bg: '#f0a8d8', color_fg: '#7a1060', order: 3, staff_role: 'grader' },
+  { value: 'confirmed',            label: 'Confirmed',      color_bg: '#90c4f0', color_fg: '#0a3d80', order: 1, staff_role: 'photographer' },
+  { value: 'in_progress',          label: 'In progress',    color_bg: '#c4c0f8', color_fg: '#2e28a8', order: 2, staff_role: 'photographer' },
+  { value: 'colour_grading',       label: 'Colour grading', color_bg: '#f0a8d8', color_fg: '#7a1060', order: 3, staff_role: 'colour_grader' },
   { value: 'selecting',            label: 'Selecting',      color_bg: '#90d8f0', color_fg: '#0a5070', order: 4, requires_selection_count: true },
   { value: 'editing',              label: 'Editing',        color_bg: '#f8cd80', color_fg: '#7a3800', order: 5, staff_role: 'editor' },
   { value: 'delivered',            label: 'Delivered',      color_bg: '#b8dfa0', color_fg: '#245a0a', order: 6, is_terminal: true },
   { value: 'cancelled',            label: 'Cancelled',      color_bg: '#f0a0a0', color_fg: '#8a1010', order: 99, is_terminal: true, is_cancellation: true },
 ]
 
+export const DEFAULT_EQUIPMENT_CATEGORIES: EquipmentCategoryConfig[] = [
+  { value: 'camera',    label: 'Camera',    color_bg: '#eeedfe', color_fg: '#534ab7' },
+  { value: 'lens',      label: 'Lens',      color_bg: '#e6f1fb', color_fg: '#185fa5' },
+  { value: 'lighting',  label: 'Lighting',  color_bg: '#faeeda', color_fg: '#854f0b' },
+  { value: 'accessory', label: 'Accessory', color_bg: '#eaf3de', color_fg: '#3b6d11' },
+  { value: 'other',     label: 'Other',     color_bg: '#f1efe8', color_fg: '#5f5e5a' },
+]
+
+export const DEFAULT_STAFF_ROLES: StaffRoleConfig[] = [
+  { value: 'photographer',   label: 'Photographer',      color_bg: '#e6f1fb', color_fg: '#185fa5' },
+  { value: 'second_shooter', label: 'Second shooter',    color_bg: '#eeedfe', color_fg: '#534ab7' },
+  { value: 'videographer',   label: 'Videographer',      color_bg: '#fce8f3', color_fg: '#8b2d6e' },
+  { value: 'colour_grader',  label: 'Colour grader',     color_bg: '#fce8f3', color_fg: '#8b2d6e' },
+  { value: 'editor',         label: 'Editor / retoucher', color_bg: '#faeeda', color_fg: '#854f0b' },
+  { value: 'assistant',      label: 'Assistant',         color_bg: '#eaf3de', color_fg: '#3b6d11' },
+  { value: 'manager',        label: 'Studio manager',    color_bg: '#fbeaf0', color_fg: '#993556' },
+]
+
 // ─── Builder ──────────────────────────────────────────────────────────────────
 // Merges whatever's stored in the DB with the defaults (DB wins).
 
 export function buildStudioConfig(
-  sessionTypes:    unknown,
-  bookingStatuses: unknown,
-  serviceTypes?:   unknown,
+  sessionTypes:         unknown,
+  bookingStatuses:      unknown,
+  serviceTypes?:        unknown,
+  equipmentCategories?: unknown,
+  staffRoles?:          unknown,
 ): StudioConfig {
   const types =
     Array.isArray(sessionTypes) && sessionTypes.length > 0
@@ -137,10 +173,22 @@ export function buildStudioConfig(
       ? (bookingStatuses as BookingStatusConfig[])
       : DEFAULT_BOOKING_STATUSES
 
+  const categories =
+    Array.isArray(equipmentCategories) && equipmentCategories.length > 0
+      ? (equipmentCategories as EquipmentCategoryConfig[])
+      : DEFAULT_EQUIPMENT_CATEGORIES
+
+  const roles =
+    Array.isArray(staffRoles) && staffRoles.length > 0
+      ? (staffRoles as StaffRoleConfig[])
+      : DEFAULT_STAFF_ROLES
+
   return {
-    sessionTypes: types,
-    serviceTypes: services,
-    bookingStatuses: [...statuses].sort((a, b) => a.order - b.order),
+    sessionTypes:        types,
+    serviceTypes:        services,
+    bookingStatuses:     [...statuses].sort((a, b) => a.order - b.order),
+    equipmentCategories: categories,
+    staffRoles:          roles,
   }
 }
 
@@ -178,6 +226,26 @@ export function getStatusConfig(
   )
 }
 
+export function getEquipmentCategoryConfig(
+  config: StudioConfig,
+  value: string | null | undefined,
+): EquipmentCategoryConfig {
+  return (
+    config.equipmentCategories.find(c => c.value === value) ??
+    { value: value ?? '', label: value ?? 'Other', color_bg: '#f1efe8', color_fg: '#5f5e5a' }
+  )
+}
+
+export function getStaffRoleConfig(
+  config: StudioConfig,
+  value: string | null | undefined,
+): StaffRoleConfig {
+  return (
+    config.staffRoles.find(r => r.value === value) ??
+    { value: value ?? '', label: value ?? '', color_bg: '#f1efe8', color_fg: '#5f5e5a' }
+  )
+}
+
 /**
  * Returns the booking_fields for a given service type value.
  * Falls back to the default config for that value, then to photo defaults.
@@ -188,7 +256,6 @@ export function getServiceTypeBookingFields(
 ): BookingField[] {
   const svc = config.serviceTypes.find(t => t.value === serviceTypeValue)
   if (svc?.booking_fields?.length) return svc.booking_fields
-  // fall back to the static defaults
   const def = DEFAULT_SERVICE_TYPES.find(t => t.value === serviceTypeValue)
   if (def?.booking_fields?.length) return def.booking_fields
   return DEFAULT_SERVICE_TYPES[0].booking_fields ?? []

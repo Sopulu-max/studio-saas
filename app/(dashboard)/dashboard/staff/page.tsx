@@ -3,7 +3,8 @@ import SearchInput from '@/components/search-input'
 import Pagination from '@/components/pagination'
 import AvatarUpload from '@/components/avatar-upload'
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
+import { buildStudioConfig, getStaffRoleConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -51,20 +52,6 @@ type StaffAssignment = {
 const PAGE_SIZE = 20
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-function getRoleColor(role: string): { bg: string; color: string } {
-  const r = role.toLowerCase()
-  if (r.includes('lead') || r.includes('head'))        return { bg: '#eeedfe', color: '#534ab7' }
-  if (r.includes('second') || r.includes('shooter'))   return { bg: '#e6f1fb', color: '#185fa5' }
-  if (r.includes('editor') || r.includes('editing'))   return { bg: '#faeeda', color: '#854f0b' }
-  if (r.includes('colour') || r.includes('color') || r.includes('grader')) return { bg: '#fce8f3', color: '#8b2d6e' }
-  if (r.includes('manager') || r.includes('director')) return { bg: '#fbeaf0', color: '#993556' }
-  if (r.includes('assist'))                            return { bg: '#eaf3de', color: '#3b6d11' }
-  if (r.includes('reception') || r.includes('admin'))  return { bg: '#e6f1fb', color: '#185fa5' }
-  if (r.includes('video'))                             return { bg: '#eeedfe', color: '#534ab7' }
-  if (r.includes('photograph'))                        return { bg: '#e6f1fb', color: '#185fa5' }
-  return { bg: '#f1efe8', color: '#5f5e5a' }
-}
 
 function pageUrl(params: Record<string, string | undefined>, pg: number) {
   const p = new URLSearchParams()
@@ -140,6 +127,12 @@ export default async function StaffPage({
 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
+
+  const studio = await fetchStudio(context.admin, context.studioId)
+  const config = buildStudioConfig(
+    studio?.session_types, studio?.booking_statuses, studio?.service_types,
+    studio?.equipment_categories, studio?.staff_roles,
+  )
 
   // ── Stats (always) ───────────────────────────────────────────────
   const now        = new Date()
@@ -219,11 +212,11 @@ export default async function StaffPage({
                   {staffList.length > 0 ? (
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       {staffList.map((bs, idx) => {
-                        const rc = getRoleColor(bs.role ?? '')
+                        const rc = getStaffRoleConfig(config, bs.role)
                         return (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--active)', borderRadius: '8px', padding: '5px 10px' }}>
                             <span style={{ fontSize: '12px', fontWeight: '600' }}>{bs.staff?.full_name ?? '—'}</span>
-                            <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '20px', background: rc.bg, color: rc.color, fontWeight: '500' }}>{bs.role ?? '—'}</span>
+                            <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500' }}>{bs.role ?? '—'}</span>
                           </div>
                         )
                       })}
@@ -274,7 +267,7 @@ export default async function StaffPage({
             </div>
 
             {assignments.map((a, i) => {
-              const rc = getRoleColor(a.role ?? '')
+              const rc = getStaffRoleConfig(config, a.role)
               return (
                 <Link key={`${a.booking_id}-${a.staff?.staff_id}-${i}`} href={`/dashboard/sessions/${a.bookings?.booking_id}`} style={{
                   display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr',
@@ -293,7 +286,7 @@ export default async function StaffPage({
                     </p>
                   </div>
                   <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(a.bookings?.session_date)}</p>
-                  <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: rc.bg, color: rc.color, fontWeight: '500', textTransform: 'capitalize' }}>
+                  <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', textTransform: 'capitalize' }}>
                     {a.role ?? '—'}
                   </span>
                 </Link>
@@ -378,10 +371,10 @@ export default async function StaffPage({
                     </p>
                   )}
                   {effectiveRoles.map(role => {
-                    const rc = getRoleColor(role)
+                    const rc = getStaffRoleConfig(config, role)
                     return (
-                      <span key={role} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: rc.bg, color: rc.color, fontWeight: '500', whiteSpace: 'nowrap' }}>
-                        {role.replace(/_/g, ' ')}
+                      <span key={role} style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
+                        {rc.label || role.replace(/_/g, ' ')}
                       </span>
                     )
                   })}

@@ -3,21 +3,18 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { saveBookingStatuses } from '@/app/actions/studio-config'
-import type { BookingStatusConfig } from '@/lib/studio-config'
+import type { BookingStatusConfig, StaffRoleConfig } from '@/lib/studio-config'
 import { COLOR_PRESETS } from '@/lib/color-presets'
 
 function slug(label: string) {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
 }
 
-const STAFF_ROLE_OPTIONS = [
-  { value: '',        label: 'None' },
-  { value: 'shooter', label: 'Shooter (photographer / videographer)' },
-  { value: 'grader',  label: 'Colour grader' },
-  { value: 'editor',  label: 'Editor / retoucher' },
-]
-
-export default function BookingStatusesForm({ initial }: { initial: BookingStatusConfig[] }) {
+export default function BookingStatusesForm({ initial, staffRoles }: { initial: BookingStatusConfig[]; staffRoles: StaffRoleConfig[] }) {
+  const staffRoleOptions = [
+    { value: '', label: 'None' },
+    ...staffRoles.map(r => ({ value: r.value, label: r.label })),
+  ]
   const [statuses, setStatuses] = useState<BookingStatusConfig[]>(
     [...initial].sort((a, b) => a.order - b.order)
   )
@@ -193,10 +190,10 @@ export default function BookingStatusesForm({ initial }: { initial: BookingStatu
                     <label style={{ fontSize: '13px', color: 'var(--text-3)', flexShrink: 0 }}>Staff assignment:</label>
                     <select
                       value={s.staff_role ?? ''}
-                      onChange={e => update(i, { staff_role: (e.target.value || null) as 'shooter' | 'grader' | 'editor' | null })}
+                      onChange={e => update(i, { staff_role: e.target.value || null })}
                       style={{ fontSize: '13px', padding: '3px 8px', borderRadius: '6px' }}
                     >
-                      {STAFF_ROLE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                      {staffRoleOptions.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
                     </select>
                   </div>
                 </div>

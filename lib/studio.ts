@@ -24,6 +24,8 @@ export type StudioRow = {
   booking_statuses:         unknown
   service_types:            unknown
   contract_templates:       unknown
+  equipment_categories:     unknown
+  staff_roles:              unknown
 }
 
 export async function fetchStudio(

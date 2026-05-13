@@ -4,7 +4,8 @@ import FilterSelect from '@/components/filter-select'
 import Pagination from '@/components/pagination'
 import EquipmentCard from './equipment-card'
 import { redirect } from 'next/navigation'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
+import { buildStudioConfig, getEquipmentCategoryConfig } from '@/lib/studio-config'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -21,14 +22,6 @@ type EquipmentItem = {
 // ─── Constants ──────────────────────────────────────────────────────────────
 
 const PAGE_SIZE = 20
-
-const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
-  camera:    { bg: '#eeedfe', color: '#534ab7' },
-  lens:      { bg: '#e6f1fb', color: '#185fa5' },
-  lighting:  { bg: '#faeeda', color: '#854f0b' },
-  accessory: { bg: '#eaf3de', color: '#3b6d11' },
-  other:     { bg: '#f1efe8', color: '#5f5e5a' },
-}
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   available:   { bg: '#eaf3de', color: '#3b6d11' },
@@ -117,6 +110,12 @@ export default async function EquipmentPage({
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
+  const studio = await fetchStudio(context.admin, context.studioId)
+  const config = buildStudioConfig(
+    studio?.session_types, studio?.booking_statuses, studio?.service_types,
+    studio?.equipment_categories, studio?.staff_roles,
+  )
+
   // ── Stats (always) ───────────────────────────────────────────────
   const { data: allEquipmentRaw } = await context.admin
     .from('equipment')
@@ -192,9 +191,9 @@ export default async function EquipmentPage({
                       <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
                     </div>
                     {group.map((item, i) => {
-                      const cat = CATEGORY_COLORS[item.category ?? ''] ?? CATEGORY_COLORS.other
+                      const catCfg = getEquipmentCategoryConfig(config, item.category)
                       return (
-                        <EquipmentCard key={item.equipment_id} item={item} catStyle={cat} statusStyle={sc} isLast={i === group.length - 1} />
+                        <EquipmentCard key={item.equipment_id} item={item} catStyle={{ bg: catCfg.color_bg, color: catCfg.color_fg }} statusStyle={sc} isLast={i === group.length - 1} />
                       )
                     })}
                   </div>
@@ -217,8 +216,8 @@ export default async function EquipmentPage({
 
     const items = (raw ?? []) as unknown as EquipmentItem[]
 
-    // Build category groups (known order first, then unknown)
-    const knownOrder = ['camera', 'lens', 'lighting', 'accessory', 'other']
+    // Build category groups (config order first, then unknown)
+    const configCatOrder = config.equipmentCategories.map(c => c.value)
     const catGroups: Record<string, EquipmentItem[]> = {}
     for (const item of items) {
       const key = item.category ?? 'other'
@@ -227,8 +226,8 @@ export default async function EquipmentPage({
     }
 
     const allCats = [
-      ...knownOrder.filter(c => catGroups[c]?.length > 0),
-      ...Object.keys(catGroups).filter(c => !knownOrder.includes(c)),
+      ...configCatOrder.filter(c => catGroups[c]?.length > 0),
+      ...Object.keys(catGroups).filter(c => !configCatOrder.includes(c)),
     ]
 
     return (
@@ -242,13 +241,13 @@ export default async function EquipmentPage({
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
             {allCats.map(catKey => {
-              const cc    = CATEGORY_COLORS[catKey] ?? CATEGORY_COLORS.other
+              const cc    = getEquipmentCategoryConfig(config, catKey)
               const group = catGroups[catKey]
               return (
                 <div key={catKey}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
-                    <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: cc.bg, color: cc.color, fontWeight: '500', textTransform: 'capitalize' }}>
-                      {catKey}
+                    <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: cc.color_bg, color: cc.color_fg, fontWeight: '500', textTransform: 'capitalize' }}>
+                      {cc.label || catKey}
                     </span>
                     <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{group.length} item{group.length !== 1 ? 's' : ''}</span>
                   </div>
@@ -259,7 +258,7 @@ export default async function EquipmentPage({
                     {group.map((item, i) => {
                       const sc = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
                       return (
-                        <EquipmentCard key={item.equipment_id} item={item} catStyle={cc} statusStyle={sc} isLast={i === group.length - 1} />
+                        <EquipmentCard key={item.equipment_id} item={item} catStyle={{ bg: cc.color_bg, color: cc.color_fg }} statusStyle={sc} isLast={i === group.length - 1} />
                       )
                     })}
                   </div>
@@ -305,13 +304,7 @@ export default async function EquipmentPage({
           name="category"
           defaultValue={category}
           placeholder="All categories"
-          options={[
-            { value: 'camera',    label: 'Camera' },
-            { value: 'lens',      label: 'Lens' },
-            { value: 'lighting',  label: 'Lighting' },
-            { value: 'accessory', label: 'Accessory' },
-            { value: 'other',     label: 'Other' },
-          ]}
+          options={config.equipmentCategories.map(c => ({ value: c.value, label: c.label }))}
         />
         <FilterSelect
           name="status"
@@ -341,13 +334,13 @@ export default async function EquipmentPage({
             <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
           </div>
           {equipment.map((item, i) => {
-            const cat = CATEGORY_COLORS[item.category ?? ''] ?? CATEGORY_COLORS.other
-            const st  = STATUS_COLORS[item.status ?? '']    ?? STATUS_COLORS.available
+            const catCfg = getEquipmentCategoryConfig(config, item.category)
+            const st     = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
             return (
               <EquipmentCard
                 key={item.equipment_id}
                 item={item}
-                catStyle={cat}
+                catStyle={{ bg: catCfg.color_bg, color: catCfg.color_fg }}
                 statusStyle={st}
                 isLast={i === equipment.length - 1}
               />

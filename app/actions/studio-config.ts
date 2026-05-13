@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getStudioContext } from '@/lib/studio'
-import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig } from '@/lib/studio-config'
+import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
 
 export async function saveSessionTypes(sessionTypes: SessionTypeConfig[]) {
   const context = await getStudioContext()
@@ -73,5 +73,51 @@ export async function saveBookingStatuses(bookingStatuses: BookingStatusConfig[]
   if (error) return { error: error.message }
   revalidatePath('/dashboard/settings')
   revalidatePath('/dashboard', 'layout')
+  return { error: null }
+}
+
+export async function saveEquipmentCategories(categories: EquipmentCategoryConfig[]) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!Array.isArray(categories) || categories.length === 0)
+    return { error: 'At least one category is required' }
+
+  for (const c of categories) {
+    if (!c.value?.trim()) return { error: 'Every category needs a value' }
+    if (!c.label?.trim()) return { error: 'Every category needs a label' }
+  }
+
+  const { error } = await context.admin
+    .from('studios')
+    .update({ equipment_categories: categories })
+    .eq('studio_id', context.studioId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/equipment')
+  return { error: null }
+}
+
+export async function saveStaffRoles(roles: StaffRoleConfig[]) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!Array.isArray(roles) || roles.length === 0)
+    return { error: 'At least one role is required' }
+
+  for (const r of roles) {
+    if (!r.value?.trim()) return { error: 'Every role needs a value' }
+    if (!r.label?.trim()) return { error: 'Every role needs a label' }
+  }
+
+  const { error } = await context.admin
+    .from('studios')
+    .update({ staff_roles: roles })
+    .eq('studio_id', context.studioId)
+
+  if (error) return { error: error.message }
+  revalidatePath('/dashboard/settings')
+  revalidatePath('/dashboard/staff')
   return { error: null }
 }

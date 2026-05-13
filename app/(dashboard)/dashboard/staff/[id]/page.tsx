@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import StaffActions from './staff-actions'
 import AvatarUpload from '@/components/avatar-upload'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
+import { buildStudioConfig, getStaffRoleConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 
 const WEEKDAYS = [
@@ -23,15 +24,6 @@ type AssignedBooking = {
   clients?: { full_name?: string | null } | null
 }
 
-const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
-  lead:           { bg: '#eeedfe', color: '#534ab7' },
-  second_shooter: { bg: '#e6f1fb', color: '#185fa5' },
-  assistant:      { bg: '#eaf3de', color: '#3b6d11' },
-  editor:         { bg: '#faeeda', color: '#854f0b' },
-  manager:        { bg: '#fbeaf0', color: '#993556' },
-  other:          { bg: '#f1efe8', color: '#5f5e5a' },
-}
-
 const BOOKING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   pending_confirmation: { bg: '#faeeda', color: '#854f0b' },
   confirmed:            { bg: '#e6f1fb', color: '#185fa5' },
@@ -46,14 +38,22 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: member } = await context.admin
-    .from('staff')
-    .select('*')
-    .eq('staff_id', id)
-    .eq('studio_id', context.studioId)
-    .single()
+  const [{ data: member }, studio] = await Promise.all([
+    context.admin
+      .from('staff')
+      .select('*')
+      .eq('staff_id', id)
+      .eq('studio_id', context.studioId)
+      .single(),
+    fetchStudio(context.admin, context.studioId),
+  ])
 
   if (!member) redirect('/dashboard/staff')
+
+  const config = buildStudioConfig(
+    studio?.session_types, studio?.booking_statuses, studio?.service_types,
+    studio?.equipment_categories, studio?.staff_roles,
+  )
 
   type StaffRow = {
     staff_id: string
@@ -112,10 +112,10 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const, justifyContent: 'flex-end', maxWidth: '55%' }}>
           {effectiveRoles.map(role => {
-            const rc = ROLE_COLORS[role] ?? ROLE_COLORS.other
+            const rc = getStaffRoleConfig(config, role)
             return (
-              <span key={role} style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: rc.bg, color: rc.color, fontWeight: '500', whiteSpace: 'nowrap' as const }}>
-                {role.replace(/_/g, ' ')}
+              <span key={role} style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' as const }}>
+                {rc.label || role.replace(/_/g, ' ')}
               </span>
             )
           })}

@@ -4,33 +4,22 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateStaff } from '@/app/actions/staff'
+import type { StaffRoleConfig } from '@/lib/studio-config'
 
 const WEEKDAYS = [
-  { value: 'monday', label: 'Mon' },
-  { value: 'tuesday', label: 'Tue' },
+  { value: 'monday',    label: 'Mon' },
+  { value: 'tuesday',   label: 'Tue' },
   { value: 'wednesday', label: 'Wed' },
-  { value: 'thursday', label: 'Thu' },
-  { value: 'friday', label: 'Fri' },
-  { value: 'saturday', label: 'Sat' },
-  { value: 'sunday', label: 'Sun' },
+  { value: 'thursday',  label: 'Thu' },
+  { value: 'friday',    label: 'Fri' },
+  { value: 'saturday',  label: 'Sat' },
+  { value: 'sunday',    label: 'Sun' },
 ]
-
-const PRESET_ROLES = [
-  { value: 'photographer', label: 'Photographer' },
-  { value: 'second_shooter', label: 'Second shooter' },
-  { value: 'videographer', label: 'Videographer' },
-  { value: 'editor', label: 'Editor / retoucher' },
-  { value: 'colour_grader', label: 'Colour grader' },
-  { value: 'assistant', label: 'Assistant' },
-  { value: 'manager', label: 'Studio manager' },
-  { value: 'other', label: 'Other' },
-]
-
-const PRESET_VALUES = new Set(PRESET_ROLES.map((r) => r.value))
 
 export default function EditStaffForm({
   staffId,
   member,
+  staffRoles,
 }: {
   staffId: string
   member: {
@@ -42,6 +31,7 @@ export default function EditStaffForm({
     hire_date: string | null
     working_days: string[] | null
   }
+  staffRoles: StaffRoleConfig[]
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -125,7 +115,8 @@ export default function EditStaffForm({
 
   const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
   const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
-  const customRoles = form.roles.filter((r) => !PRESET_VALUES.has(r))
+  const configRoleValues = new Set(staffRoles.map((r) => r.value))
+  const customRoles = form.roles.filter((r) => !configRoleValues.has(r))
 
   return (
     <div style={{ maxWidth: '520px' }}>
@@ -172,7 +163,7 @@ export default function EditStaffForm({
           <label style={labelStyle}>Roles <span style={{ color: '#e24b4a' }}>*</span></label>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '10px' }}>
-            {PRESET_ROLES.map((r) => {
+            {staffRoles.map((r) => {
               const checked = form.roles.includes(r.value)
               return (
                 <label
@@ -226,7 +217,7 @@ export default function EditStaffForm({
                     onClick={() => toggleRole(role)}
                     style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0, fontSize: '14px', lineHeight: 1 }}
                   >
-                    Ã—
+                    ×
                   </button>
                 </span>
               ))}
@@ -244,7 +235,7 @@ export default function EditStaffForm({
                   addCustomRole()
                 }
               }}
-              placeholder="Add custom roleâ€¦"
+              placeholder="Add custom role…"
               style={{ flex: 1, boxSizing: 'border-box' }}
             />
             <button
@@ -303,7 +294,7 @@ export default function EditStaffForm({
                 href={`/dashboard/staff/${existingId}`}
                 style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}
               >
-                View that staff member&apos;s profile â†’
+                View that staff member&apos;s profile →
               </Link>
             )}
           </div>
@@ -311,7 +302,7 @@ export default function EditStaffForm({
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>
-            {loading ? 'Savingâ€¦' : 'Save changes'}
+            {loading ? 'Saving…' : 'Save changes'}
           </button>
           <button
             type="button"

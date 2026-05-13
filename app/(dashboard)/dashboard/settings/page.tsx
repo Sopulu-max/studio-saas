@@ -10,7 +10,7 @@ export default async function SettingsPage() {
   const studio = await fetchStudio(context.admin, context.studioId)
   if (!studio) redirect('/dashboard')
 
-  const config = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types)
+  const config = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types, studio.equipment_categories, studio.staff_roles)
 
   type ContractTemplates = { studio: string; outdoor: string; event: string }
   const rawTemplates = (studio.contract_templates ?? {}) as Partial<ContractTemplates>
@@ -39,6 +39,8 @@ export default async function SettingsPage() {
         sessionTypes={config.sessionTypes}
         serviceTypes={config.serviceTypes}
         bookingStatuses={config.bookingStatuses}
+        equipmentCategories={config.equipmentCategories}
+        staffRoles={config.staffRoles}
         contractTemplates={contractTemplates}
         teamMembers={(teamMembers ?? []) as unknown as { staff_id: string; full_name: string; email: string; role: string; invite_sent_at: string | null; invite_accepted_at: string | null; user_id: string | null }[]}
         studioId={studio.studio_id}

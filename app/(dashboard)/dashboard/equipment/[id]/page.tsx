@@ -1,7 +1,8 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import EquipmentActions from './equipment-actions'
-import { getStudioContext } from '@/lib/studio'
+import { getStudioContext, fetchStudio } from '@/lib/studio'
+import { buildStudioConfig, getEquipmentCategoryConfig } from '@/lib/studio-config'
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -33,14 +34,6 @@ type StaffRow = { staff_id: string; full_name: string }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
-const CATEGORY_COLORS: Record<string, { bg: string; color: string }> = {
-  camera:    { bg: '#eeedfe', color: '#534ab7' },
-  lens:      { bg: '#e6f1fb', color: '#185fa5' },
-  lighting:  { bg: '#faeeda', color: '#854f0b' },
-  accessory: { bg: '#eaf3de', color: '#3b6d11' },
-  other:     { bg: '#f1efe8', color: '#5f5e5a' },
-}
-
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   available:   { bg: '#eaf3de', color: '#3b6d11' },
   in_use:      { bg: '#e6f1fb', color: '#185fa5' },
@@ -69,6 +62,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
     { data: itemRaw },
     { data: checkoutsRaw },
     { data: staffRaw },
+    studio,
   ] = await Promise.all([
     context.admin
       .from('equipment')
@@ -87,6 +81,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
       .select('staff_id, full_name')
       .eq('studio_id', context.studioId)
       .order('full_name', { ascending: true }),
+    fetchStudio(context.admin, context.studioId),
   ])
 
   if (!itemRaw) redirect('/dashboard/equipment')
@@ -95,8 +90,13 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
   const checkouts = (checkoutsRaw ?? []) as unknown as CheckoutRow[]
   const staffList = (staffRaw ?? []) as unknown as StaffRow[]
 
-  const cat = CATEGORY_COLORS[item.category ?? ''] ?? CATEGORY_COLORS.other
-  const st  = STATUS_COLORS[item.status ?? '']    ?? STATUS_COLORS.available
+  const config  = buildStudioConfig(
+    studio?.session_types, studio?.booking_statuses, studio?.service_types,
+    studio?.equipment_categories, studio?.staff_roles,
+  )
+  const catCfg  = getEquipmentCategoryConfig(config, item.category)
+  const cat     = { bg: catCfg.color_bg, color: catCfg.color_fg }
+  const st      = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
 
   const isCheckedOut = item.status === 'in_use' && !!item.assigned_to
 
@@ -108,7 +108,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 6px' }}>{item.name}</h1>
           <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: cat.bg, color: cat.color, fontWeight: '500' }}>
-            {item.category}
+            {catCfg.label || item.category}
           </span>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -148,7 +148,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Category</p>
-            <p style={{ fontSize: '14px', margin: 0, textTransform: 'capitalize' }}>{item.category}</p>
+            <p style={{ fontSize: '14px', margin: 0 }}>{catCfg.label || item.category}</p>
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Serial number</p>

@@ -3,42 +3,19 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { updateEquipment } from '@/app/actions/equipment'
+import { addEquipment } from '@/app/actions/equipment'
 import type { EquipmentCategoryConfig } from '@/lib/studio-config'
 
 const STATUSES = ['available', 'in_use', 'maintenance', 'retired']
 
-type EquipmentItem = {
-  name:           string
-  category:       string
-  serial_number?: string | null
-  status:         string
-  notes?:         string | null
-  purchase_date?: string | null
-  purchase_price?: number | string | null
-}
-
-export default function EditEquipmentForm({
-  equipmentId,
-  item,
-  categories,
-}: {
-  equipmentId: string
-  item: EquipmentItem
-  categories: EquipmentCategoryConfig[]
-}) {
-  const router  = useRouter()
-  const [loading, setLoading]   = useState(false)
-  const [error,   setError]     = useState('')
+export default function NewEquipmentForm({ categories }: { categories: EquipmentCategoryConfig[] }) {
+  const router = useRouter()
+  const [loading, setLoading]       = useState(false)
+  const [error,   setError]         = useState('')
   const [existingId, setExistingId] = useState('')
   const [form, setForm] = useState({
-    name:           item.name          ?? '',
-    category:       item.category      ?? 'camera',
-    serial_number:  item.serial_number ?? '',
-    status:         item.status        ?? 'available',
-    notes:          item.notes         ?? '',
-    purchase_date:  item.purchase_date ?? '',
-    purchase_price: item.purchase_price != null ? String(item.purchase_price) : '',
+    name: '', category: categories[0]?.value ?? '', serial_number: '', status: 'available',
+    notes: '', purchase_date: '', purchase_price: '',
   })
 
   function update(field: string, value: string) {
@@ -50,14 +27,13 @@ export default function EditEquipmentForm({
     setLoading(true)
     setError('')
     setExistingId('')
-    const { error, existingEquipmentId } = await updateEquipment(equipmentId, form)
+    const { error, equipmentId, existingEquipmentId } = await addEquipment(form)
     if (error) {
       setError(error)
       if (existingEquipmentId) setExistingId(existingEquipmentId)
       setLoading(false)
     } else {
-      router.push(`/dashboard/equipment/${equipmentId}`)
-      router.refresh()
+      router.push(equipmentId ? `/dashboard/equipment/${equipmentId}` : '/dashboard/equipment')
     }
   }
 
@@ -67,8 +43,8 @@ export default function EditEquipmentForm({
   return (
     <div style={{ maxWidth: '520px' }}>
       <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Edit equipment</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Update details for {item.name}</p>
+        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Add equipment</h1>
+        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Add a piece of gear to your inventory</p>
       </div>
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
@@ -125,7 +101,7 @@ export default function EditEquipmentForm({
         {error && (
           <div style={{ marginBottom: '16px' }}>
             <p style={{ fontSize: '13px', color: '#e24b4a', margin: '0 0 6px' }}>{error}</p>
-            {existingId && existingId !== equipmentId && (
+            {existingId && (
               <Link href={`/dashboard/equipment/${existingId}`}
                 style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
                 View that equipment →
@@ -136,10 +112,9 @@ export default function EditEquipmentForm({
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>
-            {loading ? 'Saving…' : 'Save changes'}
+            {loading ? 'Saving…' : 'Save equipment'}
           </button>
-          <button type="button" onClick={() => router.push(`/dashboard/equipment/${equipmentId}`)}
-            style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
+          <button onClick={() => router.back()} style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
             Cancel
           </button>
         </div>

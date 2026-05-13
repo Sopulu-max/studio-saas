@@ -6,7 +6,7 @@ import { getStudioContext, ownsEquipment } from '@/lib/studio'
 
 const equipmentSchema = z.object({
   name:           z.string().min(1, 'Name is required'),
-  category:       z.enum(['camera', 'lens', 'lighting', 'accessory', 'other'], { error: 'Invalid category' }),
+  category:       z.string().min(1, 'Category is required'),
   serial_number:  z.string().optional().default(''),
   status:         z.enum(['available', 'in_use', 'maintenance', 'retired'], { error: 'Invalid status' }),
   notes:          z.string().optional().default(''),
