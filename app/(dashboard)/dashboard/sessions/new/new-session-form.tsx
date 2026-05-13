@@ -394,57 +394,78 @@ export default function NewSessionForm({ clients, packages, staff }: {
           </div>
         )}
 
-        {/* Package matching */}
-        {hasSpecs && (
+        {/* Package selection */}
+        {(hasSpecs || sessionFiltered.length > 0) && (
           <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '14px' }}>
-            {exactMatches.length > 0 ? (
+
+            {/* Exact-match cards — shown only when specs narrow the list */}
+            {exactMatches.length > 0 && (
               <>
                 <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
                   Matching packages
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
                   {exactMatches.map(pkgCard)}
                 </div>
-                {otherPackages.length > 0 && (
-                  <>
-                    <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '12px 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                      Other packages
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {otherPackages.map(pkgCard)}
-                    </div>
-                  </>
-                )}
               </>
-            ) : (
-              <>
-                {otherPackages.length > 0 && (
-                  <>
-                    <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                      Packages
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                      {otherPackages.map(pkgCard)}
-                    </div>
-                  </>
-                )}
-                {/* Inline save-as-package */}
-                {!form.package_id && (
-                  <div style={{ background: 'var(--hover)', borderRadius: '8px', padding: '12px' }}>
-                    <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 6px' }}>Save as new package?</p>
-                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
-                      No saved package matches these specs. Give it a name and it will be saved automatically.
-                    </p>
-                    <input
-                      type="text"
-                      value={newPackageName}
-                      onChange={e => setNewPackageName(e.target.value)}
-                      placeholder="e.g. 3-outfit portrait session"
-                      style={inputStyle}
-                    />
-                  </div>
-                )}
-              </>
+            )}
+
+            {/* Searchable dropdown for everything else */}
+            {(() => {
+              const browseList = hasSpecs ? otherPackages : sessionFiltered
+              if (browseList.length === 0 && exactMatches.length > 0) return null
+              const label = exactMatches.length > 0 ? 'Other packages' : 'Package'
+              const selectedInBrowse = browseList.some(p => p.package_id === form.package_id)
+              return (
+                <div style={{ marginBottom: browseList.length > 0 ? '10px' : 0 }}>
+                  {browseList.length > 0 && (
+                    <>
+                      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+                        {label}
+                      </p>
+                      <SearchableSelect
+                        options={[
+                          { value: '', label: '— No package —', sublabel: undefined },
+                          ...browseList.map(p => {
+                            const specs: string[] = []
+                            if (p.outfits_count != null) specs.push(`${p.outfits_count} outfit${p.outfits_count !== 1 ? 's' : ''}`)
+                            if (p.edited_photos  != null) specs.push(`${p.edited_photos} photos`)
+                            return {
+                              value:    p.package_id,
+                              label:    p.name,
+                              sublabel: [
+                                `₦${Number(p.base_price).toLocaleString()}`,
+                                ...specs,
+                              ].join(' · '),
+                            }
+                          }),
+                        ]}
+                        value={selectedInBrowse ? form.package_id : ''}
+                        onChange={v => update('package_id', v)}
+                        placeholder="Search packages…"
+                        emptyMessage="No packages match"
+                      />
+                    </>
+                  )}
+                </div>
+              )
+            })()}
+
+            {/* Save-as-new when specs are set but nothing selected */}
+            {hasSpecs && !form.package_id && exactMatches.length === 0 && (
+              <div style={{ background: 'var(--hover)', borderRadius: '8px', padding: '12px', marginTop: '10px' }}>
+                <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 6px' }}>Save as new package?</p>
+                <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
+                  No saved package matches these specs. Give it a name and it will be saved automatically.
+                </p>
+                <input
+                  type="text"
+                  value={newPackageName}
+                  onChange={e => setNewPackageName(e.target.value)}
+                  placeholder="e.g. 3-outfit portrait session"
+                  style={inputStyle}
+                />
+              </div>
             )}
 
             {form.package_id && (
@@ -453,18 +474,6 @@ export default function NewSessionForm({ clients, packages, staff }: {
                 ✕ No package
               </button>
             )}
-          </div>
-        )}
-
-        {/* Show packages if no specs entered yet */}
-        {!hasSpecs && sessionFiltered.length > 0 && (
-          <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '14px' }}>
-            <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-              Saved packages
-            </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {sessionFiltered.map(pkgCard)}
-            </div>
           </div>
         )}
       </div>
