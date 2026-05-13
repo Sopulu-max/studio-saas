@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
 import { updateGalleryStatus, deletePhoto, toggleFavourite, deliverGallery } from '@/app/actions/galleries'
+import { compressImage } from '@/lib/compress-image'
 
 type GalleryPhoto = {
   photo_id: string
@@ -41,13 +42,13 @@ export default function GalleryUploader({
     let failed = 0
 
     for (let i = 0; i < files.length; i++) {
-      const file = files[i]
-      const ext = file.name.split('.').pop()
-      const path = `${galleryId}/${Date.now()}-${i}.${ext}`
+      const raw  = files[i]
+      const file = await compressImage(raw, 'gallery').catch(() => raw)
+      const path = `${galleryId}/${Date.now()}-${i}.jpg`
 
       const { data: uploaded, error } = await supabase.storage
         .from('gallery-photos')
-        .upload(path, file, { upsert: false })
+        .upload(path, file, { upsert: false, contentType: 'image/jpeg' })
 
       if (error || !uploaded) { failed++; continue }
 

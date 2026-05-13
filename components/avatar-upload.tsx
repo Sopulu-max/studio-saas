@@ -4,6 +4,7 @@ import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { updateStaffAvatar } from '@/app/actions/staff'
 import { updateClientAvatar } from '@/app/actions/clients'
+import { compressImage } from '@/lib/compress-image'
 
 interface AvatarUploadProps {
   entityId:   string
@@ -51,18 +52,19 @@ export default function AvatarUpload({
   const fontSize              = Math.round(size * 0.33)
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 5 * 1024 * 1024) { setError('Max file size is 5 MB'); return }
+    const raw = e.target.files?.[0]
+    if (!raw) return
 
     setLoading(true)
     setError(null)
 
+    const file = await compressImage(raw, 'avatar').catch(() => raw)
+
     // Upload to Supabase Storage — path is deterministic so it overwrites
-    const path = `${entityType}/${entityId}`
+    const path = `${entityType}/${entityId}.jpg`
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true, contentType: file.type })
+      .upload(path, file, { upsert: true, contentType: 'image/jpeg' })
 
     if (uploadError) {
       setError(uploadError.message)

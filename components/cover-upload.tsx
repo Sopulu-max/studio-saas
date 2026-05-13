@@ -3,6 +3,7 @@
 import { useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { updatePackageCover } from '@/app/actions/packages'
+import { compressImage } from '@/lib/compress-image'
 
 interface CoverUploadProps {
   packageId:  string
@@ -28,19 +29,18 @@ export default function CoverUpload({
   const height                = Math.round(width * 0.5625) // 16:9
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 8 * 1024 * 1024) { setError('Max file size is 8 MB'); return }
+    const raw = e.target.files?.[0]
+    if (!raw) return
 
     setLoading(true)
     setError(null)
 
-    const ext  = file.name.split('.').pop() ?? 'jpg'
-    const path = `package/${packageId}.${ext}`
+    const file = await compressImage(raw, 'cover').catch(() => raw)
+    const path = `package/${packageId}.jpg`
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(path, file, { upsert: true, contentType: file.type })
+      .upload(path, file, { upsert: true, contentType: 'image/jpeg' })
 
     if (uploadError) {
       setError(uploadError.message)
@@ -104,7 +104,7 @@ export default function CoverUpload({
               <polyline points="21 15 16 10 5 21" />
             </svg>
             <p style={{ fontSize: '13px', margin: 0, fontWeight: '500' }}>Click to upload cover image</p>
-            <p style={{ fontSize: '12px', margin: '4px 0 0', color: 'var(--text-4)' }}>JPG, PNG or WebP · max 8 MB</p>
+            <p style={{ fontSize: '12px', margin: '4px 0 0', color: 'var(--text-4)' }}>JPG, PNG or WebP</p>
           </div>
         )}
 
