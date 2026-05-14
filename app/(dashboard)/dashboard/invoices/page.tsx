@@ -200,7 +200,8 @@ export default async function InvoicesPage({
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       revByMo.set(key, 0)
     }
-    for (const p of (revenueRaw ?? []) as unknown as { paid_at: string; amount: number | string | null }[]) {
+    for (const p of (revenueRaw ?? []) as unknown as { paid_at: string | null; amount: number | string | null }[]) {
+      if (!p.paid_at) continue
       const key = p.paid_at.slice(0, 7)
       if (revByMo.has(key)) revByMo.set(key, (revByMo.get(key) ?? 0) + Number(p.amount ?? 0))
     }

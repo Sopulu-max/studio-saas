@@ -253,7 +253,8 @@ export default async function ClientsPage({
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       countsByMo.set(key, 0)
     }
-    for (const c of (recentRaw ?? []) as unknown as { created_at: string }[]) {
+    for (const c of (recentRaw ?? []) as unknown as { created_at: string | null }[]) {
+      if (!c.created_at) continue
       const key = c.created_at.slice(0, 7)
       if (countsByMo.has(key)) countsByMo.set(key, (countsByMo.get(key) ?? 0) + 1)
     }
