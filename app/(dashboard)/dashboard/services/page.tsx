@@ -2,6 +2,8 @@ import Link from 'next/link'
 import SearchInput from '@/components/search-input'
 import FilterSelect from '@/components/filter-select'
 import Pagination from '@/components/pagination'
+import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import DonutChart from '@/components/donut-chart'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 
@@ -78,9 +80,10 @@ function EmptyState({ message, sub }: { message: string; sub: string }) {
 export default async function ServicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; type?: string; active?: string; page?: string }>
+  searchParams: Promise<{ q?: string; type?: string; active?: string; page?: string; layout?: string }>
 }) {
-  const { q = '', type = '', active = '', page = '1' } = await searchParams
+  const { q = '', type = '', active = '', page = '1', layout: rawLayout } = await searchParams
+  const layout = resolveLayout(rawLayout, ['grid', 'list', 'chart-donut'])
   const pageNum = Math.max(1, parseInt(page) || 1)
   const from    = (pageNum - 1) * PAGE_SIZE
   const to      = from + PAGE_SIZE - 1
@@ -141,9 +144,12 @@ export default async function ServicesPage({
             Your photography services, products, and digital offerings
           </p>
         </div>
-        <Link href="/dashboard/services/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
-          Add service
-        </Link>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <ViewSwitcher modes={['grid', 'list', 'chart-donut']} storageKey="services" />
+          <Link href="/dashboard/services/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
+            Add service
+          </Link>
+        </div>
       </div>
 
       <StatsStrip items={statsItems} />
@@ -176,70 +182,69 @@ export default async function ServicesPage({
         {listTotal} service{listTotal !== 1 ? 's' : ''}
       </p>
 
-      {/* Card grid */}
-      {!services.length ? (
+      {/* ── Chart: donut breakdown ───────────────────────────── */}
+      {layout === 'chart-donut' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '16px' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+            <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By type</p>
+            <DonutChart title="services" segments={[
+              { label: '🎯 Service', value: serviceCount, color: '#534ab7' },
+              { label: '📦 Product', value: productCount, color: '#854f0b' },
+              { label: '💻 Digital', value: digitalCount, color: '#185fa5' },
+            ]} />
+          </div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+            <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>Active vs inactive</p>
+            <DonutChart title="services" segments={[
+              { label: 'Active',   value: activeCount,            color: '#3b6d11' },
+              { label: 'Inactive', value: totalCount - activeCount, color: '#888' },
+            ]} />
+          </div>
+        </div>
+      )}
+
+      {/* ── Card grid ────────────────────────────────────────── */}
+      {layout !== 'chart-donut' && !services.length && (
         <EmptyState
           message={q || type || active ? 'No services match your filters' : 'No services yet'}
           sub={q || type || active ? 'Try adjusting your search or filters' : 'Add photography packages, products, and digital delivery options that clients can book'}
         />
-      ) : (
+      )}
+
+      {/* ── Grid view ────────────────────────────────────────── */}
+      {layout === 'grid' && services.length > 0 && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
             {services.map((svc) => {
               const tc = TYPE_COLORS[svc.type] ?? TYPE_COLORS.service
               return (
-                <Link
-                  key={svc.service_id}
-                  href={`/dashboard/services/${svc.service_id}`}
-                  style={{
-                    background: 'var(--surface)', border: '1px solid var(--line)',
-                    borderRadius: '12px', overflow: 'hidden',
-                    display: 'block', textDecoration: 'none', color: 'inherit',
-                  }}
-                >
-                  {/* Type color bar */}
+                <Link key={svc.service_id} href={`/dashboard/services/${svc.service_id}`}
+                  style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
                   <div style={{ height: '5px', background: tc.color }} />
-
                   <div style={{ padding: '1rem' }}>
-                    {/* Header row */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
                       <span style={{ fontSize: '20px', lineHeight: 1 }}>{TYPE_ICONS[svc.type]}</span>
-                      <span style={{
-                        fontSize: '10px', padding: '2px 7px', borderRadius: '20px', fontWeight: '600',
-                        background: svc.is_active ? '#eaf3de' : '#f3f3f3',
-                        color:      svc.is_active ? '#3b6d11' : '#888',
-                        flexShrink: 0,
-                      }}>
+                      <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '20px', fontWeight: '600', background: svc.is_active ? '#eaf3de' : '#f3f3f3', color: svc.is_active ? '#3b6d11' : '#888', flexShrink: 0 }}>
                         {svc.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </div>
-
-                    {/* Name */}
                     <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 4px', lineHeight: 1.3 }}>{svc.name}</p>
-
-                    {/* Description */}
                     {svc.description && (
-                      <p style={{
-                        fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px', lineHeight: 1.5,
-                        overflow: 'hidden', display: '-webkit-box',
-                        WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const,
-                      }}>
+                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px', lineHeight: 1.5, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
                         {svc.description}
                       </p>
                     )}
-
-                    {/* Stats */}
                     <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
                       <div>
                         <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Price</p>
-                        <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: 'var(--text)', lineHeight: 1.1 }}>
+                        <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, lineHeight: 1.1 }}>
                           {svc.price != null ? `₦${Number(svc.price).toLocaleString()}` : <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>—</span>}
                         </p>
                       </div>
                       {svc.duration_mins != null && (
                         <div>
                           <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Duration</p>
-                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, color: 'var(--text-2)', lineHeight: 1.1 }}>{svc.duration_mins} min</p>
+                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0, lineHeight: 1.1 }}>{svc.duration_mins} min</p>
                         </div>
                       )}
                       <div style={{ marginLeft: 'auto' }}>
@@ -253,11 +258,40 @@ export default async function ServicesPage({
               )
             })}
           </div>
-          {totalPages > 1 && (
-            <div style={{ marginTop: '1rem' }}>
-              <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
+          {totalPages > 1 && <div style={{ marginTop: '1rem' }}><Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} /></div>}
+        </>
+      )}
+
+      {/* ── List view ────────────────────────────────────────── */}
+      {layout === 'list' && services.length > 0 && (
+        <>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
+              <span>Name</span><span>Type</span><span>Price</span><span>Status</span>
             </div>
-          )}
+            {services.map((svc, i) => {
+              const tc = TYPE_COLORS[svc.type] ?? TYPE_COLORS.service
+              return (
+                <Link key={svc.service_id} href={`/dashboard/services/${svc.service_id}`}
+                  style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '0.875rem 1.25rem', alignItems: 'center', borderBottom: i < services.length - 1 ? '1px solid var(--line-inner)' : 'none', borderLeft: `4px solid ${tc.color}`, textDecoration: 'none', color: 'inherit' }}>
+                  <div>
+                    <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{svc.name}</p>
+                    {svc.description && <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 1, WebkitBoxOrient: 'vertical' as const }}>{svc.description}</p>}
+                  </div>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: tc.bg, color: tc.color, fontWeight: '500', display: 'inline-block', width: 'fit-content' }}>
+                    {TYPE_ICONS[svc.type]} {TYPE_LABELS[svc.type] ?? svc.type}
+                  </span>
+                  <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                    {svc.price != null ? `₦${Number(svc.price).toLocaleString()}` : <span style={{ color: 'var(--text-4)' }}>—</span>}
+                  </span>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: '500', background: svc.is_active ? '#eaf3de' : '#f3f3f3', color: svc.is_active ? '#3b6d11' : '#888', display: 'inline-block', width: 'fit-content' }}>
+                    {svc.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </Link>
+              )
+            })}
+          </div>
+          {totalPages > 1 && <div style={{ marginTop: '1rem' }}><Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} /></div>}
         </>
       )}
     </div>
