@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext, fetchStudio, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
-import { sendStatusUpdateEmail, sendBookingConfirmationEmail } from '@/lib/email'
+import { sendStatusUpdateEmail, sendBookingConfirmationEmail, sendEventDateReminderEmail } from '@/lib/email'
 
 const addSessionSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -553,5 +553,57 @@ export async function updateSession(sessionId: string, form: {
 
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   revalidatePath('/dashboard/sessions')
+  return { error: null }
+}
+
+// ── Send event-date reminder email ────────────────────────────────────────────
+// Fires a warm reminder to the client: "your [shoot_type] is in X days, we're
+// putting the finishing touches on your photos."
+export async function sendEventDateReminder(sessionId: string) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  // Fetch booking + client email in one query
+  const { data: row } = await context.admin
+    .from('bookings')
+    .select('booking_id, event_date, shoot_type, clients(full_name, email)')
+    .eq('booking_id', sessionId)
+    .eq('studio_id', context.studioId)
+    .single()
+
+  if (!row) return { error: 'Session not found' }
+
+  const booking = row as unknown as {
+    booking_id: string
+    event_date: string | null
+    shoot_type: string | null
+    clients: { full_name: string | null; email: string | null } | null
+  }
+
+  if (!booking.event_date) return { error: 'This session has no category date set' }
+  if (!booking.clients?.email) return { error: 'Client has no email address on file' }
+  if (!booking.shoot_type)  return { error: 'Session has no category type set' }
+
+  // Compute days until event
+  const today  = new Date(); today.setHours(0, 0, 0, 0)
+  const target = new Date(booking.event_date); target.setHours(0, 0, 0, 0)
+  const days   = Math.round((target.getTime() - today.getTime()) / 86_400_000)
+
+  if (days < 0)  return { error: 'Event date has already passed' }
+  if (days > 30) return { error: 'Event date is more than 30 days away — no reminder needed yet' }
+
+  const studioRow  = await fetchStudio(context.admin, context.studioId)
+  const studioName = studioRow?.name ?? 'Your Studio'
+
+  const { error: emailError } = await sendEventDateReminderEmail({
+    to:          booking.clients.email,
+    clientName:  booking.clients.full_name ?? 'there',
+    studioName,
+    shootType:   booking.shoot_type,
+    eventDate:   booking.event_date,
+    daysUntil:   days,
+  })
+
+  if (emailError) return { error: emailError }
   return { error: null }
 }

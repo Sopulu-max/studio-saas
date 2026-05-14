@@ -10,17 +10,18 @@ interface AvatarUploadProps {
   entityId:   string
   entityType: 'staff' | 'client'
   currentUrl?: string | null
-  name:        string          // used for initials fallback
+  name:        string | null | undefined  // used for initials fallback
   size?:       number          // diameter in px, default 64
   editable?:   boolean         // default true — set false for list display
 }
 
-function initials(name: string) {
+function initials(name: string | null | undefined) {
+  if (!name) return '?'
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 }
 
 // Deterministic warm hue from name for the initials background
-function avatarColor(name: string): { bg: string; color: string } {
+function avatarColor(name: string | null | undefined): { bg: string; color: string } {
   const palettes = [
     { bg: '#eeedfe', color: '#534ab7' },
     { bg: '#e6f1fb', color: '#185fa5' },
@@ -30,6 +31,7 @@ function avatarColor(name: string): { bg: string; color: string } {
     { bg: '#e8f4fc', color: '#1a6a8a' },
     { bg: '#fce8f3', color: '#8b2d6e' },
   ]
+  if (!name) return palettes[0]
   const idx = name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % palettes.length
   return palettes[idx]
 }
@@ -124,7 +126,7 @@ export default function AvatarUpload({
         {url ? (
           <img
             src={url}
-            alt={name}
+            alt={name ?? ''}
             style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
           />
         ) : (

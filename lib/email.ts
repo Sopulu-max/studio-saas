@@ -354,6 +354,70 @@ export async function sendGalleryEmail({
   return { error: error?.message ?? null }
 }
 
+export async function sendEventDateReminderEmail({
+  to,
+  clientName,
+  studioName,
+  shootType,
+  eventDate,
+  daysUntil,
+}: {
+  to: string
+  clientName: string
+  studioName: string
+  shootType: string
+  eventDate: string
+  daysUntil: number
+}) {
+  const dateLabel = new Date(eventDate).toLocaleDateString('en-NG', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  })
+  const countdownLine =
+    daysUntil === 0
+      ? `Your <strong>${shootType}</strong> is <strong>today</strong>!`
+      : daysUntil === 1
+        ? `Your <strong>${shootType}</strong> is <strong>tomorrow</strong>!`
+        : `Your <strong>${shootType}</strong> is in <strong>${daysUntil} day${daysUntil !== 1 ? 's' : ''}</strong>.`
+
+  const html = `
+<!DOCTYPE html>
+<html>
+<body style="font-family:system-ui,sans-serif;background:#f9f9f9;margin:0;padding:32px 16px;">
+  <div style="max-width:520px;margin:0 auto;background:white;border-radius:12px;border:1px solid #e5e5e5;padding:32px;">
+    <p style="margin:0 0 4px;font-size:18px;font-weight:600;color:#111;">${studioName}</p>
+    <p style="margin:0 0 28px;font-size:13px;color:#888;">A note from your studio</p>
+
+    <p style="margin:0 0 16px;font-size:15px;color:#111;">Hi ${clientName},</p>
+    <p style="margin:0 0 20px;font-size:14px;color:#555;line-height:1.7;">
+      ${countdownLine} We wanted to reach out to let you know we're putting the finishing touches on your photos and can't wait for you to see them.
+    </p>
+
+    <div style="background:#fef9ec;border:1px solid #fcd34d;border-radius:8px;padding:16px 20px;margin-bottom:24px;">
+      <p style="margin:0 0 4px;font-size:12px;color:#92400e;text-transform:uppercase;letter-spacing:.05em;font-weight:600;">Your special date</p>
+      <p style="margin:0;font-size:15px;font-weight:600;color:#78350f;">${dateLabel}</p>
+    </div>
+
+    <p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">
+      If you have any questions before then, just reply to this email — we'd love to hear from you.
+    </p>
+
+    <hr style="border:none;border-top:1px solid #f0f0f0;margin:24px 0;" />
+    <p style="margin:0;font-size:12px;color:#bbb;">With love from the <strong>${studioName}</strong> team</p>
+  </div>
+</body>
+</html>`
+
+  const subjectEmoji = daysUntil === 0 ? '🎉' : '📅'
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to,
+    subject: `${subjectEmoji} Your ${shootType} is${daysUntil === 0 ? ' today' : daysUntil === 1 ? ' tomorrow' : ` in ${daysUntil} days`} — ${studioName}`,
+    html,
+  })
+
+  return { error: error?.message ?? null }
+}
+
 export async function sendStudioBookingNotification({
   studioEmail,
   studioName,

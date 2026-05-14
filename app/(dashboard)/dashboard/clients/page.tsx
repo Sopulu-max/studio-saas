@@ -89,6 +89,7 @@ export default async function ClientsPage({
 }: {
   searchParams: Promise<{ view?: string; q?: string; page?: string; layout?: string }>
 }) {
+  try {
   const { view = 'all', q = '', page = '1', layout: rawLayout } = await searchParams
   const pageNum = Math.max(1, parseInt(page) || 1)
   const clientLayout = view === 'all' ? resolveLayout(rawLayout, ['grid', 'list', 'chart-bar']) : 'grid'
@@ -577,4 +578,8 @@ export default async function ClientsPage({
       )}
     </div>
   )
+  } catch (err: unknown) {
+    console.error('[clients page] render error:', err)
+    throw err
+  }
 }

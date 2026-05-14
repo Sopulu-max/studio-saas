@@ -5,6 +5,7 @@ import SessionExtras from './session-extras'
 import QuickPayment from './quick-payment'
 import PendingActions from './pending-actions'
 import DeleteSessionButton from './delete-session-button'
+import EventDateReminderButton from './event-date-reminder-button'
 import Link from 'next/link'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig, getStatusConfig } from '@/lib/studio-config'
@@ -175,6 +176,16 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   const isOutdoor      = session.session_type === 'outdoor'
   const isVideoSession = session.service_type === 'video' || session.service_type === 'photo_video'
 
+  // Category date reminder — show when event_date is within 7 days and client has email
+  const isCancelled = !!statusCfg.is_cancellation
+  const daysUntilEvent = (() => {
+    if (!session.event_date || isCancelled) return null
+    const today  = new Date(); today.setHours(0, 0, 0, 0)
+    const target = new Date(session.event_date); target.setHours(0, 0, 0, 0)
+    const diff   = Math.round((target.getTime() - today.getTime()) / 86_400_000)
+    return diff >= 0 && diff <= 7 ? diff : null
+  })()
+
   return (
     <div style={{ maxWidth: '640px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
@@ -218,6 +229,19 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           confirmStatus={confirmStatus}
           cancelStatus={cancelStatusVal}
         />
+      )}
+
+      {/* Category date reminder — shown when event_date within 7 days & client has email */}
+      {daysUntilEvent !== null && session.shoot_type && session.clients?.email && (
+        <div style={{ marginBottom: '12px' }}>
+          <EventDateReminderButton
+            sessionId={id}
+            clientName={session.clients?.full_name ?? 'Client'}
+            shootType={session.shoot_type}
+            eventDate={session.event_date!}
+            daysUntil={daysUntilEvent}
+          />
+        </div>
       )}
 
       {/* Client */}

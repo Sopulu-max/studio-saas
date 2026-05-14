@@ -106,6 +106,7 @@ export default async function SessionsPage({
     category?: string; date_from?: string; date_to?: string; page?: string; layout?: string
   }>
 }) {
+  try {
   const {
     view = 'all',
     q = '', status = '', type = '', category = '',
@@ -713,6 +714,10 @@ export default async function SessionsPage({
       )}
     </div>
   )
+  } catch (err: unknown) {
+    console.error('[sessions page] render error:', err)
+    throw err
+  }
 }
 
 // ─── NeedsSection helper ─────────────────────────────────────────

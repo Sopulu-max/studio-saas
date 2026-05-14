@@ -82,6 +82,7 @@ export default async function InvoicesPage({
   searchParams: Promise<{ view?: string; status?: string; method?: string; page?: string; layout?: string }>
 }) {
   const { view = 'all', status = '', method = '', page = '1', layout: rawLayout } = await searchParams
+  try {
   const invoiceLayout = view === 'all' ? resolveLayout(rawLayout, ['list', 'grid', 'chart-bar']) : 'list'
   const pageNum = Math.max(1, parseInt(page) || 1)
 
@@ -548,4 +549,8 @@ export default async function InvoicesPage({
       )}
     </div>
   )
+  } catch (err: unknown) {
+    console.error('[invoices page] render error:', err)
+    throw err
+  }
 }
