@@ -6,7 +6,8 @@ import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStaffRoleConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
-import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import { ViewSwitcher } from '@/components/view-switcher'
+import { resolveLayout } from '@/lib/view-mode'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 

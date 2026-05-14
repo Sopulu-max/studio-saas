@@ -4,7 +4,8 @@ import Pagination from '@/components/pagination'
 import AvatarUpload from '@/components/avatar-upload'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
-import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import { ViewSwitcher } from '@/components/view-switcher'
+import { resolveLayout } from '@/lib/view-mode'
 import BarChart from '@/components/bar-chart'
 import DonutChart from '@/components/donut-chart'
 
@@ -89,7 +90,6 @@ export default async function ClientsPage({
 }: {
   searchParams: Promise<{ view?: string; q?: string; page?: string; layout?: string }>
 }) {
-  try {
   const { view = 'all', q = '', page = '1', layout: rawLayout } = await searchParams
   const pageNum = Math.max(1, parseInt(page) || 1)
   const clientLayout = view === 'all' ? resolveLayout(rawLayout, ['grid', 'list', 'chart-bar']) : 'grid'
@@ -578,8 +578,4 @@ export default async function ClientsPage({
       )}
     </div>
   )
-  } catch (err: unknown) {
-    console.error('[clients page] render error:', err)
-    throw err
-  }
 }

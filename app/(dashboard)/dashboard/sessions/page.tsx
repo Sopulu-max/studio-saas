@@ -8,7 +8,8 @@ import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
-import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import { ViewSwitcher } from '@/components/view-switcher'
+import { resolveLayout } from '@/lib/view-mode'
 
 const PAGE_SIZE = 20
 
@@ -106,7 +107,6 @@ export default async function SessionsPage({
     category?: string; date_from?: string; date_to?: string; page?: string; layout?: string
   }>
 }) {
-  try {
   const {
     view = 'all',
     q = '', status = '', type = '', category = '',
@@ -714,10 +714,6 @@ export default async function SessionsPage({
       )}
     </div>
   )
-  } catch (err: unknown) {
-    console.error('[sessions page] render error:', err)
-    throw err
-  }
 }
 
 // ─── NeedsSection helper ─────────────────────────────────────────

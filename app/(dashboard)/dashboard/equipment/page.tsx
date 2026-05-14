@@ -6,7 +6,8 @@ import EquipmentCard from './equipment-card'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getEquipmentCategoryConfig } from '@/lib/studio-config'
-import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import { ViewSwitcher } from '@/components/view-switcher'
+import { resolveLayout } from '@/lib/view-mode'
 import DonutChart from '@/components/donut-chart'
 
 // ─── Types ─────────────────────────────────────────────────────────────────

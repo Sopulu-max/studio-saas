@@ -2,8 +2,9 @@
 
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import { Suspense } from 'react'
+import type { ViewMode } from '@/lib/view-mode'
 
-export type ViewMode = 'list' | 'grid' | 'chart-donut' | 'chart-bar'
+export type { ViewMode }
 
 const ICONS: Record<ViewMode, React.ReactNode> = {
   list: (
@@ -91,8 +92,3 @@ export function ViewSwitcher({ modes, storageKey }: { modes: ViewMode[]; storage
   )
 }
 
-/** Read active layout on the server from searchParams, falling back to the first mode. */
-export function resolveLayout(raw: string | undefined, modes: ViewMode[]): ViewMode {
-  if (raw && modes.includes(raw as ViewMode)) return raw as ViewMode
-  return modes[0]
-}
