@@ -6,6 +6,8 @@ import EquipmentCard from './equipment-card'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getEquipmentCategoryConfig } from '@/lib/studio-config'
+import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import DonutChart from '@/components/donut-chart'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -100,9 +102,10 @@ function EmptyState({ message, sub }: { message: string; sub: string }) {
 export default async function EquipmentPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; q?: string; category?: string; status?: string; page?: string }>
+  searchParams: Promise<{ view?: string; q?: string; category?: string; status?: string; page?: string; layout?: string }>
 }) {
-  const { view = 'all', q = '', category = '', status = '', page = '1' } = await searchParams
+  const { view = 'all', q = '', category = '', status = '', page = '1', layout: rawLayout } = await searchParams
+  const equipLayout = view === 'all' ? resolveLayout(rawLayout, ['grid', 'list', 'chart-donut']) : 'grid'
   const pageNum = Math.max(1, parseInt(page) || 1)
   const from    = (pageNum - 1) * PAGE_SIZE
   const to      = from + PAGE_SIZE - 1
@@ -308,7 +311,7 @@ export default async function EquipmentPage({
       <StatsStrip items={statsItems} />
       <TabNav active="all" />
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <SearchInput defaultValue={q} placeholder="Search by name..." />
         <FilterSelect
           name="category"
@@ -327,18 +330,57 @@ export default async function EquipmentPage({
             { value: 'retired',     label: 'Retired' },
           ]}
         />
+        <div style={{ marginLeft: 'auto' }}>
+          <ViewSwitcher modes={['grid', 'list', 'chart-donut']} storageKey="equipment-all" />
+        </div>
       </div>
 
       <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 1rem' }}>
         {listTotal} item{listTotal !== 1 ? 's' : ''}
       </p>
 
-      {!equipment.length ? (
+      {/* ── Chart: donut breakdown ── */}
+      {equipLayout === 'chart-donut' && (() => {
+        const catCounts = new Map<string, number>()
+        for (const e of allEquipment) {
+          const k = e.category ?? 'other'
+          catCounts.set(k, (catCounts.get(k) ?? 0) + 1)
+        }
+        const retired = allEquipment.filter(e => e.status === 'retired').length
+        return (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+              <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By status</p>
+              <DonutChart title="items" segments={[
+                { label: 'Available',    value: available,   color: '#3b6d11' },
+                { label: 'In use',       value: inUse,       color: '#185fa5' },
+                { label: 'Maintenance',  value: maintenance, color: '#854f0b' },
+                { label: 'Retired',      value: retired,     color: '#a32d2d' },
+              ]} />
+            </div>
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+              <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By category</p>
+              <DonutChart title="items" segments={
+                [...catCounts.entries()].map(([cat, cnt], idx) => {
+                  const cc = getEquipmentCategoryConfig(config, cat)
+                  const palette = ['#534ab7','#185fa5','#3b6d11','#854f0b','#a32d2d','#888']
+                  return { label: cc.label || cat, value: cnt, color: cc.color_fg || palette[idx % palette.length] }
+                })
+              } />
+            </div>
+          </div>
+        )
+      })()}
+
+      {equipLayout !== 'chart-donut' && !equipment.length && (
         <EmptyState
           message={q || category || status ? 'No equipment match your filters' : 'No equipment yet'}
           sub={q || category || status ? 'Try adjusting your search or filters' : 'Add your cameras, lenses, and lighting gear'}
         />
-      ) : (
+      )}
+
+      {/* ── Grid view ── */}
+      {equipLayout === 'grid' && equipment.length > 0 && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
             {equipment.map((item) => {
@@ -347,24 +389,17 @@ export default async function EquipmentPage({
               return (
                 <Link key={item.equipment_id} href={`/dashboard/equipment/${item.equipment_id}`}
                   style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
-                  {/* Status color bar */}
                   <div style={{ height: '5px', background: st.color }} />
-
                   <div style={{ padding: '1rem' }}>
-                    {/* Name + status badge */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
                       <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, lineHeight: 1.3 }}>{item.name}</p>
                       <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
                         {STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')}
                       </span>
                     </div>
-
-                    {/* Category */}
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: catCfg.color_bg, color: catCfg.color_fg, fontWeight: '500', textTransform: 'capitalize' }}>
                       {catCfg.label || item.category}
                     </span>
-
-                    {/* Footer */}
                     <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
                         {item.serial_number ? `S/N ${item.serial_number}` : 'No serial no.'}
@@ -374,6 +409,45 @@ export default async function EquipmentPage({
                       )}
                     </div>
                   </div>
+                </Link>
+              )
+            })}
+          </div>
+          {totalPages > 1 && (
+            <div style={{ marginTop: '1rem' }}>
+              <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ── List view ── */}
+      {equipLayout === 'list' && equipment.length > 0 && (
+        <>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
+              <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
+            </div>
+            {equipment.map((item, i) => {
+              const catCfg = getEquipmentCategoryConfig(config, item.category)
+              const st     = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
+              return (
+                <Link key={item.equipment_id} href={`/dashboard/equipment/${item.equipment_id}`} style={{
+                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                  padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                  borderBottom: i < equipment.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  borderLeft: `4px solid ${st.color}`,
+                }}>
+                  <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>{item.name}</p>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: catCfg.color_bg, color: catCfg.color_fg, fontWeight: '500', textTransform: 'capitalize', display: 'inline-block', width: 'fit-content' }}>
+                    {catCfg.label || item.category}
+                  </span>
+                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                    {item.serial_number ?? '—'}
+                  </p>
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', display: 'inline-block', width: 'fit-content' }}>
+                    {STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')}
+                  </span>
                 </Link>
               )
             })}

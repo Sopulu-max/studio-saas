@@ -8,6 +8,7 @@ import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
+import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
 
 const PAGE_SIZE = 20
 
@@ -102,14 +103,16 @@ export default async function SessionsPage({
 }: {
   searchParams: Promise<{
     view?: string; q?: string; status?: string; type?: string
-    category?: string; date_from?: string; date_to?: string; page?: string
+    category?: string; date_from?: string; date_to?: string; page?: string; layout?: string
   }>
 }) {
   const {
     view = 'all',
     q = '', status = '', type = '', category = '',
     date_from = '', date_to = '', page = '1',
+    layout: rawLayout,
   } = await searchParams
+  const sessionLayout = view === 'all' ? resolveLayout(rawLayout, ['list', 'grid']) : 'list'
   const pageNum = Math.max(1, parseInt(page) || 1)
 
   const context = await getStudioContext()
@@ -323,8 +326,8 @@ export default async function SessionsPage({
             </Link>
           )}
 
-          {/* Filters */}
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
+          {/* Filters + view switcher */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <SearchInput defaultValue={q} placeholder="Search by client name…" />
             <DateRangeFilter defaultFrom={date_from} defaultTo={date_to} />
             <FilterSelect name="type" defaultValue={type} placeholder="All types"
@@ -335,6 +338,9 @@ export default async function SessionsPage({
               <FilterSelect name="category" defaultValue={category} placeholder="All categories"
                 options={distinctCategories.map(c => ({ value: c, label: c }))} />
             )}
+            <div style={{ marginLeft: 'auto' }}>
+              <ViewSwitcher modes={['list', 'grid']} storageKey="sessions-all" />
+            </div>
           </div>
 
           <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
@@ -350,6 +356,49 @@ export default async function SessionsPage({
                 {q || status || type || category ? 'Try adjusting your search or filters' : 'Create your first session to get started'}
               </p>
             </div>
+          ) : sessionLayout === 'grid' ? (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                {allSessions.map((s) => {
+                  const sc = getStatusConfig(config, s.status)
+                  const tc = s.session_type ? getSessionTypeConfig(config, s.session_type) : null
+                  return (
+                    <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`}
+                      style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                      <div style={{ height: '4px', background: sc.color_fg }} />
+                      <div style={{ padding: '1rem' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                          <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {s.clients?.full_name ?? '—'}
+                          </p>
+                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: sc.color_bg, color: sc.color_fg, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {sc.label}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 10px', fontFamily: 'monospace', letterSpacing: '0.01em' }}>
+                          {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                          {s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                        </p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
+                          <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{sDate(s.session_date)}</span>
+                          {tc && (
+                            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: tc.color_bg, color: tc.color_fg, fontWeight: '500' }}>
+                              {tc.label}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+              <Pagination
+                page={pageNum}
+                totalPages={Math.ceil(allTotal / PAGE_SIZE)}
+                prevUrl={pageNum > 1 ? allPageUrl({ q, status, type, category, date_from, date_to }, pageNum - 1) : undefined}
+                nextUrl={pageNum < Math.ceil(allTotal / PAGE_SIZE) ? allPageUrl({ q, status, type, category, date_from, date_to }, pageNum + 1) : undefined}
+              />
+            </>
           ) : (
             <>
               <BulkSessionList sessions={allSessions} />

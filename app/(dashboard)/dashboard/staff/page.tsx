@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStaffRoleConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
+import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -118,9 +119,10 @@ function EmptyState({ message, sub }: { message: string; sub: string }) {
 export default async function StaffPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; q?: string; page?: string }>
+  searchParams: Promise<{ view?: string; q?: string; page?: string; layout?: string }>
 }) {
-  const { view = 'team', q = '', page = '1' } = await searchParams
+  const { view = 'team', q = '', page = '1', layout: rawLayout } = await searchParams
+  const teamLayout = view === 'team' ? resolveLayout(rawLayout, ['grid', 'list']) : 'grid'
   const pageNum = Math.max(1, parseInt(page) || 1)
   const from    = (pageNum - 1) * PAGE_SIZE
   const to      = from + PAGE_SIZE - 1
@@ -324,8 +326,11 @@ export default async function StaffPage({
       <StatsStrip items={statsItems} />
       <TabNav active="team" />
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', alignItems: 'center' }}>
         <SearchInput defaultValue={q} placeholder="Search by name or role..." />
+        <div style={{ marginLeft: 'auto' }}>
+          <ViewSwitcher modes={['grid', 'list']} storageKey="staff-team" />
+        </div>
       </div>
 
       <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 1rem' }}>
@@ -339,66 +344,112 @@ export default async function StaffPage({
         />
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
-            {staff.map((member) => {
-              const effectiveRoles: string[] =
-                member.roles && member.roles.length > 0
-                  ? member.roles
-                  : member.role ? [member.role] : []
-              return (
-                <Link key={member.staff_id} href={`/dashboard/staff/${member.staff_id}`} style={{
-                  background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
-                  padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
-                }}>
-                  {/* Avatar + name */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                    <AvatarUpload
-                      entityId={member.staff_id}
-                      entityType="staff"
-                      currentUrl={member.avatar_url ?? null}
-                      name={member.full_name}
-                      size={44}
-                      editable={false}
-                    />
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {member.full_name}
-                      </p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {member.email ?? '—'}
-                      </p>
+          {/* ── Grid view ── */}
+          {teamLayout === 'grid' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+              {staff.map((member) => {
+                const effectiveRoles: string[] =
+                  member.roles && member.roles.length > 0
+                    ? member.roles
+                    : member.role ? [member.role] : []
+                return (
+                  <Link key={member.staff_id} href={`/dashboard/staff/${member.staff_id}`} style={{
+                    background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
+                    padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+                      <AvatarUpload
+                        entityId={member.staff_id}
+                        entityType="staff"
+                        currentUrl={member.avatar_url ?? null}
+                        name={member.full_name}
+                        size={44}
+                        editable={false}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {member.full_name}
+                        </p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {member.email ?? '—'}
+                        </p>
+                      </div>
                     </div>
-                  </div>
+                    {effectiveRoles.length > 0 && (
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                        {effectiveRoles.map(role => {
+                          const rc = getStaffRoleConfig(config, role)
+                          return (
+                            <span key={role} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
+                              {rc.label || role.replace(/_/g, ' ')}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: '16px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)' }}>
+                      {member.hire_date && (
+                        <span>Since {new Date(member.hire_date).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })}</span>
+                      )}
+                      {member.working_days && member.working_days.length > 0 && (
+                        <span style={{ marginLeft: member.hire_date ? 'auto' : undefined }}>
+                          {member.working_days.length}d/wk
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
 
-                  {/* Role badges */}
-                  {effectiveRoles.length > 0 && (
-                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                      {effectiveRoles.map(role => {
+          {/* ── List view ── */}
+          {teamLayout === 'list' && (
+            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
+                <span>Name</span><span>Roles</span><span>Hire date</span><span>Days / wk</span>
+              </div>
+              {staff.map((member, i) => {
+                const effectiveRoles: string[] =
+                  member.roles && member.roles.length > 0
+                    ? member.roles
+                    : member.role ? [member.role] : []
+                return (
+                  <Link key={member.staff_id} href={`/dashboard/staff/${member.staff_id}`} style={{
+                    display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr',
+                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                    borderBottom: i < staff.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <AvatarUpload entityId={member.staff_id} entityType="staff"
+                        currentUrl={member.avatar_url ?? null} name={member.full_name} size={30} editable={false} />
+                      <div>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{member.full_name}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{member.email ?? '—'}</p>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                      {effectiveRoles.length > 0 ? effectiveRoles.map(role => {
                         const rc = getStaffRoleConfig(config, role)
                         return (
                           <span key={role} style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', whiteSpace: 'nowrap' }}>
                             {rc.label || role.replace(/_/g, ' ')}
                           </span>
                         )
-                      })}
+                      }) : <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>—</span>}
                     </div>
-                  )}
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
+                      {member.hire_date ? new Date(member.hire_date).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' }) : '—'}
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
+                      {member.working_days?.length ?? '—'}
+                    </p>
+                  </Link>
+                )
+              })}
+            </div>
+          )}
 
-                  {/* Footer: hire date + working days */}
-                  <div style={{ display: 'flex', gap: '16px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)' }}>
-                    {member.hire_date && (
-                      <span>Since {new Date(member.hire_date).toLocaleDateString('en-NG', { month: 'short', year: 'numeric' })}</span>
-                    )}
-                    {member.working_days && member.working_days.length > 0 && (
-                      <span style={{ marginLeft: member.hire_date ? 'auto' : undefined }}>
-                        {member.working_days.length}d/wk
-                      </span>
-                    )}
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
           <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
         </>
       )}

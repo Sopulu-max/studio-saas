@@ -4,6 +4,9 @@ import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
+import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import BarChart from '@/components/bar-chart'
+import DonutChart from '@/components/donut-chart'
 
 const PAGE_SIZE = 20
 
@@ -76,9 +79,10 @@ function TabNav({ active }: { active: string }) {
 export default async function InvoicesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; status?: string; method?: string; page?: string }>
+  searchParams: Promise<{ view?: string; status?: string; method?: string; page?: string; layout?: string }>
 }) {
-  const { view = 'all', status = '', method = '', page = '1' } = await searchParams
+  const { view = 'all', status = '', method = '', page = '1', layout: rawLayout } = await searchParams
+  const invoiceLayout = view === 'all' ? resolveLayout(rawLayout, ['list', 'grid', 'chart-bar']) : 'list'
   const pageNum = Math.max(1, parseInt(page) || 1)
 
   const context = await getStudioContext()
@@ -179,6 +183,39 @@ export default async function InvoicesPage({
     }
   }
 
+  // ── Monthly revenue (only when chart-bar is active) ──────────
+  let monthlyRevenue: { label: string; value: number }[] = []
+  if (view === 'all' && invoiceLayout === 'chart-bar' && allInvoiceIds.length > 0) {
+    const sixAgo = new Date()
+    sixAgo.setMonth(sixAgo.getMonth() - 5)
+    sixAgo.setDate(1)
+    const { data: revenueRaw } = await context.admin
+      .from('payments')
+      .select('paid_at, amount')
+      .in('invoice_id', allInvoiceIds)
+      .gte('paid_at', sixAgo.toISOString().slice(0, 10))
+    const revByMo = new Map<string, number>()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setMonth(d.getMonth() - i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      revByMo.set(key, 0)
+    }
+    for (const p of (revenueRaw ?? []) as unknown as { paid_at: string; amount: number | string | null }[]) {
+      const key = p.paid_at.slice(0, 7)
+      if (revByMo.has(key)) revByMo.set(key, (revByMo.get(key) ?? 0) + Number(p.amount ?? 0))
+    }
+    monthlyRevenue = [...revByMo.entries()].map(([key, val]) => ({
+      label: new Date(key + '-01').toLocaleDateString('en-NG', { month: 'short' }),
+      value: Math.round(val / 1000),
+    }))
+  }
+
+  // ── Invoice status counts (for donut, derived from existing data) ─
+  const statusCountMap: Record<string, number> = {}
+  for (const inv of allInvoices) {
+    statusCountMap[inv.status] = (statusCountMap[inv.status] ?? 0) + 1
+  }
+
   // Distinct payment methods for filter
   const { data: methodRows } = view === 'payments'
     ? await context.admin.from('payments').select('method').in('invoice_id', allInvoiceIds.slice(0, 1000))
@@ -226,74 +263,153 @@ export default async function InvoicesPage({
           ══════════════════════════════════════════════════════ */}
       {view === 'all' && (
         <>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', alignItems: 'center' }}>
             <FilterSelect name="status" defaultValue={status} placeholder="All statuses"
               options={['draft','sent','paid','overdue','cancelled'].map(v => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }))} />
-          </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
-            {invoiceTotal} result{invoiceTotal !== 1 ? 's' : ''}
-          </p>
-          {!invoices.length ? (
-            <div style={{ textAlign: 'center', padding: '4rem', border: '1px dashed var(--line)', borderRadius: '12px', color: 'var(--text-3)' }}>
-              <p style={{ fontSize: '15px', margin: '0 0 4px' }}>{status ? 'No invoices match your filter' : 'No invoices yet'}</p>
-              <p style={{ fontSize: '13px', margin: 0 }}>{status ? 'Try a different status' : 'Create your first invoice from a booking'}</p>
+            <div style={{ marginLeft: 'auto' }}>
+              <ViewSwitcher modes={['list', 'grid', 'chart-bar']} storageKey="invoices-all" />
             </div>
-          ) : (
-            <>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
-                  <span>Session</span><span>Total / paid</span><span>Due date</span><span>Status</span>
-                </div>
-                {invoices.map((inv, i) => {
-                  const s = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
-                  const paid    = paidMap[inv.invoice_id] ?? 0
-                  const total   = Number(inv.total ?? 0)
-                  const bal     = Math.max(0, total - paid)
-                  const partial = paid > 0 && bal > 0
-                  return (
-                    <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`} style={{
-                      display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                      padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                      borderBottom: i < invoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                    }}>
-                      <div>
-                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
-                        <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                          {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
-                        </p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>₦{total.toLocaleString()}</p>
-                        {partial && (
-                          <p style={{ fontSize: '11px', color: '#854f0b', margin: '0 0 4px', fontWeight: '500' }}>
-                            ₦{paid.toLocaleString()} paid · ₦{bal.toLocaleString()} due
-                          </p>
-                        )}
-                        {inv.status === 'paid' && paid > 0 && (
-                          <p style={{ fontSize: '11px', color: '#3b6d11', margin: '0 0 4px', fontWeight: '500' }}>✓ Paid in full</p>
-                        )}
-                        {total > 0 && (
-                          <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', width: '80px' }}>
-                            <div style={{ height: '100%', width: `${Math.min(100, (paid / total) * 100).toFixed(0)}%`, background: paid >= total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
-                          </div>
-                        )}
-                      </div>
-                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
-                        {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : '—'}
-                      </p>
-                      <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
-                        {inv.status}
-                      </span>
-                    </Link>
-                  )
-                })}
+          </div>
+
+          {/* ── Chart view ── */}
+          {invoiceLayout === 'chart-bar' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>Revenue collected — last 6 months (₦k)</p>
+                <BarChart data={monthlyRevenue} color="#c9a96e" valueSuffix="k" />
               </div>
-              <Pagination
-                page={pageNum}
-                totalPages={Math.ceil(invoiceTotal / PAGE_SIZE)}
-                prevUrl={pageNum > 1 ? pageUrl('all', { status }, pageNum - 1) : undefined}
-                nextUrl={pageNum < Math.ceil(invoiceTotal / PAGE_SIZE) ? pageUrl('all', { status }, pageNum + 1) : undefined}
-              />
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By status</p>
+                <DonutChart title="invoices" segments={
+                  Object.entries(statusCountMap).map(([st, cnt]) => ({
+                    label: st.charAt(0).toUpperCase() + st.slice(1),
+                    value: cnt,
+                    color: STATUS_COLORS[st]?.color ?? '#888',
+                  }))
+                } />
+              </div>
+            </div>
+          )}
+
+          {invoiceLayout !== 'chart-bar' && (
+            <>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
+                {invoiceTotal} result{invoiceTotal !== 1 ? 's' : ''}
+              </p>
+              {!invoices.length ? (
+                <div style={{ textAlign: 'center', padding: '4rem', border: '1px dashed var(--line)', borderRadius: '12px', color: 'var(--text-3)' }}>
+                  <p style={{ fontSize: '15px', margin: '0 0 4px' }}>{status ? 'No invoices match your filter' : 'No invoices yet'}</p>
+                  <p style={{ fontSize: '13px', margin: 0 }}>{status ? 'Try a different status' : 'Create your first invoice from a booking'}</p>
+                </div>
+              ) : (
+                <>
+                  {/* ── List view ── */}
+                  {invoiceLayout === 'list' && (
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
+                        <span>Session</span><span>Total / paid</span><span>Due date</span><span>Status</span>
+                      </div>
+                      {invoices.map((inv, i) => {
+                        const s = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
+                        const paid    = paidMap[inv.invoice_id] ?? 0
+                        const total   = Number(inv.total ?? 0)
+                        const bal     = Math.max(0, total - paid)
+                        const partial = paid > 0 && bal > 0
+                        return (
+                          <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`} style={{
+                            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                            padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                            borderBottom: i < invoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                          }}>
+                            <div>
+                              <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
+                              <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                                {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
+                              </p>
+                            </div>
+                            <div>
+                              <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>₦{total.toLocaleString()}</p>
+                              {partial && (
+                                <p style={{ fontSize: '11px', color: '#854f0b', margin: '0 0 4px', fontWeight: '500' }}>
+                                  ₦{paid.toLocaleString()} paid · ₦{bal.toLocaleString()} due
+                                </p>
+                              )}
+                              {inv.status === 'paid' && paid > 0 && (
+                                <p style={{ fontSize: '11px', color: '#3b6d11', margin: '0 0 4px', fontWeight: '500' }}>✓ Paid in full</p>
+                              )}
+                              {total > 0 && (
+                                <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', width: '80px' }}>
+                                  <div style={{ height: '100%', width: `${Math.min(100, (paid / total) * 100).toFixed(0)}%`, background: paid >= total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
+                                </div>
+                              )}
+                            </div>
+                            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
+                              {inv.due_date ? new Date(inv.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' }) : '—'}
+                            </p>
+                            <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
+                              {inv.status}
+                            </span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* ── Grid view ── */}
+                  {invoiceLayout === 'grid' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+                      {invoices.map((inv) => {
+                        const s     = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
+                        const paid  = paidMap[inv.invoice_id] ?? 0
+                        const total = Number(inv.total ?? 0)
+                        const bal   = Math.max(0, total - paid)
+                        return (
+                          <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`}
+                            style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                            <div style={{ height: '4px', background: s.color }} />
+                            <div style={{ padding: '1rem' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
+                                <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {inv.bookings?.clients?.full_name ?? '—'}
+                                </p>
+                                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                                  {inv.status}
+                                </span>
+                              </div>
+                              <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 10px', fontFamily: 'monospace', letterSpacing: '0.01em' }}>
+                                {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
+                              </p>
+                              <div style={{ paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
+                                <p style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 2px' }}>₦{total.toLocaleString()}</p>
+                                {bal > 0 && bal < total && (
+                                  <p style={{ fontSize: '11px', color: '#854f0b', margin: '0 0 6px', fontWeight: '500' }}>₦{bal.toLocaleString()} remaining</p>
+                                )}
+                                {total > 0 && (
+                                  <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${Math.min(100, (paid / total) * 100).toFixed(0)}%`, background: paid >= total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
+                                  </div>
+                                )}
+                                {inv.due_date && (
+                                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '6px 0 0' }}>
+                                    Due {new Date(inv.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short' })}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <Pagination
+                    page={pageNum}
+                    totalPages={Math.ceil(invoiceTotal / PAGE_SIZE)}
+                    prevUrl={pageNum > 1 ? pageUrl('all', { status }, pageNum - 1) : undefined}
+                    nextUrl={pageNum < Math.ceil(invoiceTotal / PAGE_SIZE) ? pageUrl('all', { status }, pageNum + 1) : undefined}
+                  />
+                </>
+              )}
             </>
           )}
         </>

@@ -4,6 +4,9 @@ import Pagination from '@/components/pagination'
 import AvatarUpload from '@/components/avatar-upload'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
+import { ViewSwitcher, resolveLayout } from '@/components/view-switcher'
+import BarChart from '@/components/bar-chart'
+import DonutChart from '@/components/donut-chart'
 
 const PAGE_SIZE = 20
 
@@ -84,10 +87,11 @@ function TabNav({ active }: { active: string }) {
 export default async function ClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ view?: string; q?: string; page?: string }>
+  searchParams: Promise<{ view?: string; q?: string; page?: string; layout?: string }>
 }) {
-  const { view = 'all', q = '', page = '1' } = await searchParams
+  const { view = 'all', q = '', page = '1', layout: rawLayout } = await searchParams
   const pageNum = Math.max(1, parseInt(page) || 1)
+  const clientLayout = view === 'all' ? resolveLayout(rawLayout, ['grid', 'list', 'chart-bar']) : 'grid'
 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
@@ -224,6 +228,41 @@ export default async function ClientsPage({
     }
   }
 
+  // ── Tier distribution (always — derived from existing data) ───
+  const tierMap = { New: 0, Returning: 0, Regular: 0, VIP: 0 }
+  for (const [, cnt] of sessionCountMap) {
+    const t = getTier(cnt).label as keyof typeof tierMap
+    tierMap[t]++
+  }
+  tierMap.New += Math.max(0, (totalClients ?? 0) - sessionCountMap.size)
+
+  // ── Monthly new-clients data (only when chart-bar is active) ──
+  let monthlyNewClients: { label: string; value: number }[] = []
+  if (view === 'all' && clientLayout === 'chart-bar') {
+    const sixAgo = new Date()
+    sixAgo.setMonth(sixAgo.getMonth() - 5)
+    sixAgo.setDate(1)
+    const { data: recentRaw } = await context.admin
+      .from('clients')
+      .select('created_at')
+      .eq('studio_id', context.studioId)
+      .gte('created_at', sixAgo.toISOString().slice(0, 10))
+    const countsByMo = new Map<string, number>()
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(); d.setMonth(d.getMonth() - i)
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+      countsByMo.set(key, 0)
+    }
+    for (const c of (recentRaw ?? []) as unknown as { created_at: string }[]) {
+      const key = c.created_at.slice(0, 7)
+      if (countsByMo.has(key)) countsByMo.set(key, (countsByMo.get(key) ?? 0) + 1)
+    }
+    monthlyNewClients = [...countsByMo.entries()].map(([key, value]) => ({
+      label: new Date(key + '-01').toLocaleDateString('en-NG', { month: 'short' }),
+      value,
+    }))
+  }
+
   // ═══════════════════════════════════════════════════════════════
   // RENDER
   // ═══════════════════════════════════════════════════════════════
@@ -265,75 +304,138 @@ export default async function ClientsPage({
           ══════════════════════════════════════════════════════ */}
       {view === 'all' && (
         <>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', alignItems: 'center' }}>
             <SearchInput defaultValue={q} placeholder="Search by name or email…" />
-          </div>
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
-            {allTotal} result{allTotal !== 1 ? 's' : ''}
-          </p>
-
-          {!allClients.length ? (
-            <div style={{ textAlign: 'center', padding: '4rem', border: '1px dashed var(--line)', borderRadius: '12px', color: 'var(--text-3)' }}>
-              <p style={{ fontSize: '15px', margin: '0 0 4px' }}>{q ? 'No clients match your search' : 'No clients yet'}</p>
-              <p style={{ fontSize: '13px', margin: 0 }}>{q ? 'Try a different search term' : 'Add your first client to get started'}</p>
+            <div style={{ marginLeft: 'auto' }}>
+              <ViewSwitcher modes={['grid', 'list', 'chart-bar']} storageKey="clients-all" />
             </div>
-          ) : (
-            <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-                {allClients.map((client) => {
-                  const sessions = sessionCountMap.get(client.client_id) ?? 0
-                  const lastDate = lastSessionMap.get(client.client_id)
-                  const tier     = getTier(sessions)
-                  const ref      = client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${client.client_id.slice(0, 6).toUpperCase()}`
-                  return (
-                    <Link key={client.client_id} href={`/dashboard/clients/${client.client_id}`} style={{
-                      background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
-                      padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
-                    }}>
-                      {/* Avatar row */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                        <AvatarUpload entityId={client.client_id} entityType="client"
-                          currentUrl={client.avatar_url ?? null} name={client.full_name} size={38} editable={false} />
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.full_name}</p>
-                          <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                            {ref}{client.email ? ` · ${client.email}` : ''}
-                          </p>
-                        </div>
-                        <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', flexShrink: 0, letterSpacing: '.03em' }}>
-                          {tier.label}
-                        </span>
-                      </div>
+          </div>
 
-                      {/* Stats row */}
-                      <div style={{ display: 'flex', gap: '20px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
-                        <div>
-                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Sessions</p>
-                          <p style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: 'var(--text)', lineHeight: 1.1 }}>{sessions}</p>
-                        </div>
-                        {lastDate && (
-                          <div>
-                            <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Last session</p>
-                            <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: 'var(--text-2)', lineHeight: 1.2 }}>{relDate(lastDate)}</p>
-                          </div>
-                        )}
-                        {client.phone && (
-                          <div style={{ marginLeft: 'auto' }}>
-                            <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Phone</p>
-                            <p style={{ fontSize: '12px', margin: 0, color: 'var(--text-3)' }}>{client.phone}</p>
-                          </div>
-                        )}
-                      </div>
-                    </Link>
-                  )
-                })}
+          {/* ── Chart view ── */}
+          {clientLayout === 'chart-bar' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>New clients — last 6 months</p>
+                <BarChart data={monthlyNewClients} color="#c9a96e" />
               </div>
-              <Pagination
-                page={pageNum}
-                totalPages={Math.ceil(allTotal / PAGE_SIZE)}
-                prevUrl={pageNum > 1 ? pageUrl('all', { q }, pageNum - 1) : undefined}
-                nextUrl={pageNum < Math.ceil(allTotal / PAGE_SIZE) ? pageUrl('all', { q }, pageNum + 1) : undefined}
-              />
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+                <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>Client tiers</p>
+                <DonutChart title="clients" segments={[
+                  { label: 'New',       value: tierMap.New,       color: '#888' },
+                  { label: 'Returning', value: tierMap.Returning, color: '#185fa5' },
+                  { label: 'Regular',   value: tierMap.Regular,   color: '#3b6d11' },
+                  { label: 'VIP',       value: tierMap.VIP,       color: '#854f0b' },
+                ]} />
+              </div>
+            </div>
+          )}
+
+          {clientLayout !== 'chart-bar' && (
+            <>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
+                {allTotal} result{allTotal !== 1 ? 's' : ''}
+              </p>
+
+              {!allClients.length ? (
+                <div style={{ textAlign: 'center', padding: '4rem', border: '1px dashed var(--line)', borderRadius: '12px', color: 'var(--text-3)' }}>
+                  <p style={{ fontSize: '15px', margin: '0 0 4px' }}>{q ? 'No clients match your search' : 'No clients yet'}</p>
+                  <p style={{ fontSize: '13px', margin: 0 }}>{q ? 'Try a different search term' : 'Add your first client to get started'}</p>
+                </div>
+              ) : (
+                <>
+                  {/* ── Grid view ── */}
+                  {clientLayout === 'grid' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                      {allClients.map((client) => {
+                        const sessions = sessionCountMap.get(client.client_id) ?? 0
+                        const lastDate = lastSessionMap.get(client.client_id)
+                        const tier     = getTier(sessions)
+                        const ref      = client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${client.client_id.slice(0, 6).toUpperCase()}`
+                        return (
+                          <Link key={client.client_id} href={`/dashboard/clients/${client.client_id}`} style={{
+                            background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
+                            padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                              <AvatarUpload entityId={client.client_id} entityType="client"
+                                currentUrl={client.avatar_url ?? null} name={client.full_name} size={38} editable={false} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.full_name}</p>
+                                <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                                  {ref}{client.email ? ` · ${client.email}` : ''}
+                                </p>
+                              </div>
+                              <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', flexShrink: 0, letterSpacing: '.03em' }}>
+                                {tier.label}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '20px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
+                              <div>
+                                <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Sessions</p>
+                                <p style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: 'var(--text)', lineHeight: 1.1 }}>{sessions}</p>
+                              </div>
+                              {lastDate && (
+                                <div>
+                                  <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Last session</p>
+                                  <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: 'var(--text-2)', lineHeight: 1.2 }}>{relDate(lastDate)}</p>
+                                </div>
+                              )}
+                              {client.phone && (
+                                <div style={{ marginLeft: 'auto' }}>
+                                  <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Phone</p>
+                                  <p style={{ fontSize: '12px', margin: 0, color: 'var(--text-3)' }}>{client.phone}</p>
+                                </div>
+                              )}
+                            </div>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  {/* ── List view ── */}
+                  {clientLayout === 'list' && (
+                    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '2fr 70px 100px 100px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
+                        <span>Client</span><span>Sessions</span><span>Last session</span><span>Tier</span>
+                      </div>
+                      {allClients.map((client, i) => {
+                        const sessions = sessionCountMap.get(client.client_id) ?? 0
+                        const lastDate = lastSessionMap.get(client.client_id)
+                        const tier     = getTier(sessions)
+                        return (
+                          <Link key={client.client_id} href={`/dashboard/clients/${client.client_id}`} style={{
+                            display: 'grid', gridTemplateColumns: '2fr 70px 100px 100px',
+                            padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                            borderBottom: i < allClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                          }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <AvatarUpload entityId={client.client_id} entityType="client"
+                                currentUrl={client.avatar_url ?? null} name={client.full_name} size={30} editable={false} />
+                              <div>
+                                <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{client.full_name}</p>
+                                <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{client.email ?? client.phone ?? '—'}</p>
+                              </div>
+                            </div>
+                            <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{sessions}</p>
+                            <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{lastDate ? relDate(lastDate) : '—'}</p>
+                            <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', display: 'inline-block', width: 'fit-content', letterSpacing: '.03em' }}>
+                              {tier.label}
+                            </span>
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  )}
+
+                  <Pagination
+                    page={pageNum}
+                    totalPages={Math.ceil(allTotal / PAGE_SIZE)}
+                    prevUrl={pageNum > 1 ? pageUrl('all', { q }, pageNum - 1) : undefined}
+                    nextUrl={pageNum < Math.ceil(allTotal / PAGE_SIZE) ? pageUrl('all', { q }, pageNum + 1) : undefined}
+                  />
+                </>
+              )}
             </>
           )}
         </>
