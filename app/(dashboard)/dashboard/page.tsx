@@ -244,16 +244,16 @@ export default async function DashboardPage() {
 
   // ── Revenue figures ───────────────────────────────────────────────────────────
   const revenueToday = recentPayments
-    .filter(p => p.paid_at.startsWith(todayStr))
+    .filter(p => p.paid_at?.startsWith(todayStr))
     .reduce((s, p) => s + Number(p.amount), 0)
   const revenueWeek  = recentPayments
-    .filter(p => p.paid_at >= mondayISO)
+    .filter(p => p.paid_at && p.paid_at >= mondayISO)
     .reduce((s, p) => s + Number(p.amount), 0)
   const sessionsThisWeek = weekBookingsList.length
 
   // ── Today's payment breakdown (per-payment + by method) ──────────────────────
   const todayPaymentsList = recentPayments
-    .filter(p => p.paid_at.startsWith(todayStr))
+    .filter(p => p.paid_at?.startsWith(todayStr))
     .map(p => ({
       amount:     Number(p.amount),
       method:     p.method ?? 'other',
@@ -291,7 +291,7 @@ export default async function DashboardPage() {
       label:         d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }),
       isToday:       iso === todayStr,
       sessions:      dayBooks.length,
-      revenue:       recentPayments.filter(p => p.paid_at.startsWith(iso)).reduce((s, p) => s + Number(p.amount), 0),
+      revenue:       recentPayments.filter(p => p.paid_at?.startsWith(iso)).reduce((s, p) => s + Number(p.amount), 0),
       byType,
       uniqueClients: clientIds.size,
     })

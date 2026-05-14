@@ -243,6 +243,7 @@ export default async function PrintOrdersPage({
     // Group by YYYY-MM
     const monthGroups: Record<string, { orders: PrintOrderRow[]; total: number }> = {}
     for (const o of orders) {
+      if (!o.created_at) continue
       const month = o.created_at.slice(0, 7)
       if (!monthGroups[month]) monthGroups[month] = { orders: [], total: 0 }
       const t = orderTotal(o.print_order_items ?? [])
