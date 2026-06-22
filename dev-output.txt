@@ -1,0 +1,14 @@
+▲ Next.js 16.2.3 (Turbopack)
+- Local:         http://localhost:3003
+- Network:       http://192.168.0.124:3003
+- Environments: .env.local
+✓ Ready in 690ms
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3002
+- PID:          19388
+- Dir:          C:\Users\GLAMOUR\photostudio-saas
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 19388 /F to stop it.
+[?25h

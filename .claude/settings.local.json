@@ -58,7 +58,8 @@
       "mcp__9e7917a5-5a76-4a51-9984-b198968e2d48__notion-fetch",
       "mcp__9e7917a5-5a76-4a51-9984-b198968e2d48__notion-create-pages",
       "mcp__9e7917a5-5a76-4a51-9984-b198968e2d48__notion-update-page",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(node -e \"const p = require\\('./package.json'\\); console.log\\('next:', p.dependencies.next\\)\")"
     ]
   }
 }

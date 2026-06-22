@@ -46,7 +46,9 @@ CREATE POLICY IF NOT EXISTS "studio members can manage package sections"
     package_id IN (
       SELECT package_id FROM packages
       WHERE studio_id IN (
-        SELECT studio_id FROM studio_members WHERE user_id = auth.uid()
+        SELECT studio_id FROM studios WHERE owner_id = auth.uid()
+        UNION
+        SELECT studio_id FROM staff WHERE user_id = auth.uid()
       )
     )
   );
@@ -58,7 +60,9 @@ CREATE POLICY IF NOT EXISTS "studio members can manage package inclusions"
     package_id IN (
       SELECT package_id FROM packages
       WHERE studio_id IN (
-        SELECT studio_id FROM studio_members WHERE user_id = auth.uid()
+        SELECT studio_id FROM studios WHERE owner_id = auth.uid()
+        UNION
+        SELECT studio_id FROM staff WHERE user_id = auth.uid()
       )
     )
   );

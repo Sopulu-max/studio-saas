@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(
@@ -24,14 +24,15 @@ export async function middleware(request: NextRequest) {
   const { data: { user } } = await supabase.auth.getUser()
   const path = request.nextUrl.pathname
 
-  const isDashboardPage  = path.startsWith('/dashboard')
+  const isDashboardPage = path.startsWith('/dashboard')
   const isOnboardingPage = path.startsWith('/onboarding')
-  const isPublicPage     = path.startsWith('/book/') || path.startsWith('/invite/') || path.startsWith('/packages/')
+  const isPublicPage =
+    path.startsWith('/book/') ||
+    path.startsWith('/invite/') ||
+    path.startsWith('/packages/')
 
-  // Public booking and invite pages — always accessible
   if (isPublicPage) return supabaseResponse
 
-  // Protect dashboard and onboarding
   if ((isDashboardPage || isOnboardingPage) && !user) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

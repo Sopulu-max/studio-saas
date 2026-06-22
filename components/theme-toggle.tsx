@@ -1,15 +1,17 @@
 'use client'
 
 import { useState } from 'react'
+import { Moon, Sun } from 'lucide-react'
 
 export default function ThemeToggle() {
-  const [dark, setDark] = useState(() => typeof document !== 'undefined' && document.documentElement.classList.contains('dark'))
+  const [dark, setDark] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark')
+  )
 
   function toggle() {
     const next = !dark
     setDark(next)
     document.documentElement.classList.toggle('dark', next)
-    // Cookie: read by the server on next request so SSR renders the correct class
     document.cookie = `theme=${next ? 'dark' : 'light'}; path=/; max-age=31536000; SameSite=Lax`
     try { localStorage.setItem('theme', next ? 'dark' : 'light') } catch {}
   }
@@ -18,6 +20,8 @@ export default function ThemeToggle() {
     <button
       onClick={toggle}
       title={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      aria-label={dark ? 'Switch to light mode' : 'Switch to dark mode'}
+      suppressHydrationWarning
       style={{
         width: '32px',
         height: '32px',
@@ -26,14 +30,13 @@ export default function ThemeToggle() {
         color: 'var(--text-3)',
         border: '1px solid var(--line)',
         borderRadius: '8px',
-        fontSize: '15px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         flexShrink: 0,
       }}
     >
-      {dark ? '☀︎' : '☽'}
+      {dark ? <Sun size={15} aria-hidden="true" /> : <Moon size={15} aria-hidden="true" />}
     </button>
   )
 }

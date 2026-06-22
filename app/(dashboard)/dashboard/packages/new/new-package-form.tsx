@@ -24,6 +24,17 @@ type Addon = { name: string; description: string; price: string }
 type Section = { title: string; body: string; image_url: string; video_url: string }
 type TypedInclusion = { label: string; type: 'service' | 'product' | 'digital' }
 type TemplateOption = { template_id: string; name: string; session_type: string | null }
+type AvailableService = {
+  service_id: string
+  name: string
+  type: string
+  price?: number | null
+}
+type LinkedService = {
+  service_id: string
+  is_addon: boolean
+  addon_price?: string
+}
 
 const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
 const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
@@ -34,15 +45,27 @@ const INCLUSION_TYPES: { value: 'service' | 'product' | 'digital'; label: string
   { value: 'product',  label: 'Product',  icon: '📦' },
   { value: 'digital',  label: 'Digital',  icon: '💻' },
 ]
+const SVC_TYPE_ICONS: Record<string, string> = {
+  service: '🎯',
+  product: '📦',
+  digital: '💻',
+}
+const SVC_TYPE_COLORS: Record<string, { bg: string; color: string }> = {
+  service: { bg: '#eeedfe', color: '#534ab7' },
+  product: { bg: '#faeeda', color: '#854f0b' },
+  digital: { bg: '#e6f1fb', color: '#185fa5' },
+}
 
 export default function NewPackageForm({
   templates = [],
+  availableServices = [],
   defaultOutfits,
   defaultPhotos,
   defaultPrice,
   defaultSessionType,
 }: {
   templates?: TemplateOption[]
+  availableServices?: AvailableService[]
   defaultOutfits?: string
   defaultPhotos?: string
   defaultPrice?: string
@@ -75,6 +98,7 @@ export default function NewPackageForm({
   const [addons,          setAddons]          = useState<Addon[]>([])
   const [sections,        setSections]        = useState<Section[]>([])
   const [typedInclusions, setTypedInclusions] = useState<TypedInclusion[]>([])
+  const [linkedServices,  setLinkedServices]  = useState<LinkedService[]>([])
   const inclusionInputRef = useRef<HTMLInputElement>(null)
 
   function update(field: string, value: string) { setForm(prev => ({ ...prev, [field]: value })) }
@@ -119,6 +143,27 @@ export default function NewPackageForm({
   }
   function removeTypedInclusion(i: number) { setTypedInclusions(prev => prev.filter((_, idx) => idx !== i)) }
 
+  // ─── Linked catalog services ──────────────────────────────────────
+  function getServiceLink(serviceId: string): LinkedService | undefined {
+    return linkedServices.find(ls => ls.service_id === serviceId)
+  }
+  function setServiceMode(serviceId: string, mode: 'none' | 'included' | 'addon') {
+    if (mode === 'none') {
+      setLinkedServices(prev => prev.filter(ls => ls.service_id !== serviceId))
+    } else {
+      setLinkedServices(prev => {
+        const existing = prev.find(ls => ls.service_id === serviceId)
+        if (existing) {
+          return prev.map(ls => ls.service_id === serviceId ? { ...ls, is_addon: mode === 'addon' } : ls)
+        }
+        return [...prev, { service_id: serviceId, is_addon: mode === 'addon', addon_price: '' }]
+      })
+    }
+  }
+  function setServiceAddonPrice(serviceId: string, price: string) {
+    setLinkedServices(prev => prev.map(ls => ls.service_id === serviceId ? { ...ls, addon_price: price } : ls))
+  }
+
   // ─── Submit ──────────────────────────────────────────────────────
   async function handleSubmit(forceDuplicate = false) {
     if (!form.name)       { setError('Package name is required'); return }
@@ -139,6 +184,7 @@ export default function NewPackageForm({
       display_order:        parseInt(form.display_order) || 0,
       sections,
       typed_inclusions:     typedInclusions,
+      linked_services:      linkedServices,
       contract_template_id: contractTemplateId || null,
       force_duplicate:      forceDuplicate,
     })
@@ -427,6 +473,91 @@ export default function NewPackageForm({
           </div>
         ))}
       </div>
+
+      {/* Catalog services */}
+      {availableServices.length > 0 && (
+        <div style={sectionStyle}>
+          <div style={{ marginBottom: '14px' }}>
+            <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Catalog services</p>
+            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
+              Link reusable services from your catalog as included items or optional add-ons
+            </p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {availableServices.map(svc => {
+              const link = getServiceLink(svc.service_id)
+              const mode = link ? (link.is_addon ? 'addon' : 'included') : 'none'
+              const tc   = SVC_TYPE_COLORS[svc.type] ?? SVC_TYPE_COLORS.service
+
+              return (
+                <div key={svc.service_id} style={{
+                  border: '1px solid',
+                  borderColor: mode !== 'none' ? 'var(--text)' : 'var(--line-inner)',
+                  borderRadius: '10px',
+                  padding: '10px 12px',
+                  background: mode !== 'none' ? 'var(--active)' : 'transparent',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' as const }}>
+                    <span style={{
+                      fontSize: '11px', padding: '2px 7px', borderRadius: '20px',
+                      background: tc.bg, color: tc.color, fontWeight: '500', flexShrink: 0,
+                    }}>
+                      {SVC_TYPE_ICONS[svc.type]} {svc.type}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={{ fontSize: '13px', fontWeight: '500' }}>{svc.name}</span>
+                      {svc.price != null && (
+                        <span style={{ fontSize: '12px', color: 'var(--text-3)', marginLeft: '6px' }}>
+                          ₦{Number(svc.price).toLocaleString()}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                      {(['none', 'included', 'addon'] as const).map(m => (
+                        <button key={m} type="button"
+                          onClick={() => setServiceMode(svc.service_id, m)}
+                          style={{
+                            padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '500',
+                            border: '0.5px solid', cursor: 'pointer',
+                            borderColor: mode === m ? 'var(--text)' : 'var(--line)',
+                            background:  mode === m ? 'var(--btn)' : 'var(--surface)',
+                            color:       mode === m ? 'var(--btn-fg)' : 'var(--text-2)',
+                          }}>
+                          {m === 'none' ? 'None' : m === 'included' ? 'Included' : 'Add-on'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {mode === 'addon' && (
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <label style={{ fontSize: '12px', color: 'var(--text-3)', flexShrink: 0 }}>
+                        Price override (₦)
+                      </label>
+                      <input
+                        type="number" min="0"
+                        value={link?.addon_price ?? ''}
+                        onChange={e => setServiceAddonPrice(svc.service_id, e.target.value)}
+                        placeholder={svc.price != null ? `Default: ${Number(svc.price).toLocaleString()}` : 'e.g. 15000'}
+                        style={{ width: '160px', boxSizing: 'border-box' as const }}
+                      />
+                      <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>Leave blank to use catalog price</span>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+
+          {linkedServices.length > 0 && (
+            <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '10px 0 0' }}>
+              {linkedServices.filter(ls => !ls.is_addon).length} included ·{' '}
+              {linkedServices.filter(ls => ls.is_addon).length} add-on
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Add-ons */}
       <div style={sectionStyle}>

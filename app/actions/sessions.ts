@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getStudioContext, fetchStudio, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sendStatusUpdateEmail, sendBookingConfirmationEmail, sendEventDateReminderEmail } from '@/lib/email'
+import { seedBookingServicesFromPromise } from '@/lib/booking-services'
 
 const addSessionSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
@@ -115,6 +116,19 @@ export async function addSession(form: {
     .single()
 
   if (error || !session) return { error: error?.message ?? 'Failed to create session' }
+
+  if (form.package_id) {
+    const serviceSeed = await seedBookingServicesFromPromise({
+      admin: context.admin,
+      studioId: context.studioId,
+      bookingId: session.booking_id as string,
+      packageId: form.package_id,
+    })
+    if (serviceSeed.error) {
+      await context.admin.from('bookings').delete().eq('booking_id', session.booking_id as string)
+      return { error: serviceSeed.error }
+    }
+  }
 
   const staffAssignments: { booking_id: string; staff_id: string; role: string }[] = []
   if (form.photographer_id) staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.photographer_id, role: 'photographer' })
@@ -327,6 +341,7 @@ export async function deleteSession(sessionId: string) {
   await db.from('contracts').delete().eq('booking_id', sessionId)
   await db.from('booking_staff').delete().eq('booking_id', sessionId)
   await db.from('booking_addons').delete().eq('booking_id', sessionId)
+  await db.from('booking_services').delete().eq('booking_id', sessionId)
 
   // 5. Finally delete the booking itself
   const { error } = await db
