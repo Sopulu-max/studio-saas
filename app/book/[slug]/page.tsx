@@ -2,7 +2,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { notFound } from 'next/navigation'
 import { buildStudioConfig } from '@/lib/studio-config'
 import type { StudioRow } from '@/lib/studio'
-import BookingForm from './booking-form'
+import BookingForm, { type PublicPackage } from './booking-form'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { buildTheme, themeCssVars } from '@/lib/studio-theme'
@@ -57,7 +57,8 @@ export default async function PublicBookingPage({
   params:       Promise<{ slug: string }>
   searchParams: Promise<{ package?: string }>
 }) {
-  const [{ slug }, { package: packageParam }] = await Promise.all([params, searchParams])
+  const [{ slug }, search] = await Promise.all([params, searchParams])
+  const initialPackageId = search.package
   const admin = createAdminClient()
 
   const { data: studioRaw } = await admin
@@ -98,7 +99,7 @@ export default async function PublicBookingPage({
     package_services?: RawPkgService[] | null
   }
 
-  const [{ data: servicesRaw }, { data: pkgRaw }] = await Promise.all([
+  const [{ data: servicesRaw }, { data: packagesRaw }] = await Promise.all([
     admin
       .from('services')
       .select('service_id, name, type, description, price')
@@ -106,47 +107,45 @@ export default async function PublicBookingPage({
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('name',          { ascending: true }),
-    packageParam
-      ? admin
-          .from('packages')
-          .select('package_id, name, tagline, base_price, session_type, service_type, outfits_count, duration_mins, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
-          .eq('package_id', packageParam)
-          .eq('studio_id',  studio.studio_id)
-          .eq('is_public',  true)
-          .maybeSingle()
-      : Promise.resolve({ data: null }),
+    admin
+      .from('packages')
+      .select('package_id, name, tagline, base_price, session_type, service_type, outfits_count, duration_mins, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
+      .eq('studio_id',  studio.studio_id)
+      .eq('is_public',  true)
+      .order('display_order', { ascending: true })
   ])
 
   const catalogServices = (servicesRaw ?? []) as unknown as PublicService[]
-  const rawPkg          = pkgRaw as unknown as RawPackage | null
+  const rawPackages     = (packagesRaw ?? []) as unknown as RawPackage[]
 
-  const preselectedPackage: PreselectedPackage | null = rawPkg
-    ? {
-        package_id:    rawPkg.package_id,
-        name:          rawPkg.name,
-        tagline:       rawPkg.tagline,
-        base_price:    rawPkg.base_price,
-        session_type:  rawPkg.session_type,
-        service_type:  rawPkg.service_type,
-        outfits_count: rawPkg.outfits_count,
-        duration_mins: rawPkg.duration_mins,
-      }
-    : null
+  const publicPackages: PublicPackage[] = rawPackages.map(rawPkg => {
+    const linkedServices: PackageLinkedService[] = rawPkg.package_services
+      ? rawPkg.package_services
+          .filter(ps => ps.services != null)
+          .sort((a, b) => a.display_order - b.display_order)
+          .map(ps => ({
+            service_id:  ps.services!.service_id,
+            name:        ps.services!.name,
+            type:        ps.services!.type,
+            description: ps.services!.description,
+            price:       ps.services!.price,
+            is_addon:    ps.is_addon,
+            addon_price: ps.addon_price,
+          }))
+      : []
 
-  const packageLinkedServices: PackageLinkedService[] = rawPkg?.package_services
-    ? rawPkg.package_services
-        .filter(ps => ps.services != null)
-        .sort((a, b) => a.display_order - b.display_order)
-        .map(ps => ({
-          service_id:  ps.services!.service_id,
-          name:        ps.services!.name,
-          type:        ps.services!.type,
-          description: ps.services!.description,
-          price:       ps.services!.price,
-          is_addon:    ps.is_addon,
-          addon_price: ps.addon_price,
-        }))
-    : []
+    return {
+      package_id:    rawPkg.package_id,
+      name:          rawPkg.name,
+      tagline:       rawPkg.tagline,
+      base_price:    rawPkg.base_price,
+      session_type:  rawPkg.session_type,
+      service_type:  rawPkg.service_type,
+      outfits_count: rawPkg.outfits_count,
+      duration_mins: rawPkg.duration_mins,
+      services:      linkedServices,
+    }
+  })
 
   return (
     <>
@@ -256,8 +255,8 @@ export default async function PublicBookingPage({
                 booking_fields: t.booking_fields ?? [],
               }))}
               catalogServices={catalogServices}
-              preselectedPackage={preselectedPackage}
-              packageLinkedServices={packageLinkedServices}
+              publicPackages={publicPackages}
+              initialPackageId={initialPackageId}
             />
           </div>
 

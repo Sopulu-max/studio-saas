@@ -6,6 +6,7 @@ import { sendBookingConfirmationEmail, sendStudioBookingNotification } from '@/l
 import { isGallerySelectionOpen, isMatchingGalleryPhone } from '@/lib/gallery-public'
 import { buildStudioConfig } from '@/lib/studio-config'
 import { seedBookingServicesFromPromise } from '@/lib/booking-services'
+import { bookSession } from '@/lib/services/booking-service'
 
 const bookingRequestSchema = z.object({
   studio_id:        z.string().min(1),
@@ -81,101 +82,30 @@ export async function submitBookingRequest(form: {
   const cancelValues  = config.bookingStatuses.filter(s => s.is_cancellation).map(s => s.value)
   const initialStatus = config.bookingStatuses.filter(s => !s.is_cancellation).sort((a, b) => a.order - b.order)[0]?.value ?? 'pending_confirmation'
 
-  let clientId: string
-  const { data: existing } = await admin
-    .from('clients')
-    .select('client_id')
-    .eq('studio_id', form.studio_id)
-    .eq('phone', form.phone.trim())
-    .maybeSingle()
-
-  if (existing) {
-    clientId = existing.client_id as string
-  } else {
-    const { data: newClient, error: clientError } = await admin
-      .from('clients')
-      .insert({
-        studio_id: form.studio_id,
-        full_name: form.full_name.trim(),
-        phone: form.phone.trim(),
-        email: form.email.trim() || null,
-      })
-      .select()
-      .single()
-
-    if (clientError || !newClient) return { error: clientError?.message ?? 'Failed to save your details' }
-    clientId = newClient.client_id as string
-  }
-
-  // Duplicate booking check — same client, same date, excluding all cancellation statuses
-  let dupQuery = admin
-    .from('bookings')
-    .select('booking_id')
-    .eq('studio_id', form.studio_id)
-    .eq('client_id', clientId)
-    .eq('session_date', form.preferred_date)
-  for (const v of cancelValues) { dupQuery = dupQuery.neq('status', v) }
-  const { data: dupBooking } = await dupQuery.maybeSingle()
-
-  if (dupBooking) return { error: '__DUPLICATE__' }
-
-  const noteParts = [
-    form.notes?.trim(),
-  ].filter(Boolean)
-
-  // Compute next booking_ref for this studio (app-level assignment)
-  const { data: maxRefRow } = await admin
-    .from('bookings')
-    .select('booking_ref')
-    .eq('studio_id', form.studio_id)
-    .not('booking_ref', 'is', null)
-    .order('booking_ref', { ascending: false })
-    .limit(1)
-    .maybeSingle()
-
-  const nextRef = ((maxRefRow?.booking_ref as number | null) ?? 0) + 1
-
-  const insertData: Record<string, string | number | null> = {
-    studio_id:    form.studio_id,
-    client_id:    clientId,
+  const { bookingId, error: bookingError, bookingRef } = await bookSession(admin, {
+    studio_id: form.studio_id,
+    full_name: form.full_name,
+    phone: form.phone,
+    email: form.email,
     session_type: form.session_type,
-    service_type: form.service_type || 'photo',
-    session_date: form.preferred_date,
-    status:       initialStatus,
-    notes:        noteParts.length ? noteParts.join('\n\n') : null,
-    booking_ref:  nextRef,
-  }
-
-  if (form.outfits_count) insertData.outfits_count = parseInt(form.outfits_count, 10)
-  if (form.location_address) insertData.location_address = form.location_address.trim()
-  if (form.shoot_type) insertData.shoot_type = form.shoot_type.trim()
-  if (form.event_name) insertData.event_name = form.event_name.trim()
-  if (form.event_date)  insertData.event_date  = form.event_date
-  if (form.package_id)     insertData.package_id     = form.package_id
-  if (form.video_duration) insertData.video_duration = form.video_duration.trim()
-  if (form.coverage_hours) insertData.coverage_hours = parseInt(form.coverage_hours, 10)
-  if (form.crew_size)      insertData.crew_size      = parseInt(form.crew_size, 10)
-
-  const { data: newBookingRaw, error: bookingError } = await admin
-    .from('bookings')
-    .insert(insertData)
-    .select('booking_id')
-    .single()
-
-  if (bookingError || !newBookingRaw) return { error: bookingError?.message ?? 'Failed to create booking' }
-  const newBookingId = (newBookingRaw as unknown as { booking_id: string }).booking_id
-
-  const serviceSeed = await seedBookingServicesFromPromise({
-    admin,
-    studioId: form.studio_id,
-    bookingId: newBookingId,
-    packageId: form.package_id || null,
-    selectedServiceIds: form.selected_service_ids,
+    service_type: form.service_type,
+    preferred_date: form.preferred_date,
+    outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
+    location_address: form.location_address,
+    shoot_type: form.shoot_type,
+    event_name: form.event_name,
+    event_date: form.event_date,
+    video_duration: form.video_duration,
+    coverage_hours: form.coverage_hours ? parseInt(form.coverage_hours, 10) : null,
+    crew_size: form.crew_size ? parseInt(form.crew_size, 10) : null,
+    notes: form.notes,
+    selected_service_ids: form.selected_service_ids,
+    package_id: form.package_id,
+    initialStatus,
+    cancelValues,
   })
-  if (serviceSeed.error) {
-    await admin.from('bookings').delete().eq('booking_id', newBookingId)
-    return { error: serviceSeed.error }
-  }
+
+  if (bookingError || !bookingId) return { error: bookingError }
 
   // Fire confirmation emails — don't block on errors
   const emailPayload = {
@@ -200,7 +130,7 @@ export async function submitBookingRequest(form: {
   let whatsappUrl: string | undefined = undefined
   if (studioConfig.phone) {
     const cleanPhone = studioConfig.phone.replace(/[^\d+]/g, '')
-    const msg = `Hi ${studio.name}, I just submitted a booking request for a ${form.session_type} session on ${form.preferred_date}. My reference is #${nextRef}. Let's confirm!`
+    const msg = `Hi ${studio.name}, I just submitted a booking request for a ${form.session_type} session on ${form.preferred_date}. My reference is #${bookingRef}. Let's confirm!`
     whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
   }
 

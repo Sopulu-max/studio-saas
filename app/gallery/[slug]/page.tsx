@@ -33,7 +33,7 @@ export default async function PublicGalleryPage({
   const { data: galleryRaw } = await admin
     .from('galleries')
     .select(`
-      *,
+      gallery_id, title, description, status, shared_link,
       bookings (
         booking_id, session_date, outfits_count, selections_count, status,
         clients ( full_name, phone ),
@@ -50,7 +50,7 @@ export default async function PublicGalleryPage({
 
   const { data: photos } = await admin
     .from('gallery_photos')
-    .select('*')
+    .select('photo_id, file_url, thumbnail_url, is_favourite, is_edited, uploaded_at')
     .eq('gallery_id', gallery.gallery_id)
     .order('is_favourite', { ascending: false })
     .order('uploaded_at', { ascending: true })

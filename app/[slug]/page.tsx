@@ -20,7 +20,7 @@ export default async function PublicStorefrontPage({ params }: { params: Promise
   const admin = createAdminClient()
   const { data: studio } = await admin
     .from('studios')
-    .select('*')
+    .select('studio_id, name, slug, email, phone, address, logo_url, bio, theme')
     .eq('slug', slug)
     .maybeSingle()
 

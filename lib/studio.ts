@@ -30,6 +30,11 @@ export type StudioRow = {
   theme:                    unknown
 }
 
+// ─── Public Studio Row Type ──────────────────────────────────────────────────
+// Used for public-facing pages (Storefront, Booking) to prevent operational data 
+// like contract templates or internal statuses from leaking to the browser.
+export type PublicStudioRow = Pick<StudioRow, 'studio_id' | 'name' | 'slug' | 'email' | 'phone' | 'address' | 'logo_url' | 'bio' | 'theme'>
+
 export async function fetchStudio(
   admin: ReturnType<typeof createAdminClient>,
   studioId: string,

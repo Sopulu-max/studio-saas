@@ -1,10 +1,10 @@
 'use client'
 
-import { StudioRow } from '@/lib/studio'
+import { PublicStudioRow } from '@/lib/studio'
 import { buildTheme, themeCssVars } from '@/lib/studio-theme'
 
 type StorefrontViewProps = {
-  studio: StudioRow
+  studio: PublicStudioRow
   staff: any[]
   showTeam: boolean
   isPublic?: boolean
@@ -70,7 +70,6 @@ export default function StorefrontView({ studio, staff, showTeam, isPublic = fal
             <span style={{ fontSize: '18px', fontWeight: '700', fontFamily: 'var(--heading-font)' }}>{studio.name}</span>
           </div>
           <div style={{ display: 'flex', gap: '16px' }}>
-            <a href={packagesLink} style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-muted)', textDecoration: 'none', display: 'flex', alignItems: 'center' }}>Packages</a>
             <a href={bookingLink} className="sf-btn" style={{ 
               padding: '10px 20px', background: 'var(--primary)', color: 'var(--on-primary)', 
               borderRadius: 'var(--radius)', fontSize: '14px', fontWeight: '600', textDecoration: 'none' 
@@ -99,13 +98,6 @@ export default function StorefrontView({ studio, staff, showTeam, isPublic = fal
               borderRadius: 'var(--radius)', textDecoration: 'none', fontWeight: '600', fontSize: '16px',
             }}>
               Book a Session
-            </a>
-            <a href={packagesLink} className="sf-btn" style={{
-              padding: '16px 32px', background: 'var(--bg)', color: 'var(--text-main)',
-              border: '1px solid var(--primary-border)', borderRadius: 'var(--radius)', textDecoration: 'none', 
-              fontWeight: '600', fontSize: '16px',
-            }}>
-              View Packages
             </a>
           </div>
         </section>
