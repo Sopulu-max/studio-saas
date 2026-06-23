@@ -95,6 +95,14 @@ export default function MessageTemplatesForm({ initial }: { initial: MessageTemp
               placeholder="e.g. Hello! Here is the link to our studio guide..."
               style={{ ...inputStyle, resize: 'vertical' }}
             />
+            <div style={{ marginTop: '8px', padding: '8px', background: 'var(--surface)', border: '1px solid var(--line-inner)', borderRadius: '6px' }}>
+              <p style={{ fontSize: '12px', fontWeight: '500', margin: '0 0 4px', color: 'var(--text-3)' }}>Available Variables:</p>
+              <ul style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, paddingLeft: '16px' }}>
+                <li><code>{'{'}{'{'}studio_name{'}'}{'}'}</code> - Your studio's name</li>
+                <li><code>{'{'}{'{'}booking_link{'}'}{'}'}</code> - Link to your public booking page</li>
+                <li><code>{'{'}{'{'}packages_link{'}'}{'}'}</code> - Link to your public packages catalog</li>
+              </ul>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button type="submit" disabled={isSubmitting} style={{ padding: '8px 16px', fontSize: '13px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
