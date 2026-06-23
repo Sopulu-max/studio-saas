@@ -22,7 +22,7 @@ export default async function StorefrontPage() {
   const publicLink = `${siteUrl.replace(/\/$/, '')}/${studio.slug}`
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px 16px' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '24px 16px' }}>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ fontSize: '24px', fontWeight: '600', margin: '0 0 8px' }}>Website</h1>

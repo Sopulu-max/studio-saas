@@ -32,9 +32,9 @@ export default function StorefrontForm({ studio, staff }: Props) {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
-      {/* Left side: Form */}
-      <div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
+      {/* Top: Form */}
+      <div style={{ width: '100%', maxWidth: '600px' }}>
         <form onSubmit={handleSave} style={{ background: 'var(--surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--line)' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 16px' }}>Edit Website</h2>
           
@@ -87,23 +87,24 @@ export default function StorefrontForm({ studio, staff }: Props) {
         </div>
       </div>
 
-      {/* Right side: Live Preview */}
-      <div style={{ position: 'sticky', top: '24px' }}>
-        <p style={{ fontSize: '11px', color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: '0 0 12px 12px', fontWeight: '600' }}>Live Preview</p>
-        <StorefrontView 
-          studio={{ ...studio, bio }} 
-          staff={staff} 
-          showTeam={true} 
-        />
+      {/* Bottom: Live Preview */}
+      <div style={{ width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
+          <p style={{ fontSize: '12px', color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.04em', margin: 0, fontWeight: '600' }}>Live Preview</p>
+          <div style={{ flex: 1, height: '1px', background: 'var(--line)' }} />
+        </div>
+        
+        {/* We add a border wrapper so it looks like a "page" within the dashboard */}
+        <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: '0 12px 48px rgba(0,0,0,0.05)' }}>
+          <StorefrontView 
+            studio={{ ...studio, bio }} 
+            staff={staff} 
+            showTeam={true} 
+            isPublic={false}
+          />
+        </div>
       </div>
-      
-      <style>{`
-        @media (max-width: 768px) {
-          div[style*="gridTemplateColumns"] {
-            grid-template-columns: 1fr !important;
-          }
-        }
-      `}</style>
     </div>
   )
 }
