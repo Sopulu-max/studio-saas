@@ -4,9 +4,10 @@ import StorefrontView from '@/components/storefront-view'
 
 export const revalidate = 60 // Revalidate every 60 seconds or we can rely on path revalidation
 
-export async function generateMetadata({ params }: { params: { slug: string } }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const admin = createAdminClient()
-  const { data: studio } = await admin.from('studios').select('name, bio').eq('slug', params.slug).maybeSingle()
+  const { data: studio } = await admin.from('studios').select('name, bio').eq('slug', slug).maybeSingle()
   if (!studio) return { title: 'Studio not found' }
   return {
     title: studio.name || 'Studio Storefront',
@@ -14,12 +15,13 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   }
 }
 
-export default async function PublicStorefrontPage({ params }: { params: { slug: string } }) {
+export default async function PublicStorefrontPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const admin = createAdminClient()
   const { data: studio } = await admin
     .from('studios')
     .select('*')
-    .eq('slug', params.slug)
+    .eq('slug', slug)
     .maybeSingle()
 
   if (!studio) notFound()
