@@ -9,16 +9,11 @@ export type BookSessionParams = {
   phone:            string
   email?:           string | null
   session_type:     string
-  service_type:     string
   preferred_date:   string
-  outfits_count?:   number | null
   location_address?: string | null
   shoot_type?:      string | null
   event_name?:      string | null
   event_date?:      string | null
-  video_duration?:  string | null
-  coverage_hours?:  number | null
-  crew_size?:       number | null
   notes?:           string | null
   selected_service_ids?: string[]
   package_id?:      string | null
@@ -78,7 +73,6 @@ export async function bookSession(
       studio_id:    params.studio_id,
       client_id:    clientId,
       session_type: params.session_type,
-      service_type: params.service_type || 'photo',
       session_date: params.preferred_date,
       status:       params.initialStatus,
       notes:        params.notes?.trim() || null,
@@ -86,15 +80,11 @@ export async function bookSession(
       custom_answers: params.custom_answers || null,
     }
 
-    if (params.outfits_count) insertData.outfits_count = params.outfits_count
     if (params.location_address) insertData.location_address = params.location_address.trim()
     if (params.shoot_type) insertData.shoot_type = params.shoot_type.trim()
     if (params.event_name) insertData.event_name = params.event_name.trim()
     if (params.event_date) insertData.event_date = params.event_date
     if (params.package_id) insertData.package_id = params.package_id
-    if (params.video_duration) insertData.video_duration = params.video_duration.trim()
-    if (params.coverage_hours) insertData.coverage_hours = params.coverage_hours
-    if (params.crew_size) insertData.crew_size = params.crew_size
 
     const { data: newBookingRaw, error: bookingError } = await admin
       .from('bookings')

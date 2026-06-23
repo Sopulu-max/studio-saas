@@ -97,8 +97,6 @@ export default function EditSessionForm({
     shoot_type:         session.shoot_type         ?? '',
     session_date:       toDatetimeLocal(session.session_date),
     package_id:         session.package_id         ?? '',
-    outfits_count: session.outfits_count != null ? String(session.outfits_count) : '',
-    edited_photos: session.edited_photos != null ? String(session.edited_photos) : '',
     location_address:   session.location_address   ?? '',
     event_name:         session.event_name         ?? '',
     event_date:         session.event_date          ?? '',
@@ -119,22 +117,13 @@ export default function EditSessionForm({
   }
 
   // Package matching
-  const outfitsNum = form.outfits_count ? parseInt(form.outfits_count) : null
   const sessionFiltered = packages.filter((p) =>
     !p.session_type || p.session_type === form.session_type
   )
-  const exactMatches = outfitsNum != null
-    ? sessionFiltered.filter((p) => p.outfits_count === outfitsNum)
-    : []
-  const otherPackages = outfitsNum != null
-    ? sessionFiltered.filter((p) => p.outfits_count !== outfitsNum)
-    : sessionFiltered
 
   function pkgCard(p: SessionPackage) {
     const selected = form.package_id === p.package_id
     const specs: string[] = []
-    if (p.outfits_count != null) specs.push(`${p.outfits_count} outfit${p.outfits_count !== 1 ? 's' : ''}`)
-    if (p.edited_photos != null) specs.push(`${p.edited_photos} photos`)
     return (
       <button
         key={p.package_id}
@@ -150,9 +139,6 @@ export default function EditSessionForm({
       >
         <div>
           <div style={{ fontSize: '13px', fontWeight: '500' }}>{p.name}</div>
-          {specs.length > 0 && (
-            <div style={{ fontSize: '11px', opacity: 0.65, marginTop: '2px' }}>{specs.join(' · ')}</div>
-          )}
         </div>
         <div style={{ fontSize: '13px', fontWeight: '600', flexShrink: 0, marginLeft: '12px' }}>
           ₦{Number(p.base_price).toLocaleString()}
@@ -197,8 +183,6 @@ export default function EditSessionForm({
       shoot_type:      form.shoot_type,
       session_date:    form.session_date,
       package_id:      form.package_id,
-      outfits_count:   form.outfits_count,
-      edited_photos:   form.edited_photos,
       location_address: form.location_address,
       event_name:      form.event_name,
       event_date:      form.event_date,
@@ -223,11 +207,6 @@ export default function EditSessionForm({
 
   const isOutdoor      = isOutdoorType(form.session_type)
   const isEvent        = isEventType(form.session_type)
-  const isVideoSession = true
-  // Display all fields by default
-  const hasPhotoComponent = true
-  const isPhotoVideo = false
-  const isPureVideo = false
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -308,7 +287,7 @@ export default function EditSessionForm({
       {/* Pricing specs + package */}
       <div style={sectionStyle}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>
-          {isPhotoVideo ? 'PROJECT DETAILS' : isVideoSession ? 'PROJECT DETAILS' : 'PRICING SPECS'}
+          PRICING SPECS
         </p>
 
         {/* Category (shoot_type) */}
@@ -319,7 +298,7 @@ export default function EditSessionForm({
             list="edit-session-category-suggestions"
             value={form.shoot_type}
             onChange={e => update('shoot_type', e.target.value)}
-            placeholder={isVideoSession ? 'e.g. Reel, Brand film, Coverage…' : 'e.g. Portrait, Wedding, Birthday…'}
+            placeholder={'e.g. Portrait, Wedding, Birthday…'}
             style={inputStyle}
           />
           <datalist id="edit-session-category-suggestions">
@@ -327,67 +306,15 @@ export default function EditSessionForm({
           </datalist>
         </div>
 
-        {/* Occasion date for non-event sessions (Birthday, Anniversary, etc.) */}
-        {!isEvent && form.shoot_type && (
-          <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>
-              {form.shoot_type} date{' '}
-              <span style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '400' }}>— optional</span>
-            </label>
-            <input type="date" value={form.event_date} onChange={e => update('event_date', e.target.value)} style={inputStyle} />
-          </div>
-        )}
-
-        {/* Outfits + edited photos — photo/photo+video, not pure video or event */}
-        {hasPhotoComponent && !isEvent && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-            <div>
-              <label style={labelStyle}>Outfits {isPhotoVideo && <span style={{ fontWeight: 400, color: 'var(--text-4)', fontSize: '12px' }}>(photo)</span>}</label>
-              <input type="number" min="1" value={form.outfits_count}
-                onChange={e => update('outfits_count', e.target.value)}
-                placeholder="e.g. 3" style={inputStyle} />
-            </div>
-            <div>
-              <label style={labelStyle}>Edited photos</label>
-              <input type="number" min="1" value={form.edited_photos}
-                onChange={e => update('edited_photos', e.target.value)}
-                placeholder="e.g. 20" style={inputStyle} />
-            </div>
-          </div>
-        )}
-
         {/* Package picker */}
         {sessionFiltered.length > 0 && (
           <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '14px' }}>
-            {outfitsNum != null && exactMatches.length > 0 ? (
-              <>
-                <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                  Matching packages
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: otherPackages.length > 0 ? '12px' : 0 }}>
-                  {exactMatches.map(pkgCard)}
-                </div>
-                {otherPackages.length > 0 && (
-                  <>
-                    <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                      Other packages
-                    </p>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {otherPackages.map(pkgCard)}
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <>
-                <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                  Packages
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  {sessionFiltered.map(pkgCard)}
-                </div>
-              </>
-            )}
+            <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+              Packages
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              {sessionFiltered.map(pkgCard)}
+            </div>
             {form.package_id && (
               <button type="button" onClick={() => update('package_id', '')}
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-3)', fontSize: '12px', padding: '8px 0 0', display: 'block' }}>
@@ -444,84 +371,51 @@ export default function EditSessionForm({
         )}
       </div>
 
-      {/* Team */}
       <div style={sectionStyle}>
-        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>{isVideoSession ? 'CREW' : 'TEAM'}</p>
+        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>TEAM / CREW</p>
         {staff.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
             No staff yet — <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</Link>
           </p>
-        ) : isPhotoVideo ? (
-          // Photo + Video: show all 4 crew slots in 2×2 grid
-          <>
-            <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 10px' }}>
-              Photo team and video crew can be different people or the same person.
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              <div>
-                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>📷 Photographer</label>
-                <SearchableSelect
-                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                  value={form.photographer_id}
-                  onChange={v => update('photographer_id', v)}
-                  placeholder="Select photographer…"
-                  emptyMessage="No staff match"
-                />
-              </div>
-              <div>
-                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>🎨 Photo editor</label>
-                <SearchableSelect
-                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                  value={form.editor_id}
-                  onChange={v => update('editor_id', v)}
-                  placeholder="Select photo editor…"
-                  emptyMessage="No staff match"
-                />
-              </div>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>🎬 Videographer</label>
-                <SearchableSelect
-                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                  value={form.videographer_id}
-                  onChange={v => update('videographer_id', v)}
-                  placeholder="Select videographer…"
-                  emptyMessage="No staff match"
-                />
-              </div>
-              <div>
-                <label style={{ ...labelStyle, color: 'var(--text-3)' }}>✂️ Video editor</label>
-                <SearchableSelect
-                  options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                  value={form.video_editor_id}
-                  onChange={v => update('video_editor_id', v)}
-                  placeholder="Select video editor…"
-                  emptyMessage="No staff match"
-                />
-              </div>
-            </div>
-          </>
         ) : (
-          // Photo or Video only: 2 slots
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={labelStyle}>{isPureVideo ? 'Videographer' : 'Photographer'}</label>
+              <label style={labelStyle}>Photographer</label>
               <SearchableSelect
                 options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
                 value={form.photographer_id}
                 onChange={v => update('photographer_id', v)}
-                placeholder={isPureVideo ? 'Select videographer…' : 'Select photographer…'}
+                placeholder="Select photographer…"
                 emptyMessage="No staff match"
               />
             </div>
             <div>
-              <label style={labelStyle}>{isPureVideo ? 'Video editor' : 'Editor / Retoucher'}</label>
+              <label style={labelStyle}>Editor / Retoucher</label>
               <SearchableSelect
                 options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
                 value={form.editor_id}
                 onChange={v => update('editor_id', v)}
                 placeholder="Select editor…"
+                emptyMessage="No staff match"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Videographer</label>
+              <SearchableSelect
+                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
+                value={form.videographer_id}
+                onChange={v => update('videographer_id', v)}
+                placeholder="Select videographer…"
+                emptyMessage="No staff match"
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Video Editor</label>
+              <SearchableSelect
+                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
+                value={form.video_editor_id}
+                onChange={v => update('video_editor_id', v)}
+                placeholder="Select video editor…"
                 emptyMessage="No staff match"
               />
             </div>
@@ -531,14 +425,12 @@ export default function EditSessionForm({
 
       {/* Notes / Project brief */}
       <div style={sectionStyle}>
-        <label style={labelStyle}>{isVideoSession ? 'Project brief / Notes' : 'Notes'}</label>
+        <label style={labelStyle}>Notes</label>
         <textarea
           value={form.notes}
           onChange={e => update('notes', e.target.value)}
-          placeholder={isVideoSession
-            ? 'Describe the deliverables, style references, usage rights, special requirements…'
-            : 'Any special requests or details...'}
-          rows={isVideoSession ? 5 : 3}
+          placeholder={'Any special requests or details...'}
+          rows={3}
           style={{ ...inputStyle, resize: 'vertical' }}
         />
       </div>

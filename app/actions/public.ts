@@ -14,16 +14,11 @@ const bookingRequestSchema = z.object({
   phone:            z.string().min(7, 'Please enter a valid phone number'),
   email:            z.string().email('Please enter a valid email').optional().or(z.literal('')),
   session_type:     z.string().min(1, 'Please select a session type'),
-  service_type:     z.string().optional().default(''),
   preferred_date:   z.string().min(1, 'Please select a preferred date'),
-  outfits_count:    z.string().optional(),
   location_address: z.string().optional(),
   shoot_type:       z.string().optional(),
   event_name:       z.string().optional(),
   event_date:       z.string().optional(),
-  video_duration:   z.string().optional(),
-  coverage_hours:   z.string().optional(),
-  crew_size:        z.string().optional(),
   notes:            z.string().optional(),
   custom_answers:   z.record(z.string(), z.any()).optional(),
 })
@@ -43,16 +38,11 @@ export async function submitBookingRequest(form: {
   phone:            string
   email:            string
   session_type:     string
-  service_type:     string
   preferred_date:   string
-  outfits_count:    string
   location_address: string
   shoot_type:       string
   event_name:       string
   event_date:       string
-  video_duration?:  string
-  coverage_hours?:  string
-  crew_size?:       string
   notes:            string
   selected_service_ids?: string[]
   package_id?: string
@@ -90,16 +80,11 @@ export async function submitBookingRequest(form: {
     phone: form.phone,
     email: form.email,
     session_type: form.session_type,
-    service_type: form.service_type,
     preferred_date: form.preferred_date,
-    outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
     location_address: form.location_address,
     shoot_type: form.shoot_type,
     event_name: form.event_name,
     event_date: form.event_date,
-    video_duration: form.video_duration,
-    coverage_hours: form.coverage_hours ? parseInt(form.coverage_hours, 10) : null,
-    crew_size: form.crew_size ? parseInt(form.crew_size, 10) : null,
     notes: form.notes,
     selected_service_ids: form.selected_service_ids,
     package_id: form.package_id,

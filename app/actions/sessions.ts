@@ -31,19 +31,14 @@ const addSessionSchema = z.object({
 export async function addSession(form: {
   client_id: string
   session_type: string
-  service_type?: string
   session_date: string
   package_id: string
-  outfits_count: string
   location_address: string
   event_name: string
   event_date: string
-  drive_link: string
   notes: string
   photographer_id: string
   editor_id: string
-  edited_photos: string
-  shoot_type: string
   custom_answers?: Record<string, any>
   force_duplicate?: boolean
 }) {
@@ -100,18 +95,13 @@ export async function addSession(form: {
     status: staffInitialStatus, // staff-created sessions skip the intake/pending stage
     notes: form.notes || null,
     booking_ref: nextRef,
+    session_type: form.session_type,
+    location_address: form.location_address || null,
+    package_id: form.package_id || null,
+    event_name: form.event_name || null,
+    event_date: form.event_date || null,
+    custom_answers: form.custom_answers || null,
   }
-
-  if (form.session_type)     insertData.session_type     = form.session_type
-  if (form.service_type)     insertData.service_type     = form.service_type
-  if (form.shoot_type)       insertData.shoot_type       = form.shoot_type
-  if (form.location_address) insertData.location_address = form.location_address
-  if (form.package_id)      insertData.package_id      = form.package_id
-  if (form.outfits_count)   insertData.outfits_count   = parseInt(form.outfits_count, 10)
-  if (form.edited_photos)   insertData.edited_photos   = parseInt(form.edited_photos, 10)
-  if (form.event_name)      insertData.event_name      = form.event_name
-  if (form.event_date)      insertData.event_date      = form.event_date
-  if (form.custom_answers)  insertData.custom_answers  = form.custom_answers
 
   const { data: session, error } = await context.admin
     .from('bookings')
@@ -475,12 +465,9 @@ export async function updateSessionScope(sessionId: string, data: {
 export async function updateSession(sessionId: string, form: {
   client_id: string
   session_type: string
-  service_type?: string
   shoot_type?: string
   session_date: string
   package_id: string
-  outfits_count: string
-  edited_photos: string
   location_address: string
   event_name: string
   event_date: string
@@ -495,9 +482,6 @@ export async function updateSession(sessionId: string, form: {
 
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
-
-  const studioRow   = await fetchStudio(context.admin, context.studioId)
-  const config      = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   // All ownership checks in parallel
   const [bookingOk, clientOk, pkgOk, photogOk, editorOk] = await Promise.all([
@@ -520,8 +504,6 @@ export async function updateSession(sessionId: string, form: {
     shoot_type:       form.shoot_type        || null,
     notes:            form.notes             || null,
     package_id:       form.package_id        || null,
-    outfits_count:    form.outfits_count     ? parseInt(form.outfits_count, 10)  : null,
-    edited_photos:    form.edited_photos     ? parseInt(form.edited_photos, 10)  : null,
     location_address: form.location_address  || null,
     event_name:       form.event_name        || null,
     event_date:       form.event_date        || null,
@@ -545,19 +527,19 @@ export async function updateSession(sessionId: string, form: {
     .in('role', rolesToDelete)
 
   const assignments: { booking_id: string; staff_id: string; role: string }[] = []
-  const usedStaffIds = new Set<string>()
 
   function addStaff(staffId: string | undefined, role: string) {
     if (!staffId) return
     assignments.push({ booking_id: sessionId, staff_id: staffId, role })
-    usedStaffIds.add(staffId)
   }
 
   addStaff(form.photographer_id, 'photographer')
   if (form.editor_id && form.editor_id !== form.photographer_id) {
     addStaff(form.editor_id, 'editor')
   }
-  addStaff(form.videographer_id, 'videographer')
+  if (form.videographer_id) {
+    addStaff(form.videographer_id, 'videographer')
+  }
   if (form.video_editor_id && form.video_editor_id !== form.videographer_id) {
     addStaff(form.video_editor_id, 'video_editor')
   }

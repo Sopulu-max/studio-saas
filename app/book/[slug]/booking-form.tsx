@@ -80,16 +80,11 @@ export default function BookingForm({
     phone:            '',
     email:            '',
     session_type:     sessionTypes[0]?.value ?? '',
-    service_type:     '', // legacy, keep to avoid breaking form submission
     preferred_date:   '',
-    outfits_count:    '',
     location_address: '',
     shoot_type:       '',
     event_name:       '',
     event_date:       '',
-    video_duration:   '',
-    coverage_hours:   '',
-    crew_size:        '',
     notes:            '',
   })
 
@@ -226,20 +221,21 @@ export default function BookingForm({
     setLoading(true)
     setError('')
 
-    const { error: err, whatsappUrl } = await submitBookingRequest({
+    const result = await submitBookingRequest({
+      studio_id: studioId,
       ...form,
-      custom_answers:       customAnswers,
-      studio_id:            studioId,
-      selected_service_ids: selectedServiceIds,
-      package_id:           selectedPackageId ?? undefined,
+      package_id: selectedPackageId ?? undefined,
+      selected_service_ids: Array.from(selectedServiceIds),
+      custom_answers: customAnswers,
     })
-    if (err === '__DUPLICATE__') {
+    
+    if (result.error === '__DUPLICATE__') {
       setDuplicate(true)
-    } else if (err) {
-      setError(err)
+    } else if (result.error) {
+      setError(result.error)
       setLoading(false)
     } else {
-      if (whatsappUrl) window.location.href = whatsappUrl
+      if (result.whatsappUrl) window.location.href = result.whatsappUrl
       else setSubmitted(true)
     }
   }
@@ -298,7 +294,7 @@ export default function BookingForm({
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
                 {sessionTypes.map(t => (
                   <button key={t.value} type="button"
-                    onClick={() => { set('session_type', t.value); set('outfits_count', '') }}
+                    onClick={() => set('session_type', t.value)}
                     style={{
                       padding: '14px 24px', borderRadius: '12px', fontSize: '15px', fontWeight: '500', transition: 'all .2s cubic-bezier(0.16, 1, 0.3, 1)',
                       border: form.session_type === t.value ? '2px solid var(--primary)' : '1px solid var(--card-border)',
@@ -347,7 +343,6 @@ export default function BookingForm({
                   
                   <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--text-muted)', flexWrap: 'wrap', fontWeight: '500' }}>
                     {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0) > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0)} mins</span>}
-                    {pkg.services.some(s => s.outfits_count != null) && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>👕 {pkg.services.reduce((total, s) => total + (s.outfits_count ?? 0), 0)} outfits</span>}
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📸 {pkg.services.filter(s=>!s.is_addon).length} items included</span>
                   </div>
                 </div>

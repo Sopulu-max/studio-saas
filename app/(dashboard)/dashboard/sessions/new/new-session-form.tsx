@@ -60,8 +60,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     session_type: firstType,
     session_date: '',
     package_id: '',
-    outfits_count: '',
-    edited_photos: '',
     base_price: '',
     shoot_type: '',
     location_address: '',
@@ -82,30 +80,12 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     setCustomAnswers(prev => ({ ...prev, [fieldId]: value }))
   }
 
-  // Package matching logic
-  const outfitsNum   = form.outfits_count ? parseInt(form.outfits_count) : null
-  const photosNum    = form.edited_photos ? parseInt(form.edited_photos) : null
-  const hasSpecs     = outfitsNum != null || photosNum != null
-
   const sessionFiltered = packages.filter((p) =>
     !p.session_type || p.session_type === form.session_type
   )
-  const exactMatches = hasSpecs
-    ? sessionFiltered.filter((p) => {
-        const outfitsOk = outfitsNum != null ? p.outfits_count === outfitsNum : true
-        const photosOk  = photosNum  != null ? p.edited_photos === photosNum  : true
-        return outfitsOk && photosOk
-      })
-    : []
-  const otherPackages = hasSpecs
-    ? sessionFiltered.filter((p) => !exactMatches.includes(p))
-    : sessionFiltered
 
   function pkgCard(p: SessionPackage) {
     const selected = form.package_id === p.package_id
-    const specs: string[] = []
-    if (p.outfits_count != null) specs.push(`${p.outfits_count} outfit${p.outfits_count !== 1 ? 's' : ''}`)
-    if (p.edited_photos != null) specs.push(`${p.edited_photos} photos`)
     return (
       <button
         key={p.package_id}
@@ -121,9 +101,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
       >
         <div>
           <div style={{ fontSize: '13px', fontWeight: '500' }}>{p.name}</div>
-          {specs.length > 0 && (
-            <div style={{ fontSize: '11px', opacity: 0.65, marginTop: '2px' }}>{specs.join(' · ')}</div>
-          )}
         </div>
         <div style={{ fontSize: '13px', fontWeight: '600', flexShrink: 0, marginLeft: '12px' }}>
           ₦{Number(p.base_price).toLocaleString()}
@@ -166,16 +143,9 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
 
     let packageId = form.package_id
 
-    // If a price was entered but no package is linked, create one so the price
-    // lives in the packages table rather than directly on the booking.
-    // The user can optionally give it a name; otherwise we auto-generate one
-    // from the session specs so the packages list stays readable.
     if (form.base_price && !packageId) {
       const sessionLabel = config.sessionTypes.find(t => t.value === form.session_type)?.label ?? form.session_type
-      const nameParts    = [form.shoot_type || sessionLabel]
-      if (form.outfits_count) nameParts.push(`${form.outfits_count} outfit${parseInt(form.outfits_count) !== 1 ? 's' : ''}`)
-      if (form.edited_photos) nameParts.push(`${form.edited_photos} photos`)
-      const autoName = newPackageName.trim() || nameParts.join(' · ')
+      const autoName = newPackageName.trim() || (form.shoot_type || sessionLabel)
 
       const { error: pkgError, packageId: newId } = await addPackage({
         name:          autoName,
@@ -219,10 +189,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     let packageId = form.package_id
     if (form.base_price && !packageId) {
       const sessionLabel = config.sessionTypes.find(t => t.value === form.session_type)?.label ?? form.session_type
-      const nameParts    = [form.shoot_type || sessionLabel]
-      if (form.outfits_count) nameParts.push(`${form.outfits_count} outfit${parseInt(form.outfits_count) !== 1 ? 's' : ''}`)
-      if (form.edited_photos) nameParts.push(`${form.edited_photos} photos`)
-      const autoName = newPackageName.trim() || nameParts.join(' · ')
+      const autoName = newPackageName.trim() || (form.shoot_type || sessionLabel)
       const { error: pkgError, packageId: newId } = await addPackage({
         name: autoName, description: '', base_price: form.base_price,
         shoot_type: form.shoot_type, inclusions: [],
@@ -256,8 +223,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
   const activeSessionType = config.sessionTypes.find(t => t.value === form.session_type)
   const isOutdoor         = activeSessionType?.is_outdoor ?? false
   const isEvent           = activeSessionType?.is_event   ?? false
-  // Display crew assignments (editor, etc.) by default since service type is dynamic
-  const isVideoSession    = true
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -266,10 +231,9 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Record a studio, outdoor, or event shoot</p>
       </div>
 
-      {/* Session type + service type */}
       <div style={sectionStyle}>
-        <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Session type <span style={{ color: '#e24b4a' }}>*</span></label>
+        <div style={{ marginBottom: 0 }}>
+          <label style={labelStyle}>Session type</label>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
             {config.sessionTypes.map(t => {
               const selected = form.session_type === t.value
@@ -290,7 +254,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         </div>
       </div>
 
-      {/* Client + date */}
       <div style={sectionStyle}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Client <span style={{ color: '#e24b4a' }}>*</span></label>
@@ -335,35 +298,12 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         )}
       </div>
 
-      {/* Pricing specs + package */}
       <div style={sectionStyle}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>
-          {isVideoSession ? 'PROJECT DETAILS' : 'PRICING SPECS'}
+          PROJECT DETAILS
         </p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
-          {!isVideoSession && !isEvent && (
-            <div>
-              <label style={labelStyle}>Outfits</label>
-              <input type="number" min="1" value={form.outfits_count}
-                onChange={e => update('outfits_count', e.target.value)}
-                placeholder="e.g. 3" style={inputStyle} />
-            </div>
-          )}
-          {!isVideoSession && (
-            <div>
-              <label style={labelStyle}>Edited photos</label>
-              <input type="number" min="1" value={form.edited_photos}
-                onChange={e => update('edited_photos', e.target.value)}
-                placeholder="e.g. 40" style={inputStyle} />
-            </div>
-          )}
-          <div>
-            <label style={labelStyle}>Price (₦){isVideoSession && <span style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '400', marginLeft: '4px' }}>— leave blank if quoted per project</span>}</label>
-            <input type="number" min="0" value={form.base_price}
-              onChange={e => update('base_price', e.target.value)}
-              placeholder={isVideoSession ? 'Starting rate or leave blank' : 'e.g. 85000'} style={inputStyle} />
-          </div>
           <div>
             <label style={labelStyle}>Category</label>
             <input
@@ -371,16 +311,21 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
               list="session-category-suggestions"
               value={form.shoot_type}
               onChange={e => update('shoot_type', e.target.value)}
-              placeholder={isVideoSession ? 'e.g. Reel, Brand film, Coverage…' : 'e.g. Portrait, Wedding…'}
+              placeholder={'e.g. Portrait, Wedding…'}
               style={inputStyle}
             />
             <datalist id="session-category-suggestions">
               {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
             </datalist>
           </div>
+          <div>
+            <label style={labelStyle}>Price (₦)</label>
+            <input type="number" min="0" value={form.base_price}
+              onChange={e => update('base_price', e.target.value)}
+              placeholder={'e.g. 85000'} style={inputStyle} />
+          </div>
         </div>
 
-        {/* Occasion date for non-event sessions (Birthday, Anniversary, etc.) */}
         {!isEvent && form.shoot_type && (
           <div style={{ marginTop: '4px', marginBottom: '4px' }}>
             <label style={labelStyle}>
@@ -392,78 +337,14 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         )}
 
         {/* Package selection */}
-        {(hasSpecs || sessionFiltered.length > 0) && (
+        {sessionFiltered.length > 0 && (
           <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '14px' }}>
-
-            {/* Exact-match cards — shown only when specs narrow the list */}
-            {exactMatches.length > 0 && (
-              <>
-                <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                  Matching packages
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                  {exactMatches.map(pkgCard)}
-                </div>
-              </>
-            )}
-
-            {/* Searchable dropdown for everything else */}
-            {(() => {
-              const browseList = hasSpecs ? otherPackages : sessionFiltered
-              if (browseList.length === 0 && exactMatches.length > 0) return null
-              const label = exactMatches.length > 0 ? 'Other packages' : 'Package'
-              const selectedInBrowse = browseList.some(p => p.package_id === form.package_id)
-              return (
-                <div style={{ marginBottom: browseList.length > 0 ? '10px' : 0 }}>
-                  {browseList.length > 0 && (
-                    <>
-                      <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-                        {label}
-                      </p>
-                      <SearchableSelect
-                        options={[
-                          { value: '', label: '— No package —', sublabel: undefined },
-                          ...browseList.map(p => {
-                            const specs: string[] = []
-                            if (p.outfits_count != null) specs.push(`${p.outfits_count} outfit${p.outfits_count !== 1 ? 's' : ''}`)
-                            if (p.edited_photos  != null) specs.push(`${p.edited_photos} photos`)
-                            return {
-                              value:    p.package_id,
-                              label:    p.name,
-                              sublabel: [
-                                `₦${Number(p.base_price).toLocaleString()}`,
-                                ...specs,
-                              ].join(' · '),
-                            }
-                          }),
-                        ]}
-                        value={selectedInBrowse ? form.package_id : ''}
-                        onChange={v => update('package_id', v)}
-                        placeholder="Search packages…"
-                        emptyMessage="No packages match"
-                      />
-                    </>
-                  )}
-                </div>
-              )
-            })()}
-
-            {/* Save-as-new when specs are set but nothing selected */}
-            {hasSpecs && !form.package_id && exactMatches.length === 0 && (
-              <div style={{ background: 'var(--hover)', borderRadius: '8px', padding: '12px', marginTop: '10px' }}>
-                <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 6px' }}>Save as new package?</p>
-                <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px' }}>
-                  No saved package matches these specs. Give it a name and it will be saved automatically.
-                </p>
-                <input
-                  type="text"
-                  value={newPackageName}
-                  onChange={e => setNewPackageName(e.target.value)}
-                  placeholder="e.g. 3-outfit portrait session"
-                  style={inputStyle}
-                />
-              </div>
-            )}
+            <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
+              Packages
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+              {sessionFiltered.map(pkgCard)}
+            </div>
 
             {form.package_id && (
               <button type="button" onClick={() => update('package_id', '')}
@@ -523,7 +404,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
 
       {/* Team */}
       <div style={sectionStyle}>
-        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>{isVideoSession ? 'CREW' : 'TEAM'}</p>
+        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>TEAM / CREW</p>
         {staff.length === 0 ? (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
             No staff yet — <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</Link>
@@ -531,7 +412,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
-              <label style={labelStyle}>{isVideoSession ? 'Videographer' : 'Photographer'}</label>
+              <label style={labelStyle}>Photographer</label>
               <SearchableSelect
                 options={[
                   { value: '', label: 'None', sublabel: undefined },
@@ -548,7 +429,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
               />
             </div>
             <div>
-              <label style={labelStyle}>{isVideoSession ? 'Video editor' : 'Editor / Retoucher'}</label>
+              <label style={labelStyle}>Editor / Retoucher</label>
               <SearchableSelect
                 options={[
                   { value: '', label: 'None', sublabel: undefined },
@@ -570,14 +451,12 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
 
       {/* Notes / Project brief */}
       <div style={sectionStyle}>
-        <label style={labelStyle}>{isVideoSession ? 'Project brief / Notes' : 'Notes'}</label>
+        <label style={labelStyle}>Notes</label>
         <textarea
           value={form.notes}
           onChange={e => update('notes', e.target.value)}
-          placeholder={isVideoSession
-            ? 'Describe the deliverables, style references, usage rights, special requirements…'
-            : 'Any special requests or details...'}
-          rows={isVideoSession ? 5 : 3}
+          placeholder={'Any special requests or details...'}
+          rows={3}
           style={{ ...inputStyle, resize: 'vertical' }}
         />
       </div>
