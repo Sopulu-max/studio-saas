@@ -15,7 +15,7 @@ export async function createTemplate(data: unknown) {
   if ('error' in context) return { error: 'Unauthorized' }
 
   const parsed = templateSchema.safeParse(data)
-  if (!parsed.success) return { error: parsed.error.errors[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const { title, content } = parsed.data
 
@@ -38,7 +38,7 @@ export async function updateTemplate(templateId: string, data: unknown) {
   if ('error' in context) return { error: 'Unauthorized' }
 
   const parsed = templateSchema.safeParse(data)
-  if (!parsed.success) return { error: parsed.error.errors[0].message }
+  if (!parsed.success) return { error: parsed.error.issues[0].message }
 
   const { title, content } = parsed.data
 

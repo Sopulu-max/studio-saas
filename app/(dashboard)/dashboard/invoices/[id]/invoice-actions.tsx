@@ -19,6 +19,9 @@ export default function InvoiceActions({
   invoiceId,
   currentStatus,
   balanceDue,
+  total,
+  clientPhone,
+  publicLink,
 }: {
   invoiceId: string
   currentStatus: string
