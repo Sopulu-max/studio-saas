@@ -192,9 +192,12 @@ export default async function PackagesPage({
   const header = (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
       <div>
-        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 2px' }}>Packages</h1>
+        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Packages & Offerings</h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
+          Curate and design your studio's offerings and packages.
+        </p>
         {studioSlug && (
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
             <Link href={`/packages/${studioSlug}`} target="_blank" style={{ fontSize: '12px', color: 'var(--text-3)', textDecoration: 'none' }}>
               View public catalog ↗
             </Link>

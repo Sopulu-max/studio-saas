@@ -140,9 +140,9 @@ export default async function ServicesPage({
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Services</h1>
+          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Services, Catalog & Add-ons</h1>
           <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
-            Your photography services, products, and digital offerings
+            Standalone items that can be attached to Offerings.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
