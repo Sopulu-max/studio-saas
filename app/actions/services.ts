@@ -5,13 +5,16 @@ import { revalidatePath } from 'next/cache'
 import { getStudioContext, ownsService } from '@/lib/studio'
 
 const serviceSchema = z.object({
-  name:         z.string().min(1, 'Service name is required'),
-  type:         z.enum(['service', 'product', 'digital'], { error: 'Invalid type' }),
-  description:  z.string().optional().default(''),
-  price:        z.string().optional().default(''),
+  name:          z.string().min(1, 'Service name is required'),
+  type:          z.enum(['service', 'product', 'digital'], { error: 'Invalid type' }),
+  description:   z.string().optional().default(''),
+  price:         z.string().optional().default(''),
   duration_mins: z.string().optional().default(''),
-  is_active:    z.boolean().optional().default(true),
+  is_active:     z.boolean().optional().default(true),
   display_order: z.string().optional().default('0'),
+  category_value: z.string().optional().nullable(),
+  session_type:  z.string().optional().nullable(),
+  outfits_count: z.string().optional().nullable(),
 })
 
 export async function addService(form: {
@@ -22,6 +25,9 @@ export async function addService(form: {
   duration_mins?: string
   is_active?: boolean
   display_order?: string
+  category_value?: string | null
+  session_type?: string | null
+  outfits_count?: string | null
 }) {
   const result = serviceSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -40,6 +46,9 @@ export async function addService(form: {
       duration_mins: form.duration_mins ? parseInt(form.duration_mins, 10) : null,
       is_active:    form.is_active ?? true,
       display_order: parseInt(form.display_order ?? '0', 10) || 0,
+      category_value: form.category_value || null,
+      session_type:  form.session_type || null,
+      outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
     })
     .select()
     .single()
@@ -58,6 +67,9 @@ export async function updateService(serviceId: string, form: {
   duration_mins?: string
   is_active?: boolean
   display_order?: string
+  category_value?: string | null
+  session_type?: string | null
+  outfits_count?: string | null
 }) {
   const result = serviceSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -79,6 +91,9 @@ export async function updateService(serviceId: string, form: {
       duration_mins: form.duration_mins ? parseInt(form.duration_mins, 10) : null,
       is_active:    form.is_active ?? true,
       display_order: parseInt(form.display_order ?? '0', 10) || 0,
+      category_value: form.category_value || null,
+      session_type:  form.session_type || null,
+      outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
     })
     .eq('service_id', serviceId)
 

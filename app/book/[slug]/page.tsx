@@ -34,10 +34,6 @@ export type PreselectedPackage = {
   name:           string
   tagline?:       string | null
   base_price?:    number | null
-  session_type?:  string | null
-  service_type?:  string | null
-  outfits_count?: number | null
-  duration_mins?: number | null
 }
 
 export type PackageLinkedService = {
@@ -46,6 +42,10 @@ export type PackageLinkedService = {
   type:         string
   description?: string | null
   price?:       number | null
+  category_value?: string | null
+  session_type?: string | null
+  outfits_count?: number | null
+  duration_mins?: number | null
   is_addon:     boolean
   addon_price?: number | null
 }
@@ -79,6 +79,10 @@ export default async function PublicBookingPage({
     type:         string
     description?: string | null
     price?:       number | null
+    category_value?: string | null
+    session_type?: string | null
+    outfits_count?: number | null
+    duration_mins?: number | null
   }
 
   type RawPkgService = {
@@ -92,6 +96,10 @@ export default async function PublicBookingPage({
       type:         string
       description?: string | null
       price?:       number | null
+      category_value?: string | null
+      session_type?: string | null
+      outfits_count?: number | null
+      duration_mins?: number | null
     } | null
   }
 
@@ -102,14 +110,14 @@ export default async function PublicBookingPage({
   const [{ data: servicesRaw }, { data: packagesRaw }] = await Promise.all([
     admin
       .from('services')
-      .select('service_id, name, type, description, price')
+      .select('service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins')
       .eq('studio_id', studio.studio_id)
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('name',          { ascending: true }),
     admin
       .from('packages')
-      .select('package_id, name, tagline, base_price, session_type, service_type, outfits_count, duration_mins, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
+      .select('package_id, name, tagline, base_price, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins))')
       .eq('studio_id',  studio.studio_id)
       .eq('is_public',  true)
       .order('display_order', { ascending: true })
@@ -129,6 +137,10 @@ export default async function PublicBookingPage({
             type:        ps.services!.type,
             description: ps.services!.description,
             price:       ps.services!.price,
+            category_value: ps.services!.category_value,
+            session_type: ps.services!.session_type,
+            outfits_count: ps.services!.outfits_count,
+            duration_mins: ps.services!.duration_mins,
             is_addon:    ps.is_addon,
             addon_price: ps.addon_price,
           }))
@@ -139,10 +151,6 @@ export default async function PublicBookingPage({
       name:          rawPkg.name,
       tagline:       rawPkg.tagline,
       base_price:    rawPkg.base_price,
-      session_type:  rawPkg.session_type,
-      service_type:  rawPkg.service_type,
-      outfits_count: rawPkg.outfits_count,
-      duration_mins: rawPkg.duration_mins,
       services:      linkedServices,
     }
   })

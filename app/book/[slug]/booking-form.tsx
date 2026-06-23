@@ -23,6 +23,10 @@ type CatalogService = {
   type:         string
   description?: string | null
   price?:       number | null
+  category_value?: string | null
+  session_type?: string | null
+  outfits_count?: number | null
+  duration_mins?: number | null
 }
 
 type PackageLinkedService = {
@@ -31,6 +35,10 @@ type PackageLinkedService = {
   type:         string
   description?: string | null
   price?:       number | null
+  category_value?: string | null
+  session_type?: string | null
+  outfits_count?: number | null
+  duration_mins?: number | null
   is_addon:     boolean
   addon_price?: number | null
 }
@@ -40,10 +48,6 @@ export type PublicPackage = {
   name:           string
   tagline?:       string | null
   base_price?:    number | null
-  session_type?:  string | null
-  service_type?:  string | null
-  outfits_count?: number | null
-  duration_mins?: number | null
   services:       PackageLinkedService[]
 }
 
@@ -96,11 +100,14 @@ export default function BookingForm({
     if (initialPackageId) {
       const pkg = publicPackages.find(p => p.package_id === initialPackageId)
       if (pkg) {
-        set('session_type', pkg.session_type || sessionTypes[0]?.value || '')
-        set('service_type', pkg.service_type || serviceTypes[0]?.value || '')
-        if (pkg.outfits_count != null) set('outfits_count', String(pkg.outfits_count))
+        const hasServices = pkg.services.filter(s => !s.is_addon)
+        const primaryService = hasServices.find(s => s.category_value) ?? hasServices[0]
+        if (primaryService) {
+          set('session_type', primaryService.session_type && primaryService.session_type !== 'any' ? primaryService.session_type : sessionTypes[0]?.value ?? '')
+          set('service_type', primaryService.category_value || serviceTypes[0]?.value || '')
+        }
         
-        const baseIds = pkg.services.filter(s => !s.is_addon).map(s => s.service_id)
+        const baseIds = hasServices.map(s => s.service_id)
         setSelectedServiceIds(baseIds)
         setStep(3) // Jump to step 3 (addons) if package was preselected
       }
@@ -148,10 +155,15 @@ export default function BookingForm({
   }
 
   const filteredPackages = useMemo(() => {
-    return publicPackages.filter(p => 
-      (p.session_type === form.session_type || !p.session_type) &&
-      (p.service_type === form.service_type || !p.service_type)
-    )
+    return publicPackages.filter(p => {
+      // Must have at least one base service matching the intent (or be a generic package if no services restrict it)
+      const baseSvcs = p.services.filter(s => !s.is_addon)
+      if (baseSvcs.length === 0) return true
+      return baseSvcs.some(s => 
+        (s.session_type === 'any' || !s.session_type || s.session_type === form.session_type) &&
+        (s.category_value === form.service_type || !s.category_value)
+      )
+    })
   }, [publicPackages, form.session_type, form.service_type])
 
   const pkgLinkedServiceIds = new Set(selectedPackage?.services.map(s => s.service_id) || [])
@@ -170,8 +182,20 @@ export default function BookingForm({
   const estTotal = (pkgBase ?? 0) + optionalTotal
 
   const isEvent = sessionTypes.find(t => t.value === form.session_type)?.is_event ?? false
-  const activeServiceType  = serviceTypes.find(t => t.value === form.service_type) ?? serviceTypes[0]
-  const serviceBookingFields: BookingFieldConfig[] = activeServiceType?.booking_fields ?? []
+  
+  // Find all category_values from selected services
+  const selectedFullServices = catalogServices.filter(s => selectedServiceIds.includes(s.service_id))
+  const selectedCategories = Array.from(new Set([
+    ...selectedFullServices.map(s => s.category_value),
+    // Fallback to the form intent if no services selected yet
+    ...(selectedServiceIds.length === 0 ? [form.service_type] : [])
+  ])).filter(Boolean) as string[]
+
+  const activeServiceTypes = serviceTypes.filter(t => selectedCategories.includes(t.value))
+  
+  // Aggregate all booking fields from all active service types
+  const serviceBookingFields: BookingFieldConfig[] = activeServiceTypes.flatMap(t => t.booking_fields || [])
+
   const fieldEnabled  = (key: string) => serviceBookingFields.some(f => f.key === key)
   const fieldRequired = (key: string) => serviceBookingFields.find(f => f.key === key)?.required ?? false
 
@@ -344,8 +368,8 @@ export default function BookingForm({
                   {pkg.tagline && <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: '1.5' }}>{pkg.tagline}</p>}
                   
                   <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--text-muted)', flexWrap: 'wrap', fontWeight: '500' }}>
-                    {pkg.duration_mins != null && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {pkg.duration_mins} mins</span>}
-                    {pkg.outfits_count != null && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>👕 {pkg.outfits_count} outfits</span>}
+                    {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0) > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0)} mins</span>}
+                    {pkg.services.some(s => s.outfits_count != null) && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>👕 {pkg.services.reduce((total, s) => total + (s.outfits_count ?? 0), 0)} outfits</span>}
                     <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📸 {pkg.services.filter(s=>!s.is_addon).length} items included</span>
                   </div>
                 </div>

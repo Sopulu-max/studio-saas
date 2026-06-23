@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateService } from '@/app/actions/services'
+import { useStudioConfig } from '@/components/studio-config-provider'
 
 const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
 const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
@@ -27,10 +28,14 @@ type ServiceRecord = {
   duration_mins?: number | null
   is_active:     boolean
   display_order: number
+  category_value?: string | null
+  session_type?: string | null
+  outfits_count?: number | null
 }
 
 export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
   const router  = useRouter()
+  const config  = useStudioConfig()
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
 
@@ -42,6 +47,9 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
     duration_mins: svc.duration_mins != null ? String(svc.duration_mins) : '',
     display_order: String(svc.display_order),
     is_active:     svc.is_active,
+    category_value: svc.category_value || '',
+    session_type:  svc.session_type || 'any',
+    outfits_count: svc.outfits_count != null ? String(svc.outfits_count) : '',
   })
 
   function update(field: string, value: string | boolean) {
@@ -149,6 +157,54 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
               />
             </div>
           </div>
+
+          {form.type === 'service' && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--line-inner)' }}>
+              <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 12px', color: 'var(--text-2)' }}>Structural requirements</p>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                <div>
+                  <label style={labelStyle}>Category</label>
+                  <select
+                    value={form.category_value}
+                    onChange={e => update('category_value', e.target.value)}
+                    style={{ ...inputStyle, padding: '8px' }}
+                  >
+                    <option value="">— None —</option>
+                    {config.serviceTypes.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '4px 0 0' }}>Determines booking form fields</p>
+                </div>
+                <div>
+                  <label style={labelStyle}>Session Type</label>
+                  <select
+                    value={form.session_type}
+                    onChange={e => update('session_type', e.target.value)}
+                    style={{ ...inputStyle, padding: '8px' }}
+                  >
+                    <option value="any">Any (Client chooses)</option>
+                    {config.sessionTypes.map(t => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Outfits count <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.outfits_count}
+                  onChange={e => update('outfits_count', e.target.value)}
+                  placeholder="e.g. 2"
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Settings */}

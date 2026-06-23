@@ -7,19 +7,19 @@ import { getStudioContext, ownsPackage } from '@/lib/studio'
 const packageSchema = z.object({
   name: z.string().min(1, 'Package name is required'),
   description: z.string().optional().default(''),
-  base_price: z.string().refine(v => parseFloat(v) > 0, 'Price must be greater than 0'),
-  duration_mins: z.string().optional(),
-  session_type: z.string().min(1, 'Session type is required'),
+  base_price: z.string().refine(v => parseFloat(v) >= 0, 'Price must be 0 or more'),
   shoot_type: z.string().min(1, 'Category is required'),
   inclusions: z.array(z.string()),
-  outfits_count: z.string().optional(),
-  edited_photos: z.string().optional(),
   coverage_hours: z.string().optional(),
   addons: z.array(z.object({
     name: z.string().min(1, 'Add-on name is required'),
     description: z.string().optional().default(''),
     price: z.string().refine(v => parseFloat(v) >= 0, 'Add-on price must be 0 or more'),
   })),
+  pricing_type:   z.enum(['fixed', 'per_project']).optional().default('fixed'),
+  is_public:      z.boolean().optional().default(true),
+  display_order:  z.number().optional().default(0),
+  tagline:        z.string().optional().default(''),
 })
 
 type Section = {
@@ -46,13 +46,8 @@ export async function addPackage(form: {
   name: string
   description: string
   base_price: string
-  duration_mins: string
-  session_type: string
-  service_type?: string
   shoot_type: string
   inclusions: string[]
-  outfits_count?: string
-  edited_photos?: string
   coverage_hours?: string
   contract_template?: string
   contract_template_id?: string | null
@@ -88,13 +83,8 @@ export async function addPackage(form: {
       name:           form.name,
       description:    form.description,
       base_price:     parseFloat(form.base_price),
-      duration_mins:  form.duration_mins ? parseInt(form.duration_mins, 10) : null,
-      session_type:   form.session_type,
-      service_type:   form.service_type || '',
       shoot_type:     form.shoot_type,
       inclusions:     form.inclusions,
-      outfits_count:  form.outfits_count  ? parseInt(form.outfits_count,  10) : null,
-      edited_photos:  form.edited_photos  ? parseInt(form.edited_photos,  10) : null,
       coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,
@@ -177,13 +167,8 @@ export async function updatePackage(packageId: string, form: {
   name: string
   description: string
   base_price: string
-  duration_mins: string
-  session_type: string
-  service_type?: string
   shoot_type: string
   inclusions: string[]
-  outfits_count?: string
-  edited_photos?: string
   coverage_hours?: string
   contract_template?: string
   contract_template_id?: string | null
@@ -224,13 +209,8 @@ export async function updatePackage(packageId: string, form: {
       name:           form.name,
       description:    form.description,
       base_price:     parseFloat(form.base_price),
-      duration_mins:  form.duration_mins ? parseInt(form.duration_mins, 10) : null,
-      session_type:   form.session_type,
-      service_type:   form.service_type || '',
       shoot_type:     form.shoot_type,
       inclusions:     form.inclusions,
-      outfits_count:  form.outfits_count  ? parseInt(form.outfits_count,  10) : null,
-      edited_photos:  form.edited_photos  ? parseInt(form.edited_photos,  10) : null,
       coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,

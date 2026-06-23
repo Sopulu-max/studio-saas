@@ -11,6 +11,9 @@ type ServiceRecord = {
   duration_mins?: number | null
   is_active:     boolean
   display_order: number
+  category_value?: string | null
+  session_type?: string | null
+  outfits_count?: number | null
 }
 
 export default async function EditServicePage({

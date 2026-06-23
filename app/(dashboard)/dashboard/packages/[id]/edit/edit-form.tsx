@@ -36,15 +36,10 @@ type EditPackageRecord = {
   name?:                string | null
   description?:         string | null
   base_price?:          number | string | null
-  duration_mins?:       number | null
   shoot_type?:          string | null
-  outfits_count?:       number | null
-  edited_photos?:       number | null
   coverage_hours?:      number | null
   contract_template?:   string | null
   contract_template_id?: string | null
-  session_type?:        string | null
-  service_type?:        string | null
   pricing_type?:        'fixed' | 'per_project' | null
   inclusions?:          string[] | null
   tagline?:             string | null
@@ -115,17 +110,12 @@ export default function EditPackageForm({
     name:              pkg.name           ?? '',
     description:       pkg.description    ?? '',
     base_price:        String(pkg.base_price    ?? ''),
-    duration_mins:     String(pkg.duration_mins ?? ''),
     shoot_type:        pkg.shoot_type     ?? '',
-    outfits_count:     pkg.outfits_count   != null ? String(pkg.outfits_count)  : '',
-    edited_photos:     pkg.edited_photos   != null ? String(pkg.edited_photos)  : '',
     coverage_hours:    pkg.coverage_hours  != null ? String(pkg.coverage_hours) : '',
     tagline:           pkg.tagline         ?? '',
     display_order:     String(pkg.display_order ?? '0'),
   })
 
-  const [sessionType,    setSessionType]    = useState<string>(pkg.session_type   ?? config.sessionTypes[0]?.value ?? 'studio')
-  const [serviceType,    setServiceType]    = useState<string>(pkg.service_type   ?? config.serviceTypes[0]?.value ?? 'photo')
   const [pricingType,    setPricingType]    = useState<'fixed' | 'per_project'>(pkg.pricing_type ?? 'fixed')
   const [isPublic,       setIsPublic]       = useState<boolean>(pkg.is_public     ?? true)
   const [inclusions,     setInclusions]     = useState<string[]>(pkg.inclusions   ?? [])
@@ -223,8 +213,6 @@ export default function EditPackageForm({
 
     const { error, existingPackageId } = await updatePackage(pkg.package_id, {
       ...form,
-      session_type:         sessionType,
-      service_type:         serviceType,
       inclusions,
       addons,
       pricing_type:         pricingType,
@@ -248,9 +236,8 @@ export default function EditPackageForm({
     }
   }
 
-  const isEvent        = sessionType === 'event'
-  const isOutdoor      = sessionType === 'outdoor'
-  const isVideoSession = serviceType === 'video' || serviceType === 'photo_video'
+  const isEvent        = form.shoot_type === 'Event' || form.shoot_type === 'Wedding'
+  const isOutdoor      = form.shoot_type === 'Outdoor' || form.shoot_type === 'Maternity'
 
   return (
     <div style={{ maxWidth: '560px' }}>
@@ -308,50 +295,6 @@ export default function EditPackageForm({
         </div>
       </div>
 
-      {/* Session type + service type */}
-      <div style={sectionStyle}>
-        <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Session type</label>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
-            {config.sessionTypes.map(t => {
-              const selected = sessionType === t.value
-              return (
-                <button key={t.value} type="button" onClick={() => setSessionType(t.value)}
-                  style={{
-                    padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-                    border: '0.5px solid', cursor: 'pointer',
-                    borderColor: selected ? t.color_fg : 'var(--line)',
-                    background: selected ? t.color_bg : 'var(--surface)',
-                    color: selected ? t.color_fg : 'var(--text-2)',
-                  }}>
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Service type</label>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
-            {config.serviceTypes.map(t => {
-              const selected = serviceType === t.value
-              return (
-                <button key={t.value} type="button" onClick={() => setServiceType(t.value)}
-                  style={{
-                    padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-                    border: '0.5px solid', cursor: 'pointer',
-                    borderColor: selected ? t.color_fg : 'var(--line)',
-                    background: selected ? t.color_bg : 'var(--surface)',
-                    color: selected ? t.color_fg : 'var(--text-2)',
-                  }}>
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-
       {/* Main details */}
       <div style={sectionStyle}>
         {/* Name */}
@@ -372,52 +315,30 @@ export default function EditPackageForm({
         {/* Pricing basis */}
         <div style={{ marginBottom: '16px', padding: '12px', background: 'var(--hover)', borderRadius: '8px' }}>
           <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 10px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
-            {isVideoSession ? 'Pricing type' : 'Pricing basis'}
+            Pricing type
           </p>
-          {isVideoSession ? (
-            <div style={{ display: 'flex', gap: '6px' }}>
-              {(['fixed', 'per_project'] as const).map(pt => (
-                <button key={pt} type="button" onClick={() => setPricingType(pt)}
-                  style={{
-                    padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-                    border: '0.5px solid', cursor: 'pointer',
-                    borderColor: pricingType === pt ? 'var(--text)' : 'var(--line)',
-                    background: pricingType === pt ? 'var(--btn)' : 'var(--surface)',
-                    color: pricingType === pt ? 'var(--btn-fg)' : 'var(--text-2)',
-                  }}>
-                  {pt === 'fixed' ? 'Fixed rate' : 'Per project (quoted)'}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={labelStyle}>Outfits</label>
-                <input type="number" min="1" value={form.outfits_count}
-                  onChange={e => update('outfits_count', e.target.value)}
-                  placeholder="e.g. 3" style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Edited photos</label>
-                <input type="number" min="1" value={form.edited_photos}
-                  onChange={e => update('edited_photos', e.target.value)}
-                  placeholder="e.g. 40" style={inputStyle} />
-              </div>
-            </div>
-          )}
+          <div style={{ display: 'flex', gap: '6px' }}>
+            {(['fixed', 'per_project'] as const).map(pt => (
+              <button key={pt} type="button" onClick={() => setPricingType(pt)}
+                style={{
+                  padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
+                  border: '0.5px solid', cursor: 'pointer',
+                  borderColor: pricingType === pt ? 'var(--text)' : 'var(--line)',
+                  background: pricingType === pt ? 'var(--btn)' : 'var(--surface)',
+                  color: pricingType === pt ? 'var(--btn-fg)' : 'var(--text-2)',
+                }}>
+                {pt === 'fixed' ? 'Fixed rate' : 'Per project (quoted)'}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Price + Duration */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '12px', marginBottom: '16px' }}>
           <div>
             <label style={labelStyle}>Base price (₦) <span style={{ color: '#e24b4a' }}>*</span></label>
             <input type="number" value={form.base_price} onChange={e => update('base_price', e.target.value)}
               placeholder="85000" style={inputStyle} />
-          </div>
-          <div>
-            <label style={labelStyle}>Duration (mins) <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
-            <input type="number" value={form.duration_mins} onChange={e => update('duration_mins', e.target.value)}
-              placeholder="e.g. 120" style={inputStyle} />
           </div>
         </div>
 

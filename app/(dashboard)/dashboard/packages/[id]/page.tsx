@@ -40,12 +40,7 @@ type PackageTypedInclusion = {
 type PackageRecord = {
   name?:             string | null
   shoot_type?:       string | null
-  session_type?:     string | null
-  service_type?:     string | null
   base_price?:       number | string | null
-  duration_mins?:    number | null
-  outfits_count?:    number | null
-  edited_photos?:    number | null
   coverage_hours?:   number | null
   description?:      string | null
   inclusions?:       string[] | null
@@ -134,8 +129,6 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   const typedInclusions  = [...(pkg.package_inclusions ?? [])].sort((a, b) => a.display_order - b.display_order)
 
   const s          = shootTypeColor(pkg.shoot_type)
-  const typeCfg    = getSessionTypeConfig(config, pkg.session_type)
-  const svcTypeCfg = getServiceTypeConfig(config, pkg.service_type ?? 'photo')
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -147,12 +140,6 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: '0 0 6px', lineHeight: '1.5' }}>{pkg.tagline}</p>
           )}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: svcTypeCfg.color_bg, color: svcTypeCfg.color_fg, fontWeight: '500' }}>
-              {svcTypeCfg.label}
-            </span>
-            <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500' }}>
-              {typeCfg.label}
-            </span>
             {pkg.shoot_type && (
               <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color }}>
                 {pkg.shoot_type}
@@ -196,24 +183,6 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Base price</p>
             <p style={{ fontSize: '18px', fontWeight: '500', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
           </div>
-          {pkg.duration_mins != null && (
-            <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Duration</p>
-              <p style={{ fontSize: '18px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
-            </div>
-          )}
-          {pkg.outfits_count != null && (
-            <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Outfits</p>
-              <p style={{ fontSize: '18px', fontWeight: '500', margin: 0 }}>{pkg.outfits_count}</p>
-            </div>
-          )}
-          {pkg.edited_photos != null && (
-            <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Edited photos</p>
-              <p style={{ fontSize: '18px', fontWeight: '500', margin: 0 }}>{pkg.edited_photos}</p>
-            </div>
-          )}
           {pkg.coverage_hours != null && (
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Coverage hours</p>
