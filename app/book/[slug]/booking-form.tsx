@@ -477,11 +477,51 @@ export default function BookingForm({
                   <label style={label}>Event name <span style={req}>*</span></label>
                   <input type="text" value={form.event_name} onChange={e => set('event_name', e.target.value)} placeholder="e.g. Sandra & Emeka's Wedding" style={input} />
                 </div>
-                <div style={row}>
-                  <label style={label}>Venue <span style={opt}>(optional)</span></label>
-                  <input type="text" value={form.location_address} onChange={e => set('location_address', e.target.value)} placeholder="Venue name or address" style={input} />
-                </div>
+                {showLocation && (
+                  <div style={row}>
+                    <label style={label}>Venue <span style={fieldRequired('location_address') ? req : opt}>{fieldRequired('location_address') ? '*' : '(optional)'}</span></label>
+                    <input type="text" value={form.location_address} onChange={e => set('location_address', e.target.value)} placeholder="Venue name or address" style={input} />
+                  </div>
+                )}
               </>
+            )}
+
+            {!isEvent && showOccasion && (
+              <div style={row}>
+                <label style={label}>Purpose of shoot <span style={fieldRequired('shoot_type') ? req : opt}>{fieldRequired('shoot_type') ? '*' : '(optional)'}</span></label>
+                <input type="text" list="occasions" value={form.shoot_type} onChange={e => set('shoot_type', e.target.value)} placeholder="e.g. Birthday, Maternity" style={input} />
+                <datalist id="occasions">
+                  {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+            )}
+
+            {!isEvent && showLocation && (
+              <div style={row}>
+                <label style={label}>Location <span style={fieldRequired('location_address') ? req : opt}>{fieldRequired('location_address') ? '*' : '(optional)'}</span></label>
+                <input type="text" value={form.location_address} onChange={e => set('location_address', e.target.value)} placeholder="Studio or Location" style={input} />
+              </div>
+            )}
+
+            {!isEvent && showOutfits && (
+              <div style={row}>
+                <label style={label}>Number of outfits <span style={fieldRequired('outfits_count') ? req : opt}>{fieldRequired('outfits_count') ? '*' : '(optional)'}</span></label>
+                <input type="number" min="1" value={form.outfits_count} onChange={e => set('outfits_count', e.target.value)} placeholder="e.g. 2" style={input} />
+              </div>
+            )}
+
+            {showVideoDuration && (
+              <div style={row}>
+                <label style={label}>Video duration <span style={fieldRequired('video_duration') ? req : opt}>{fieldRequired('video_duration') ? '*' : '(optional)'}</span></label>
+                <input type="text" value={form.video_duration} onChange={e => set('video_duration', e.target.value)} placeholder="e.g. 60 seconds" style={input} />
+              </div>
+            )}
+
+            {showCoverageHours && (
+              <div style={row}>
+                <label style={label}>Coverage hours <span style={fieldRequired('coverage_hours') ? req : opt}>{fieldRequired('coverage_hours') ? '*' : '(optional)'}</span></label>
+                <input type="number" step="0.5" min="1" value={form.coverage_hours} onChange={e => set('coverage_hours', e.target.value)} placeholder="e.g. 4" style={input} />
+              </div>
             )}
 
             <div style={row}>
