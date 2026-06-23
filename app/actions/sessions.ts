@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext, fetchStudio, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
+import { runPhase3Automation } from '@/lib/phase3-automation'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sendStatusUpdateEmail, sendBookingConfirmationEmail, sendEventDateReminderEmail } from '@/lib/email'
 import { seedBookingServicesFromPromise } from '@/lib/booking-services'
@@ -147,6 +148,8 @@ export async function addSession(form: {
       return { error: staffError.message }
     }
   }
+  
+  await runPhase3Automation(context.admin, context.studioId, session.booking_id as string, form.package_id)
 
   revalidatePath('/dashboard/sessions')
 

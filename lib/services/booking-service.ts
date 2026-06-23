@@ -1,6 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js'
 import { seedBookingServicesFromPromise } from '@/lib/booking-services'
 import { findOrCreateClient } from './client-service'
+import { runPhase3Automation } from '@/lib/phase3-automation'
 
 export type BookSessionParams = {
   studio_id:        string
@@ -121,6 +122,8 @@ export async function bookSession(
       await admin.from('bookings').delete().eq('booking_id', newBookingId)
       return { bookingId: null, error: serviceSeed.error, bookingRef: null }
     }
+
+    await runPhase3Automation(admin, params.studio_id, newBookingId, params.package_id)
 
     return { bookingId: newBookingId, error: null, bookingRef: nextRef }
   } catch (error: any) {
