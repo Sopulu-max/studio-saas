@@ -22,7 +22,6 @@ const OWNER_NAV_DEFAULT: NavItem[] = [
   { label: 'Staff',        href: '/dashboard/staff' },
   { label: 'Attendance',   href: '/dashboard/attendance' },
   { label: 'Galleries',    href: '/dashboard/galleries' },
-  { label: 'Messages',     href: '/dashboard/messages' },
   { label: 'Invoices',     href: '/dashboard/invoices' },
   { label: 'Contracts',    href: '/dashboard/contracts' },
   { label: 'Print orders', href: '/dashboard/print-orders' },
