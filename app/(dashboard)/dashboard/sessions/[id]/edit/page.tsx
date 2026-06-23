@@ -31,13 +31,14 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
     event_name?: string | null
     event_date?: string | null
     notes?: string | null
+    custom_answers?: Record<string, any> | null
     booking_staff?: { role?: string | null; staff_id?: string | null }[] | null
   }
   const session = sessionRaw as unknown as SessionEditRecord | null
 
   if (!session) redirect('/dashboard/sessions')
 
-  const { clients, packages, staff } = await getSessionFormData()
+  const { clients, packages, staff, services } = await getSessionFormData()
 
   // Pull all crew roles from existing assignments
   const staffRelations = (session.booking_staff ?? []) as { role?: string | null; staff_id?: string | null }[]
@@ -53,6 +54,7 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
       clients={clients}
       packages={packages}
       staff={staff}
+      services={services}
       photographerId={photographerId}
       editorId={editorId}
       videographerId={videographerId}

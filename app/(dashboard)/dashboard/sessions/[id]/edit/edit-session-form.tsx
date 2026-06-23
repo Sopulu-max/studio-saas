@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { updateSession } from '@/app/actions/sessions'
@@ -48,6 +48,7 @@ type SessionRecord = {
   event_name?: string | null
   event_date?: string | null
   notes?: string | null
+  custom_answers?: Record<string, any> | null
 }
 
 function isEventType(t: string)   { return t === 'event' }
@@ -80,6 +81,7 @@ export default function EditSessionForm({
   editorId: string
   videographerId?: string
   videoEditorId?: string
+  services: any[]
 }) {
   const router = useRouter()
   const config = useStudioConfig()
@@ -107,9 +109,14 @@ export default function EditSessionForm({
     videographer_id:    videographerId ?? '',
     video_editor_id:    videoEditorId  ?? '',
   })
+  const [customAnswers, setCustomAnswers] = useState<Record<string, any>>(session.custom_answers || {})
 
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
+  }
+
+  function updateCustomAnswer(fieldId: string, value: any) {
+    setCustomAnswers(prev => ({ ...prev, [fieldId]: value }))
   }
 
   // Package matching
@@ -155,6 +162,25 @@ export default function EditSessionForm({
     )
   }
 
+  const customFields = useMemo(() => {
+    if (!form.package_id) return []
+    const pkg = packages.find(p => p.package_id === form.package_id) as any
+    if (!pkg || !pkg.package_services) return []
+    const fields: { id: string; label: string; type: string; required: boolean }[] = []
+    const seenIds = new Set<string>()
+    for (const ps of pkg.package_services) {
+      if (ps.services?.booking_fields && Array.isArray(ps.services.booking_fields)) {
+        for (const field of ps.services.booking_fields) {
+          if (!seenIds.has(field.id)) {
+            seenIds.add(field.id)
+            fields.push(field)
+          }
+        }
+      }
+    }
+    return fields
+  }, [form.package_id, packages])
+
   async function handleSubmit() {
     if (!form.client_id || !form.session_date) {
       setError('Client and session date are required')
@@ -183,6 +209,7 @@ export default function EditSessionForm({
       editor_id:       form.editor_id,
       videographer_id: form.videographer_id,
       video_editor_id: form.video_editor_id,
+      custom_answers:  customAnswers,
     })
     if (error) {
       setError(error)
@@ -389,6 +416,52 @@ export default function EditSessionForm({
                 ✕ No package
               </button>
             )}
+          </div>
+        )}
+
+        {/* Dynamic Custom Fields from the selected package */}
+        {customFields.length > 0 && (
+          <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px', marginTop: '16px' }}>
+            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>
+              CUSTOM SERVICE QUESTIONS
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {customFields.map((field, idx) => (
+                <div key={idx}>
+                  <label style={labelStyle}>
+                    {field.label} {field.required && <span style={{ color: 'var(--primary)' }}>*</span>}
+                  </label>
+                  {field.type === 'boolean' ? (
+                    <div style={{ display: 'flex', gap: '16px' }}>
+                      <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <input
+                          type="radio"
+                          name={`cf_${field.id}`}
+                          checked={customAnswers[field.id] === 'Yes'}
+                          onChange={() => updateCustomAnswer(field.id, 'Yes')}
+                        /> Yes
+                      </label>
+                      <label style={{ fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <input
+                          type="radio"
+                          name={`cf_${field.id}`}
+                          checked={customAnswers[field.id] === 'No'}
+                          onChange={() => updateCustomAnswer(field.id, 'No')}
+                        /> No
+                      </label>
+                    </div>
+                  ) : (
+                    <input
+                      type={field.type === 'number' ? 'number' : 'text'}
+                      value={customAnswers[field.id] || ''}
+                      onChange={e => updateCustomAnswer(field.id, e.target.value)}
+                      style={inputStyle}
+                      placeholder={field.type === 'number' ? 'e.g. 2' : 'Your answer...'}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

@@ -35,16 +35,30 @@ export default function InvoiceActions({
   const [loading, setLoading]   = useState(false)
   const [error, setError]       = useState('')
   const [payment, setPayment]   = useState({ amount: '', method: 'bank_transfer', reference: '' })
+  const [sendMethod, setSendMethod] = useState<'email' | 'whatsapp' | 'both'>('email')
   const [selectedStatus, setSelectedStatus] = useState(
     currentStatus === 'cancelled' ? 'draft' : currentStatus
   )
 
   async function handleSendToClient() {
-    setLoading(true)
-    const { error } = await sendInvoiceToClient(invoiceId)
-    if (error) toast.error(error)
-    else { toast.success('Invoice sent to client'); router.refresh() }
-    setLoading(false)
+    if (sendMethod === 'whatsapp' || sendMethod === 'both') {
+      const waUrl = buildInvoiceShareLink(invoiceId.split('-')[0], total, publicLink, clientPhone)
+      window.open(waUrl, '_blank')
+    }
+    
+    if (sendMethod === 'email' || sendMethod === 'both') {
+      setLoading(true)
+      const { error } = await sendInvoiceToClient(invoiceId)
+      if (error) toast.error(error)
+      else { toast.success('Invoice sent via email'); router.refresh() }
+      setLoading(false)
+    } else {
+      setLoading(true)
+      const { error } = await updateInvoiceStatus(invoiceId, 'sent')
+      if (error) toast.error(error)
+      else { toast.success('Invoice marked as sent'); router.refresh() }
+      setLoading(false)
+    }
   }
 
   async function handleStatusChange(status: string) {
@@ -129,10 +143,22 @@ export default function InvoiceActions({
           Download PDF
         </a>
         {currentStatus === 'draft' && (
-          <button onClick={handleSendToClient} disabled={loading}
-            style={{ padding: '8px 16px', fontSize: '13px', background: '#185fa5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}>
-            Mark as sent
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <select
+              value={sendMethod}
+              onChange={e => setSendMethod(e.target.value as 'email' | 'whatsapp' | 'both')}
+              disabled={loading}
+              style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px 0 0 8px', border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', borderRight: 'none' }}
+            >
+              <option value="email">Email</option>
+              <option value="whatsapp">WhatsApp</option>
+              <option value="both">Both</option>
+            </select>
+            <button onClick={handleSendToClient} disabled={loading}
+              style={{ padding: '8px 16px', fontSize: '13px', background: '#185fa5', color: 'white', border: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer' }}>
+              Send Invoice
+            </button>
+          </div>
         )}
         {(currentStatus === 'sent' || currentStatus === 'overdue' || currentStatus === 'paid') && (
           <a href={buildInvoiceShareLink(invoiceId.split('-')[0], total, publicLink, clientPhone)} target="_blank" rel="noopener noreferrer"

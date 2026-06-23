@@ -75,6 +75,7 @@ type SessionRecord = {
   packages?: { name?: string | null; base_price?: number | string | null; duration_mins?: number | null } | null
   booking_staff?: SessionStaffRelation[] | null
   booking_addons?: SessionAddonRelation[] | null
+  custom_answers?: Record<string, any> | null
 }
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -341,6 +342,15 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
               <p style={{ fontSize: '14px', margin: 0 }}>{session.selections_count}</p>
             </div>
           )}
+
+          {session.custom_answers && Object.entries(session.custom_answers).map(([key, val]) => (
+            <div key={key}>
+              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'capitalize' }}>
+                {key.replace(/_/g, ' ')}
+              </p>
+              <p style={{ fontSize: '14px', margin: 0 }}>{String(val)}</p>
+            </div>
+          ))}
 
           {session.packages?.name ? (
             <div>

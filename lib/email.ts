@@ -156,12 +156,14 @@ export async function sendBookingConfirmationEmail({
   studioName,
   sessionType,
   preferredDate,
+  customAnswers,
 }: {
   to: string
   clientName: string
   studioName: string
   sessionType: string
   preferredDate: string
+  customAnswers?: Record<string, any>
 }) {
   const typeLabel = sessionType.charAt(0).toUpperCase() + sessionType.slice(1)
   const dateLabel = new Date(preferredDate).toLocaleDateString('en-NG', {
@@ -184,7 +186,10 @@ export async function sendBookingConfirmationEmail({
     <div style="background:#f4f4f4;border-radius:8px;padding:20px;margin-bottom:24px;">
       <p style="margin:0 0 8px;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:.04em;font-weight:500;">Your request</p>
       <p style="margin:0 0 6px;font-size:14px;color:#111;"><strong>Type:</strong> ${typeLabel} session</p>
-      <p style="margin:0;font-size:14px;color:#111;"><strong>Preferred date:</strong> ${dateLabel}</p>
+      <p style="margin:${customAnswers && Object.keys(customAnswers).length > 0 ? '0 0 6px' : '0'};font-size:14px;color:#111;"><strong>Preferred date:</strong> ${dateLabel}</p>
+      ${customAnswers ? Object.entries(customAnswers).map(([key, val]) => `
+        <p style="margin:0 0 6px;font-size:14px;color:#111;text-transform:capitalize;"><strong>${key.replace(/_/g, ' ')}:</strong> ${String(val)}</p>
+      `).join('') : ''}
     </div>
 
     <p style="margin:0;font-size:13px;color:#aaa;line-height:1.6;">
@@ -425,6 +430,7 @@ export async function sendStudioBookingNotification({
   clientPhone,
   sessionType,
   preferredDate,
+  customAnswers,
 }: {
   studioEmail: string
   studioName: string
@@ -432,6 +438,7 @@ export async function sendStudioBookingNotification({
   clientPhone: string
   sessionType: string
   preferredDate: string
+  customAnswers?: Record<string, any>
 }) {
   const typeLabel = sessionType.charAt(0).toUpperCase() + sessionType.slice(1)
   const dateLabel = new Date(preferredDate).toLocaleDateString('en-NG', {
@@ -448,7 +455,10 @@ export async function sendStudioBookingNotification({
     <p style="margin:0 0 20px;font-size:14px;color:#555;">${clientPhone}</p>
     <div style="background:#f4f4f4;border-radius:8px;padding:20px;margin-bottom:0;">
       <p style="margin:0 0 6px;font-size:14px;color:#111;"><strong>Type:</strong> ${typeLabel} session</p>
-      <p style="margin:0;font-size:14px;color:#111;"><strong>Preferred date:</strong> ${dateLabel}</p>
+      <p style="margin:${customAnswers && Object.keys(customAnswers).length > 0 ? '0 0 6px' : '0'};font-size:14px;color:#111;"><strong>Preferred date:</strong> ${dateLabel}</p>
+      ${customAnswers ? Object.entries(customAnswers).map(([key, val]) => `
+        <p style="margin:0 0 6px;font-size:14px;color:#111;text-transform:capitalize;"><strong>${key.replace(/_/g, ' ')}:</strong> ${String(val)}</p>
+      `).join('') : ''}
     </div>
   </div>
 </body>

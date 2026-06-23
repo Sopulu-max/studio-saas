@@ -23,6 +23,7 @@ const addSessionSchema = z.object({
   editor_id: z.string().optional().default(''),
   edited_photos: z.string().optional().default(''),
   shoot_type: z.string().optional().default(''),
+  custom_answers: z.record(z.string(), z.any()).optional().default({}),
   force_duplicate: z.boolean().optional().default(false),
 })
 
@@ -42,6 +43,7 @@ export async function addSession(form: {
   editor_id: string
   edited_photos: string
   shoot_type: string
+  custom_answers?: Record<string, any>
   force_duplicate?: boolean
 }) {
   const result = addSessionSchema.safeParse(form)
@@ -90,7 +92,7 @@ export async function addSession(form: {
 
   const nextRef = ((maxRefRow?.booking_ref as number | null) ?? 0) + 1
 
-  const insertData: Record<string, string | number | null> = {
+  const insertData: Record<string, any> = {
     client_id: form.client_id,
     session_date: form.session_date,
     studio_id: context.studioId,
@@ -108,6 +110,7 @@ export async function addSession(form: {
   if (form.edited_photos)   insertData.edited_photos   = parseInt(form.edited_photos, 10)
   if (form.event_name)      insertData.event_name      = form.event_name
   if (form.event_date)      insertData.event_date      = form.event_date
+  if (form.custom_answers)  insertData.custom_answers  = form.custom_answers
 
   const { data: session, error } = await context.admin
     .from('bookings')
@@ -427,19 +430,21 @@ export async function recordIntake(form: {
 export async function getSessionFormData() {
   const context = await getStudioContext()
   if ('error' in context) {
-    return { clients: [], packages: [], staff: [] }
+    return { clients: [], packages: [], staff: [], services: [] }
   }
 
-  const [{ data: clients }, { data: packages }, { data: staff }] = await Promise.all([
+  const [{ data: clients }, { data: packages }, { data: staff }, { data: services }] = await Promise.all([
     context.admin.from('clients').select('client_id, full_name, phone').eq('studio_id', context.studioId).order('full_name'),
-    context.admin.from('packages').select('package_id, name, base_price, session_type, outfits_count, edited_photos').eq('studio_id', context.studioId).order('name'),
+    context.admin.from('packages').select('package_id, name, base_price, session_type, outfits_count, edited_photos, package_services(service_id, is_addon, display_order, services(service_id, name, type, description, price, session_type, booking_fields))').eq('studio_id', context.studioId).order('name'),
     context.admin.from('staff').select('staff_id, full_name, role').eq('studio_id', context.studioId).order('full_name'),
+    context.admin.from('services').select('service_id, name, type, session_type, booking_fields').eq('studio_id', context.studioId).order('name'),
   ])
 
   return {
     clients: (clients ?? []) as unknown as { client_id: string; full_name: string; phone?: string | null }[],
-    packages: (packages ?? []) as unknown as { package_id: string; name: string; base_price: number | string; session_type?: string | null; outfits_count?: number | null; edited_photos?: number | null }[],
+    packages: (packages ?? []) as unknown as any[],
     staff: (staff ?? []) as unknown as { staff_id: string; full_name: string; role?: string | null }[],
+    services: (services ?? []) as unknown as any[],
   }
 }
 
@@ -481,6 +486,7 @@ export async function updateSession(sessionId: string, form: {
   editor_id: string
   videographer_id?: string
   video_editor_id?: string
+  custom_answers?: Record<string, any>
 }) {
   if (!form.client_id || !form.session_date) return { error: 'Client and session date are required' }
 
@@ -505,7 +511,7 @@ export async function updateSession(sessionId: string, form: {
   if (!photogOk)  return { error: 'Photographer not found' }
   if (!editorOk)  return { error: 'Editor not found' }
 
-  const updateData: Record<string, string | number | null> = {
+  const updateData: Record<string, any> = {
     client_id:        form.client_id,
     session_date:     form.session_date,
     session_type:     form.session_type,
@@ -518,6 +524,7 @@ export async function updateSession(sessionId: string, form: {
     location_address: form.location_address  || null,
     event_name:       form.event_name        || null,
     event_date:       form.event_date        || null,
+    custom_answers:   form.custom_answers    || null,
   }
 
   const { error: updateError } = await context.admin

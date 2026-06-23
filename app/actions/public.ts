@@ -116,6 +116,7 @@ export async function submitBookingRequest(form: {
     clientName:    form.full_name.trim(),
     sessionType:   form.session_type,
     preferredDate: form.preferred_date,
+    customAnswers: form.custom_answers,
   }
 
   if (form.email?.trim()) {
@@ -129,6 +130,9 @@ export async function submitBookingRequest(form: {
       ...emailPayload,
     }).catch(() => {})
   }
+
+  // We rely on the whatsappUrl returned below for the client to click
+  // so no automated WhatsApp API call is made here.
 
   let whatsappUrl: string | undefined = undefined
   if (studioConfig.phone) {
