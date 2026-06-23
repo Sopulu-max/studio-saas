@@ -30,12 +30,11 @@ export default async function PublicStorefrontPage({ params }: { params: Promise
   // We can fetch it just in case, but passing an empty array is also fine if we don't show it.
   
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg)', padding: '40px 16px' }}>
-      <StorefrontView 
-        studio={studio as any} 
-        staff={[]} 
-        showTeam={false} 
-      />
-    </div>
+    <StorefrontView 
+      studio={studio as any} 
+      staff={[]} 
+      showTeam={false}
+      isPublic={true}
+    />
   )
 }
