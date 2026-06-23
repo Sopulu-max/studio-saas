@@ -19,6 +19,7 @@ export type StudioRow = {
   address:                  string | null
   timezone:                 string | null
   logo_url:                 string | null
+  bio:                      string | null
   onboarding_completed_at:  string | null
   session_types:            unknown
   booking_statuses:         unknown
