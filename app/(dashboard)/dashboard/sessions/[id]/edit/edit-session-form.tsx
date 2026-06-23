@@ -94,7 +94,6 @@ export default function EditSessionForm({
   const [form, setForm] = useState({
     client_id:          session.client_id          ?? '',
     session_type:       session.session_type       ?? config.sessionTypes[0]?.value ?? 'studio',
-    service_type:       session.service_type       ?? config.serviceTypes[0]?.value ?? 'photo',
     shoot_type:         session.shoot_type         ?? '',
     session_date:       toDatetimeLocal(session.session_date),
     package_id:         session.package_id         ?? '',
@@ -195,7 +194,6 @@ export default function EditSessionForm({
     const { error } = await updateSession(sessionId, {
       client_id:       form.client_id,
       session_type:    form.session_type,
-      service_type:    form.service_type,
       shoot_type:      form.shoot_type,
       session_date:    form.session_date,
       package_id:      form.package_id,
@@ -225,11 +223,11 @@ export default function EditSessionForm({
 
   const isOutdoor      = isOutdoorType(form.session_type)
   const isEvent        = isEventType(form.session_type)
-  const isPhotoVideo   = form.service_type === 'photo_video'
-  const isPureVideo    = form.service_type === 'video'
-  const isVideoSession = isPureVideo || isPhotoVideo
-  // photo_video has a photo component — show outfits; pure video does not
-  const hasPhotoComponent = !isPureVideo
+  const isVideoSession = true
+  // Display all fields by default
+  const hasPhotoComponent = true
+  const isPhotoVideo = false
+  const isPureVideo = false
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -238,35 +236,15 @@ export default function EditSessionForm({
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Update session details</p>
       </div>
 
-      {/* Session type + service type */}
+      {/* Session type */}
       <div style={sectionStyle}>
-        <div style={{ marginBottom: '16px' }}>
+        <div style={{ marginBottom: 0 }}>
           <label style={labelStyle}>Session type</label>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
             {config.sessionTypes.map(t => {
               const selected = form.session_type === t.value
               return (
                 <button key={t.value} type="button" onClick={() => update('session_type', t.value)}
-                  style={{
-                    padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-                    border: '0.5px solid', cursor: 'pointer',
-                    borderColor: selected ? t.color_fg : 'var(--line)',
-                    background: selected ? t.color_bg : 'var(--surface)',
-                    color: selected ? t.color_fg : 'var(--text-2)',
-                  }}>
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Service type</label>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
-            {config.serviceTypes.map(t => {
-              const selected = form.service_type === t.value
-              return (
-                <button key={t.value} type="button" onClick={() => update('service_type', t.value)}
                   style={{
                     padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
                     border: '0.5px solid', cursor: 'pointer',

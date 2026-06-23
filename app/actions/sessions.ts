@@ -30,7 +30,7 @@ const addSessionSchema = z.object({
 export async function addSession(form: {
   client_id: string
   session_type: string
-  service_type: string
+  service_type?: string
   session_date: string
   package_id: string
   outfits_count: string
@@ -472,7 +472,7 @@ export async function updateSessionScope(sessionId: string, data: {
 export async function updateSession(sessionId: string, form: {
   client_id: string
   session_type: string
-  service_type: string
+  service_type?: string
   shoot_type?: string
   session_date: string
   package_id: string
@@ -495,7 +495,6 @@ export async function updateSession(sessionId: string, form: {
 
   const studioRow   = await fetchStudio(context.admin, context.studioId)
   const config      = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
-  const activeSvcCfg = config.serviceTypes.find(t => t.value === form.service_type)
 
   // All ownership checks in parallel
   const [bookingOk, clientOk, pkgOk, photogOk, editorOk] = await Promise.all([
@@ -515,7 +514,6 @@ export async function updateSession(sessionId: string, form: {
     client_id:        form.client_id,
     session_date:     form.session_date,
     session_type:     form.session_type,
-    service_type:     form.service_type      || config.serviceTypes[0]?.value || '',
     shoot_type:       form.shoot_type        || null,
     notes:            form.notes             || null,
     package_id:       form.package_id        || null,
@@ -535,10 +533,7 @@ export async function updateSession(sessionId: string, form: {
   if (updateError) return { error: updateError.message }
 
   // Replace crew assignments — delete all then re-insert
-  const hasVideoCrew  = activeSvcCfg?.has_video_crew ?? false
-  const rolesToDelete = hasVideoCrew
-    ? ['photographer', 'editor', 'videographer', 'video_editor']
-    : ['photographer', 'editor']
+  const rolesToDelete = ['photographer', 'editor', 'videographer', 'video_editor']
 
   await context.admin
     .from('booking_staff')
@@ -555,17 +550,13 @@ export async function updateSession(sessionId: string, form: {
     usedStaffIds.add(staffId)
   }
 
-  if (hasVideoCrew) {
-    addStaff(form.photographer_id, 'photographer')
+  addStaff(form.photographer_id, 'photographer')
+  if (form.editor_id && form.editor_id !== form.photographer_id) {
     addStaff(form.editor_id, 'editor')
-    addStaff(form.videographer_id, 'videographer')
+  }
+  addStaff(form.videographer_id, 'videographer')
+  if (form.video_editor_id && form.video_editor_id !== form.videographer_id) {
     addStaff(form.video_editor_id, 'video_editor')
-  } else {
-    addStaff(form.photographer_id, 'photographer')
-    // editor can't be the same person as photographer
-    if (form.editor_id && form.editor_id !== form.photographer_id) {
-      addStaff(form.editor_id, 'editor')
-    }
   }
 
   if (assignments.length > 0) {

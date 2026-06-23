@@ -58,7 +58,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
   const [form, setForm] = useState({
     client_id: '',
     session_type: firstType,
-    service_type: firstService,
     session_date: '',
     package_id: '',
     outfits_count: '',
@@ -194,7 +193,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     const { base_price: _price, ...sessionForm } = form
     const result = await addSession({
       ...sessionForm,
-      service_type: form.service_type,
       package_id: packageId,
       photographer_id: form.photographer_id,
       editor_id:       form.editor_id,
@@ -237,7 +235,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     const { base_price: _price, ...sessionForm } = form
     const result = await addSession({
       ...sessionForm,
-      service_type: form.service_type,
       package_id: packageId,
       photographer_id: form.photographer_id,
       editor_id: form.editor_id,
@@ -257,10 +254,10 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
   const sectionStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }
 
   const activeSessionType = config.sessionTypes.find(t => t.value === form.session_type)
-  const activeServiceType = config.serviceTypes.find(t => t.value === form.service_type)
   const isOutdoor         = activeSessionType?.is_outdoor ?? false
   const isEvent           = activeSessionType?.is_event   ?? false
-  const isVideoSession    = activeServiceType?.has_video_crew ?? false
+  // Display crew assignments (editor, etc.) by default since service type is dynamic
+  const isVideoSession    = true
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -278,26 +275,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
               const selected = form.session_type === t.value
               return (
                 <button key={t.value} type="button" onClick={() => update('session_type', t.value)}
-                  style={{
-                    padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
-                    border: '0.5px solid', cursor: 'pointer',
-                    borderColor: selected ? t.color_fg : 'var(--line)',
-                    background: selected ? t.color_bg : 'var(--surface)',
-                    color: selected ? t.color_fg : 'var(--text-2)',
-                  }}>
-                  {t.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-        <div>
-          <label style={labelStyle}>Service type <span style={{ color: '#e24b4a' }}>*</span></label>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
-            {config.serviceTypes.map(t => {
-              const selected = form.service_type === t.value
-              return (
-                <button key={t.value} type="button" onClick={() => update('service_type', t.value)}
                   style={{
                     padding: '7px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '500',
                     border: '0.5px solid', cursor: 'pointer',
