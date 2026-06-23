@@ -14,6 +14,7 @@ type ServiceRecord = {
   category_value?: string | null
   session_type?: string | null
   outfits_count?: number | null
+  booking_fields?: any[]
 }
 
 export default async function EditServicePage({

@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import SessionTypesForm from './session-types-form'
-import ServiceTypesForm from './service-types-form'
 import BookingStatusesForm from './booking-statuses-form'
 import EquipmentCategoriesForm from './equipment-categories-form'
 import StaffRolesForm from './staff-roles-form'
@@ -11,7 +10,7 @@ import SettingsForm from './settings-form'
 import TeamForm from './team-form'
 import ThemeForm from './theme-form'
 import MessageTemplatesForm, { type MessageTemplate } from './message-templates-form'
-import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
+import type { SessionTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
 import type { ContractTemplate } from '@/app/actions/contract-templates'
 
 type StaffMember = {
@@ -37,7 +36,6 @@ const TABS: { value: Tab; label: string }[] = [
 
 export default function SettingsTabs({
   sessionTypes,
-  serviceTypes,
   bookingStatuses,
   equipmentCategories,
   staffRoles,
@@ -56,7 +54,6 @@ export default function SettingsTabs({
   theme,
 }: {
   sessionTypes:        SessionTypeConfig[]
-  serviceTypes:        ServiceTypeConfig[]
   bookingStatuses:     BookingStatusConfig[]
   equipmentCategories: EquipmentCategoryConfig[]
   staffRoles:          StaffRoleConfig[]
@@ -124,7 +121,6 @@ export default function SettingsTabs({
       {active === 'workflow' && (
         <>
           <SessionTypesForm       initial={sessionTypes} />
-          <ServiceTypesForm       initial={serviceTypes} />
           <BookingStatusesForm    initial={bookingStatuses} staffRoles={staffRoles} />
           <StaffRolesForm         initial={staffRoles} />
           <EquipmentCategoriesForm initial={equipmentCategories} />

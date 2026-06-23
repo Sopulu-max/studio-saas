@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { getStudioContext } from '@/lib/studio'
-import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
+import type { SessionTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
 
 export async function saveSessionTypes(sessionTypes: SessionTypeConfig[]) {
   const context = await getStudioContext()
@@ -27,28 +27,7 @@ export async function saveSessionTypes(sessionTypes: SessionTypeConfig[]) {
   return { error: null }
 }
 
-export async function saveServiceTypes(serviceTypes: ServiceTypeConfig[]) {
-  const context = await getStudioContext()
-  if ('error' in context) return { error: context.error }
 
-  if (!Array.isArray(serviceTypes) || serviceTypes.length === 0)
-    return { error: 'At least one service type is required' }
-
-  for (const t of serviceTypes) {
-    if (!t.value?.trim()) return { error: 'Every service type needs a value' }
-    if (!t.label?.trim()) return { error: 'Every service type needs a label' }
-  }
-
-  const { error } = await context.admin
-    .from('studios')
-    .update({ service_types: serviceTypes })
-    .eq('studio_id', context.studioId)
-
-  if (error) return { error: error.message }
-  revalidatePath('/dashboard/settings')
-  revalidatePath('/dashboard', 'layout')
-  return { error: null }
-}
 
 export async function saveBookingStatuses(bookingStatuses: BookingStatusConfig[]) {
   const context = await getStudioContext()

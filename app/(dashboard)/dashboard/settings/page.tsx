@@ -66,7 +66,6 @@ export default async function SettingsPage() {
 
       <SettingsTabs
         sessionTypes={config.sessionTypes}
-        serviceTypes={config.serviceTypes}
         bookingStatuses={config.bookingStatuses}
         equipmentCategories={config.equipmentCategories}
         staffRoles={config.staffRoles}

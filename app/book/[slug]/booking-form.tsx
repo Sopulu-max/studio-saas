@@ -27,6 +27,7 @@ type CatalogService = {
   session_type?: string | null
   outfits_count?: number | null
   duration_mins?: number | null
+  booking_fields?: any[]
 }
 
 type PackageLinkedService = {
@@ -39,6 +40,7 @@ type PackageLinkedService = {
   session_type?: string | null
   outfits_count?: number | null
   duration_mins?: number | null
+  booking_fields?: any[]
   is_addon:     boolean
   addon_price?: number | null
 }
@@ -55,7 +57,6 @@ export default function BookingForm({
   studioId,
   studioName,
   sessionTypes,
-  serviceTypes,
   catalogServices = [],
   publicPackages = [],
   initialPackageId = null,
@@ -63,7 +64,6 @@ export default function BookingForm({
   studioId:               string
   studioName:             string
   sessionTypes:           { value: string; label: string; is_event?: boolean }[]
-  serviceTypes:           { value: string; label: string; booking_fields: BookingFieldConfig[] }[]
   catalogServices:        CatalogService[]
   publicPackages:         PublicPackage[]
   initialPackageId?:      string | null
@@ -80,7 +80,7 @@ export default function BookingForm({
     phone:            '',
     email:            '',
     session_type:     sessionTypes[0]?.value ?? '',
-    service_type:     serviceTypes[0]?.value ?? '',
+    service_type:     '', // legacy, keep to avoid breaking form submission
     preferred_date:   '',
     outfits_count:    '',
     location_address: '',
@@ -93,6 +93,8 @@ export default function BookingForm({
     notes:            '',
   })
 
+  const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({})
+
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(initialPackageId)
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
 
@@ -104,7 +106,6 @@ export default function BookingForm({
         const primaryService = hasServices.find(s => s.category_value) ?? hasServices[0]
         if (primaryService) {
           set('session_type', primaryService.session_type && primaryService.session_type !== 'any' ? primaryService.session_type : sessionTypes[0]?.value ?? '')
-          set('service_type', primaryService.category_value || serviceTypes[0]?.value || '')
         }
         
         const baseIds = hasServices.map(s => s.service_id)
@@ -112,7 +113,7 @@ export default function BookingForm({
         setStep(3) // Jump to step 3 (addons) if package was preselected
       }
     }
-  }, [initialPackageId, publicPackages, sessionTypes, serviceTypes])
+  }, [initialPackageId, publicPackages, sessionTypes])
 
   const selectedPackage = useMemo(() => 
     publicPackages.find(p => p.package_id === selectedPackageId) || null
@@ -160,11 +161,10 @@ export default function BookingForm({
       const baseSvcs = p.services.filter(s => !s.is_addon)
       if (baseSvcs.length === 0) return true
       return baseSvcs.some(s => 
-        (s.session_type === 'any' || !s.session_type || s.session_type === form.session_type) &&
-        (s.category_value === form.service_type || !s.category_value)
+        (s.session_type === 'any' || !s.session_type || s.session_type === form.session_type)
       )
     })
-  }, [publicPackages, form.session_type, form.service_type])
+  }, [publicPackages, form.session_type])
 
   const pkgLinkedServiceIds = new Set(selectedPackage?.services.map(s => s.service_id) || [])
   const otherCatalogSvcs    = catalogServices.filter(s => !pkgLinkedServiceIds.has(s.service_id))
@@ -182,31 +182,24 @@ export default function BookingForm({
   const estTotal = (pkgBase ?? 0) + optionalTotal
 
   const isEvent = sessionTypes.find(t => t.value === form.session_type)?.is_event ?? false
-  
-  // Find all category_values from selected services
-  const selectedFullServices = catalogServices.filter(s => selectedServiceIds.includes(s.service_id))
-  const selectedCategories = Array.from(new Set([
-    ...selectedFullServices.map(s => s.category_value),
-    // Fallback to the form intent if no services selected yet
-    ...(selectedServiceIds.length === 0 ? [form.service_type] : [])
-  ])).filter(Boolean) as string[]
 
-  const activeServiceTypes = serviceTypes.filter(t => selectedCategories.includes(t.value))
-  
-  // Aggregate all booking fields from all active service types
-  const serviceBookingFields: BookingFieldConfig[] = activeServiceTypes.flatMap(t => t.booking_fields || [])
-
-  const fieldEnabled  = (key: string) => serviceBookingFields.some(f => f.key === key)
-  const fieldRequired = (key: string) => serviceBookingFields.find(f => f.key === key)?.required ?? false
-
-  const showOutfits        = !isEvent && fieldEnabled('outfits_count')
-  const showOccasion       = !isEvent && fieldEnabled('shoot_type')
-  const showOccDate        = !isEvent && fieldEnabled('event_date')
-  const showLocation       = isEvent  || fieldEnabled('location_address')
-  const showEventName      = isEvent  || fieldEnabled('event_name')
-  const showVideoDuration  = fieldEnabled('video_duration')
-  const showCoverageHours  = fieldEnabled('coverage_hours')
-  const showCrewSize       = fieldEnabled('crew_size')
+  const customFields = useMemo(() => {
+    const fields: { id: string; label: string; type: string; required: boolean }[] = []
+    const seenIds = new Set<string>()
+    for (const svcId of selectedServiceIds) {
+      const svc = catalogServices.find(s => s.service_id === svcId) || 
+        publicPackages.flatMap(p => p.services).find(s => s.service_id === svcId)
+      if (svc && Array.isArray(svc.booking_fields)) {
+        for (const field of svc.booking_fields) {
+          if (!seenIds.has(field.id)) {
+            seenIds.add(field.id)
+            fields.push(field)
+          }
+        }
+      }
+    }
+    return fields
+  }, [selectedServiceIds, catalogServices, publicPackages])
 
   const tomorrow = new Date(); tomorrow.setDate(tomorrow.getDate() + 1)
   const minDate = tomorrow.toISOString().split('T')[0]
@@ -218,20 +211,24 @@ export default function BookingForm({
     if (!form.full_name.trim())              { setError('Please enter your full name');    return }
     if (!form.phone.trim())                  { setError('Please enter your phone number'); return }
     if (!form.preferred_date)                { setError('Please select a preferred date'); return }
-    if (isEvent && !form.event_name.trim())  { setError('Please enter the event name');    return }
 
-    if (showOutfits    && fieldRequired('outfits_count')    && !form.outfits_count.trim())    { setError('Please enter the number of outfits'); return }
-    if (showOccasion   && fieldRequired('shoot_type')       && !form.shoot_type.trim())       { setError('Please enter the occasion type'); return }
-    if (showEventName  && !isEvent && fieldRequired('event_name')  && !form.event_name.trim())  { setError('Please enter the event name'); return }
-    if (showVideoDuration && fieldRequired('video_duration') && !form.video_duration.trim())  { setError('Please enter the desired video length'); return }
-    if (showCoverageHours && fieldRequired('coverage_hours') && !form.coverage_hours.trim())  { setError('Please enter the hours of coverage'); return }
-    if (showLocation   && !isEvent && fieldRequired('location_address') && !form.location_address.trim()) { setError('Please enter the preferred location'); return }
+    // Validate dynamic custom fields
+    for (const field of customFields) {
+      if (field.required) {
+        const val = customAnswers[field.id]
+        if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
+          setError(`Please answer: ${field.label}`)
+          return
+        }
+      }
+    }
 
     setLoading(true)
     setError('')
 
     const { error: err, whatsappUrl } = await submitBookingRequest({
       ...form,
+      custom_answers:       customAnswers,
       studio_id:            studioId,
       selected_service_ids: selectedServiceIds,
       package_id:           selectedPackageId ?? undefined,
@@ -296,25 +293,6 @@ export default function BookingForm({
             <h2 style={{ fontSize: '28px', fontFamily: 'var(--heading-font)', fontWeight: '600', marginBottom: '8px', color: 'var(--text-main)' }}>What are you looking for?</h2>
             <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '32px' }}>Let's customize your experience.</p>
             
-            <div style={row}>
-              <label style={label}>Service <span style={req}>*</span></label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {serviceTypes.map(t => (
-                  <button key={t.value} type="button"
-                    onClick={() => set('service_type', t.value)}
-                    style={{
-                      padding: '14px 24px', borderRadius: '12px', fontSize: '15px', fontWeight: '500', transition: 'all .2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      border: form.service_type === t.value ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                      background: form.service_type === t.value ? 'var(--primary)' : 'var(--bg)',
-                      color: form.service_type === t.value ? 'var(--on-primary)' : 'var(--text-main)',
-                      boxShadow: form.service_type === t.value ? '0 4px 12px var(--primary-dim)' : 'none',
-                    }}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
             <div style={row}>
               <label style={label}>Session <span style={req}>*</span></label>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
@@ -496,57 +474,26 @@ export default function BookingForm({
             </div>
 
             {isEvent && (
-              <>
-                <div style={row}>
-                  <label style={label}>Event name <span style={req}>*</span></label>
-                  <input type="text" value={form.event_name} onChange={e => set('event_name', e.target.value)} placeholder="e.g. Sandra & Emeka's Wedding" style={input} />
-                </div>
-                {showLocation && (
-                  <div style={row}>
-                    <label style={label}>Venue <span style={fieldRequired('location_address') ? req : opt}>{fieldRequired('location_address') ? '*' : '(optional)'}</span></label>
-                    <input type="text" value={form.location_address} onChange={e => set('location_address', e.target.value)} placeholder="Venue name or address" style={input} />
-                  </div>
+              <div style={row}>
+                <label style={label}>Event name <span style={req}>*</span></label>
+                <input type="text" value={form.event_name} onChange={e => set('event_name', e.target.value)} placeholder="e.g. Sandra & Emeka's Wedding" style={input} />
+              </div>
+            )}
+
+            {customFields.map(field => (
+              <div style={row} key={field.id}>
+                <label style={label}>{field.label} <span style={field.required ? req : opt}>{field.required ? '*' : '(optional)'}</span></label>
+                {field.type === 'boolean' ? (
+                  <select value={customAnswers[field.id] || ''} onChange={e => setCustomAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} style={input}>
+                    <option value="">-- Select --</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                ) : (
+                  <input type={field.type === 'number' ? 'number' : 'text'} value={customAnswers[field.id] || ''} onChange={e => setCustomAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} style={input} />
                 )}
-              </>
-            )}
-
-            {!isEvent && showOccasion && (
-              <div style={row}>
-                <label style={label}>Purpose of shoot <span style={fieldRequired('shoot_type') ? req : opt}>{fieldRequired('shoot_type') ? '*' : '(optional)'}</span></label>
-                <input type="text" list="occasions" value={form.shoot_type} onChange={e => set('shoot_type', e.target.value)} placeholder="e.g. Birthday, Maternity" style={input} />
-                <datalist id="occasions">
-                  {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
-                </datalist>
               </div>
-            )}
-
-            {!isEvent && showLocation && (
-              <div style={row}>
-                <label style={label}>Location <span style={fieldRequired('location_address') ? req : opt}>{fieldRequired('location_address') ? '*' : '(optional)'}</span></label>
-                <input type="text" value={form.location_address} onChange={e => set('location_address', e.target.value)} placeholder="Studio or Location" style={input} />
-              </div>
-            )}
-
-            {!isEvent && showOutfits && (
-              <div style={row}>
-                <label style={label}>Number of outfits <span style={fieldRequired('outfits_count') ? req : opt}>{fieldRequired('outfits_count') ? '*' : '(optional)'}</span></label>
-                <input type="number" min="1" value={form.outfits_count} onChange={e => set('outfits_count', e.target.value)} placeholder="e.g. 2" style={input} />
-              </div>
-            )}
-
-            {showVideoDuration && (
-              <div style={row}>
-                <label style={label}>Video duration <span style={fieldRequired('video_duration') ? req : opt}>{fieldRequired('video_duration') ? '*' : '(optional)'}</span></label>
-                <input type="text" value={form.video_duration} onChange={e => set('video_duration', e.target.value)} placeholder="e.g. 60 seconds" style={input} />
-              </div>
-            )}
-
-            {showCoverageHours && (
-              <div style={row}>
-                <label style={label}>Coverage hours <span style={fieldRequired('coverage_hours') ? req : opt}>{fieldRequired('coverage_hours') ? '*' : '(optional)'}</span></label>
-                <input type="number" step="0.5" min="1" value={form.coverage_hours} onChange={e => set('coverage_hours', e.target.value)} placeholder="e.g. 4" style={input} />
-              </div>
-            )}
+            ))}
 
             <div style={row}>
               <label style={label}>Notes <span style={opt}>(optional)</span></label>

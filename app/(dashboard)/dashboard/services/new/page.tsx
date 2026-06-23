@@ -37,9 +37,10 @@ export default function NewServicePage() {
     category_value: '',
     session_type:  'any',
     outfits_count: '',
+    booking_fields: [] as any[],
   })
 
-  function update(field: string, value: string | boolean) {
+  function update(field: string, value: string | boolean | any[]) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
@@ -155,17 +156,14 @@ export default function NewServicePage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
                 <div>
                   <label style={labelStyle}>Category</label>
-                  <select
+                  <input
+                    type="text"
                     value={form.category_value}
                     onChange={e => update('category_value', e.target.value)}
+                    placeholder="e.g. Photography, Drone..."
                     style={{ ...inputStyle, padding: '8px' }}
-                  >
-                    <option value="">— None —</option>
-                    {config.serviceTypes.map(t => (
-                      <option key={t.value} value={t.value}>{t.label}</option>
-                    ))}
-                  </select>
-                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '4px 0 0' }}>Determines booking form fields</p>
+                  />
+                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '4px 0 0' }}>Used for filtering in the booking wizard</p>
                 </div>
                 <div>
                   <label style={labelStyle}>Session Type</label>
@@ -192,6 +190,50 @@ export default function NewServicePage() {
                   placeholder="e.g. 2"
                   style={inputStyle}
                 />
+              </div>
+
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--line-inner)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: 'var(--text-2)' }}>Custom Booking Questions</p>
+                  <button type="button" onClick={() => update('booking_fields', [...form.booking_fields, { id: Date.now().toString(), label: '', type: 'text', required: false }])}
+                    style={{ fontSize: '11px', padding: '4px 8px', borderRadius: '4px', background: 'var(--hover)', border: '1px solid var(--line-inner)', cursor: 'pointer' }}>
+                    + Add Question
+                  </button>
+                </div>
+                {form.booking_fields.map((field, i) => (
+                  <div key={field.id} style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'flex-start' }}>
+                    <div style={{ flex: 1 }}>
+                      <input type="text" value={field.label} onChange={e => {
+                        const next = [...form.booking_fields]
+                        next[i].label = e.target.value
+                        update('booking_fields', next)
+                      }} placeholder="e.g. Do you need a makeup artist?" style={{ ...inputStyle, padding: '6px' }} />
+                    </div>
+                    <select value={field.type} onChange={e => {
+                      const next = [...form.booking_fields]
+                      next[i].type = e.target.value
+                      update('booking_fields', next)
+                    }} style={{ padding: '6px', width: '100px', flexShrink: 0, borderRadius: '6px', border: '1px solid var(--line-inner)' }}>
+                      <option value="text">Text</option>
+                      <option value="number">Number</option>
+                      <option value="boolean">Yes/No</option>
+                    </select>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '11px', marginTop: '6px' }}>
+                      <input type="checkbox" checked={field.required} onChange={e => {
+                        const next = [...form.booking_fields]
+                        next[i].required = e.target.checked
+                        update('booking_fields', next)
+                      }} /> Req.
+                    </label>
+                    <button type="button" onClick={() => {
+                      const next = form.booking_fields.filter((_, idx) => idx !== i)
+                      update('booking_fields', next)
+                    }} style={{ color: '#e24b4a', background: 'none', border: 'none', cursor: 'pointer', padding: '6px' }}>×</button>
+                  </div>
+                ))}
+                {form.booking_fields.length === 0 && (
+                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>No custom questions. Add one to ask clients specific details when booking.</p>
+                )}
               </div>
             </div>
           )}

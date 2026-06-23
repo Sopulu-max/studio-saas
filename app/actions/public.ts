@@ -25,6 +25,7 @@ const bookingRequestSchema = z.object({
   coverage_hours:   z.string().optional(),
   crew_size:        z.string().optional(),
   notes:            z.string().optional(),
+  custom_answers:   z.record(z.string(), z.any()).optional(),
 })
 
 type PublicStudioRow = {
@@ -55,6 +56,7 @@ export async function submitBookingRequest(form: {
   notes:            string
   selected_service_ids?: string[]
   package_id?: string
+  custom_answers?: Record<string, any>
 }) {
   const result = bookingRequestSchema.safeParse({
     ...form,
@@ -101,6 +103,7 @@ export async function submitBookingRequest(form: {
     notes: form.notes,
     selected_service_ids: form.selected_service_ids,
     package_id: form.package_id,
+    custom_answers: form.custom_answers,
     initialStatus,
     cancelValues,
   })

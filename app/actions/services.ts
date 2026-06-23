@@ -28,6 +28,7 @@ export async function addService(form: {
   category_value?: string | null
   session_type?: string | null
   outfits_count?: string | null
+  booking_fields?: any[]
 }) {
   const result = serviceSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -49,6 +50,7 @@ export async function addService(form: {
       category_value: form.category_value || null,
       session_type:  form.session_type || null,
       outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
+      booking_fields: form.booking_fields ?? [],
     })
     .select()
     .single()
@@ -70,6 +72,7 @@ export async function updateService(serviceId: string, form: {
   category_value?: string | null
   session_type?: string | null
   outfits_count?: string | null
+  booking_fields?: any[]
 }) {
   const result = serviceSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -94,6 +97,7 @@ export async function updateService(serviceId: string, form: {
       category_value: form.category_value || null,
       session_type:  form.session_type || null,
       outfits_count: form.outfits_count ? parseInt(form.outfits_count, 10) : null,
+      booking_fields: form.booking_fields ?? [],
     })
     .eq('service_id', serviceId)
 

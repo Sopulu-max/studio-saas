@@ -46,6 +46,7 @@ export type PackageLinkedService = {
   session_type?: string | null
   outfits_count?: number | null
   duration_mins?: number | null
+  booking_fields?: any[]
   is_addon:     boolean
   addon_price?: number | null
 }
@@ -83,6 +84,7 @@ export default async function PublicBookingPage({
     session_type?: string | null
     outfits_count?: number | null
     duration_mins?: number | null
+    booking_fields?: any[]
   }
 
   type RawPkgService = {
@@ -100,6 +102,7 @@ export default async function PublicBookingPage({
       session_type?: string | null
       outfits_count?: number | null
       duration_mins?: number | null
+      booking_fields?: any[]
     } | null
   }
 
@@ -110,14 +113,14 @@ export default async function PublicBookingPage({
   const [{ data: servicesRaw }, { data: packagesRaw }] = await Promise.all([
     admin
       .from('services')
-      .select('service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins')
+      .select('service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields')
       .eq('studio_id', studio.studio_id)
       .eq('is_active', true)
       .order('display_order', { ascending: true })
       .order('name',          { ascending: true }),
     admin
       .from('packages')
-      .select('package_id, name, tagline, base_price, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins))')
+      .select('package_id, name, tagline, base_price, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields))')
       .eq('studio_id',  studio.studio_id)
       .eq('is_public',  true)
       .order('display_order', { ascending: true })
@@ -139,8 +142,8 @@ export default async function PublicBookingPage({
             price:       ps.services!.price,
             category_value: ps.services!.category_value,
             session_type: ps.services!.session_type,
-            outfits_count: ps.services!.outfits_count,
             duration_mins: ps.services!.duration_mins,
+            booking_fields: ps.services!.booking_fields,
             is_addon:    ps.is_addon,
             addon_price: ps.addon_price,
           }))
@@ -257,11 +260,7 @@ export default async function PublicBookingPage({
               studioId={studio.studio_id}
               studioName={studio.name ?? ''}
               sessionTypes={config.sessionTypes.map(t => ({ value: t.value, label: t.label, is_event: t.is_event }))}
-              serviceTypes={config.serviceTypes.map(t => ({
-                value:          t.value,
-                label:          t.label,
-                booking_fields: t.booking_fields ?? [],
-              }))}
+
               catalogServices={catalogServices}
               publicPackages={publicPackages}
               initialPackageId={initialPackageId}

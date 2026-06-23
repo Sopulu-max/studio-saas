@@ -21,6 +21,7 @@ export type BookSessionParams = {
   notes?:           string | null
   selected_service_ids?: string[]
   package_id?:      string | null
+  custom_answers?:  any
   
   // These configuration values should be passed from the caller to avoid unnecessary database lookups in the service
   initialStatus: string
@@ -72,7 +73,7 @@ export async function bookSession(
     const nextRef = ((maxRefRow?.booking_ref as number | null) ?? 0) + 1
 
     // 4. Insert Booking
-    const insertData: Record<string, string | number | null> = {
+    const insertData: Record<string, any> = {
       studio_id:    params.studio_id,
       client_id:    clientId,
       session_type: params.session_type,
@@ -81,6 +82,7 @@ export async function bookSession(
       status:       params.initialStatus,
       notes:        params.notes?.trim() || null,
       booking_ref:  nextRef,
+      custom_answers: params.custom_answers || null,
     }
 
     if (params.outfits_count) insertData.outfits_count = params.outfits_count
