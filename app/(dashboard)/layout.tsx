@@ -12,7 +12,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
     redirect(`/login?reason=${reason}`)
   }
 
-  const studio = await fetchStudio(context.admin, context.studioId)
+  const [studio, { data: messageTemplates }] = await Promise.all([
+    fetchStudio(context.admin, context.studioId),
+    context.admin
+      .from('message_templates')
+      .select('template_id, title, content')
+      .eq('studio_id', context.studioId)
+      .order('created_at', { ascending: true })
+  ])
 
   // Redirect only when the column explicitly = null (migration ran, studio is genuinely new).
   // If the column is undefined (migration not run yet), let existing studios through.
@@ -25,7 +32,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <StudioConfigProvider config={config}>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-        <Sidebar studioName={studio?.name ?? 'My Studio'} isOwner={isOwner} />
+        <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} />
         <main style={{
           flex: 1,
           padding: '2rem 2.5rem',

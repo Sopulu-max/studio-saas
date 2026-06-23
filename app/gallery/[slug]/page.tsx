@@ -10,6 +10,7 @@ type PublicGalleryBooking = {
   status?: string | null
   clients?: { full_name?: string | null; phone?: string | null } | null
   packages?: { name?: string | null } | null
+  studios?: { name?: string | null; phone?: string | null } | null
 }
 
 type PublicGalleryRow = {
@@ -36,7 +37,8 @@ export default async function PublicGalleryPage({
       bookings (
         booking_id, session_date, outfits_count, selections_count, status,
         clients ( full_name, phone ),
-        packages ( name )
+        packages ( name ),
+        studios ( name, phone )
       )
     `)
     .eq('shared_link', slug)
@@ -107,6 +109,8 @@ export default async function PublicGalleryPage({
         baseCount={baseCount}
         alreadySubmitted={alreadySubmitted}
         previousCount={booking?.selections_count ?? null}
+        studioPhone={booking?.studios?.phone ?? null}
+        studioName={booking?.studios?.name ?? null}
       />
     </div>
   )

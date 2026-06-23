@@ -18,6 +18,8 @@ interface Props {
   baseCount: number | null        // outfits × 2, null = unlimited
   alreadySubmitted: boolean
   previousCount: number | null
+  studioPhone?: string | null
+  studioName?: string | null
 }
 
 // ─── Phone gate ───────────────────────────────────────────────────────────────
@@ -101,6 +103,8 @@ export default function GalleryViewer({
   baseCount,
   alreadySubmitted,
   previousCount,
+  studioPhone,
+  studioName,
 }: Props) {
   const [lightbox,   setLightbox]   = useState<number | null>(null)
   const [filter,     setFilter]     = useState<'all' | 'favourites'>('all')
@@ -358,6 +362,14 @@ export default function GalleryViewer({
               style={{ fontSize: '13px', color: 'white', background: 'rgba(255,255,255,0.15)', padding: '6px 14px', borderRadius: '20px', textDecoration: 'none' }}>
               Download
             </a>
+            {studioPhone && (
+              <a href={`https://wa.me/${studioPhone.replace(/[^\d+]/g, '')}?text=${encodeURIComponent(`Hi ${studioName}, I would like to order a physical print/frame for image: ${displayed[lightbox]?.file_url}`)}`} 
+                target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}
+                style={{ fontSize: '13px', color: 'white', background: '#25D366', padding: '6px 14px', borderRadius: '20px', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: '500' }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 0C5.385 0 0 5.385 0 12.031C0 14.673 1.05 17.202 2.87 19.166L1.134 23.366L5.438 21.63C7.355 23.303 9.773 24 12.031 24C18.677 24 24 18.615 24 11.969C24 5.323 18.677 0 12.031 0ZM18.57 16.711C18.293 17.487 16.892 18.172 16.208 18.256C15.655 18.339 14.898 18.423 11.83 17.151C8.077 15.589 5.666 11.758 5.485 11.517C5.304 11.276 4 9.539 4 7.747C4 5.955 4.908 5.086 5.274 4.721C5.551 4.444 5.986 4.316 6.388 4.316C6.516 4.316 6.634 4.321 6.743 4.326C7.02 4.341 7.159 4.356 7.34 4.789C7.568 5.339 8.125 6.702 8.192 6.841C8.258 6.98 8.35 7.16 8.258 7.34C8.167 7.52 8.106 7.595 7.97 7.747C7.835 7.899 7.7 8.084 7.564 8.192C7.429 8.3 7.279 8.423 7.444 8.708C7.61 8.993 8.183 9.932 9.034 10.688C10.13 11.587 11.018 11.874 11.334 12.008C11.56 12.102 11.846 12.078 12.012 11.898C12.223 11.673 12.479 11.282 12.736 10.891C12.932 10.59 13.174 10.545 13.43 10.635C13.702 10.726 15.134 11.433 15.42 11.568C15.706 11.704 15.897 11.779 15.957 11.884C16.017 11.99 16.017 12.516 15.741 13.292" /></svg>
+                Order Prints
+              </a>
+            )}
           </div>
 
           <button onClick={() => setLightbox(null)}

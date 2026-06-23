@@ -160,7 +160,7 @@ export default function BookingForm({
     setLoading(true)
     setError('')
 
-    const { error: err } = await submitBookingRequest({
+    const { error: err, whatsappUrl } = await submitBookingRequest({
       ...form,
       studio_id:            studioId,
       selected_service_ids: selectedServiceIds,
@@ -172,7 +172,11 @@ export default function BookingForm({
       setError(err)
       setLoading(false)
     } else {
-      setSubmitted(true)
+      if (whatsappUrl) {
+        window.location.href = whatsappUrl
+      } else {
+        setSubmitted(true)
+      }
     }
   }
 

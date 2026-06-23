@@ -14,7 +14,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
     status: string | null
     outfits_count: number | null
     selections_count: number | null
-    clients: { client_id: string | null; full_name: string | null } | null
+    clients: { client_id: string | null; full_name: string | null; phone: string | null } | null
   }
 
   type GalleryRow = {
@@ -38,7 +38,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
         status,
         outfits_count,
         selections_count,
-        clients(client_id, full_name)
+        clients(client_id, full_name, phone)
       )
     `)
     .eq('gallery_id', id)
@@ -130,6 +130,8 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
         photos={photos}
         clientLink={clientLink}
         selectionOpen={selectionOpen}
+        galleryTitle={gallery.title ?? ''}
+        clientPhone={booking?.clients?.phone}
       />
     </div>
   )

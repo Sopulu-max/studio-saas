@@ -246,6 +246,9 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         invoiceId={id}
         currentStatus={invoice.status ?? ''}
         balanceDue={balanceDue}
+        total={Number(invoice.total)}
+        clientPhone={invoice.bookings?.clients?.phone}
+        publicLink={clientViewUrl}
       />
     </div>
   )

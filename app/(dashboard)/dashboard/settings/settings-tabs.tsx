@@ -10,6 +10,7 @@ import ContractTemplatesForm from './contract-templates-form'
 import SettingsForm from './settings-form'
 import TeamForm from './team-form'
 import ThemeForm from './theme-form'
+import MessageTemplatesForm, { type MessageTemplate } from './message-templates-form'
 import type { SessionTypeConfig, ServiceTypeConfig, BookingStatusConfig, EquipmentCategoryConfig, StaffRoleConfig } from '@/lib/studio-config'
 import type { ContractTemplate } from '@/app/actions/contract-templates'
 
@@ -23,13 +24,14 @@ type StaffMember = {
   user_id: string | null
 }
 
-type Tab = 'studio' | 'appearance' | 'workflow' | 'contracts' | 'team'
+type Tab = 'studio' | 'appearance' | 'workflow' | 'contracts' | 'messages' | 'team'
 
 const TABS: { value: Tab; label: string }[] = [
   { value: 'studio',     label: 'Studio profile' },
   { value: 'appearance', label: 'Appearance' },
   { value: 'workflow',   label: 'Workflow' },
   { value: 'contracts',  label: 'Contracts' },
+  { value: 'messages',   label: 'Messages' },
   { value: 'team',       label: 'Team' },
 ]
 
@@ -41,6 +43,7 @@ export default function SettingsTabs({
   staffRoles,
   contractTemplates,
   teamMembers,
+  messageTemplates,
   studioId,
   name,
   email,
@@ -59,6 +62,7 @@ export default function SettingsTabs({
   staffRoles:          StaffRoleConfig[]
   contractTemplates:   ContractTemplate[]
   teamMembers:         StaffMember[]
+  messageTemplates:    MessageTemplate[]
   studioId:  string
   name:      string
   email:     string
@@ -129,6 +133,10 @@ export default function SettingsTabs({
 
       {active === 'contracts' && (
         <ContractTemplatesForm initial={contractTemplates} />
+      )}
+
+      {active === 'messages' && (
+        <MessageTemplatesForm initial={messageTemplates} />
       )}
 
       {active === 'team' && (

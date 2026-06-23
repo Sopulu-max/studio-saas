@@ -14,8 +14,8 @@ export default async function SettingsPage() {
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
-  // Fetch contract templates + clauses in parallel with team members
-  const [{ data: teamMembers }, { data: rawTemplates }, { data: rawClauses }] = await Promise.all([
+  // Fetch contract templates + clauses in parallel with team members and message templates
+  const [{ data: teamMembers }, { data: rawTemplates }, { data: rawClauses }, { data: rawMessageTemplates }] = await Promise.all([
     context.admin
       .from('staff')
       .select('staff_id, full_name, email, role, invite_sent_at, invite_accepted_at, user_id')
@@ -30,10 +30,16 @@ export default async function SettingsPage() {
       .from('contract_clauses')
       .select('clause_id, template_id, title, body, display_order')
       .order('display_order', { ascending: true }),
+    context.admin
+      .from('message_templates')
+      .select('template_id, title, content')
+      .eq('studio_id', context.studioId)
+      .order('created_at', { ascending: true }),
   ])
 
   type TemplateRow = { template_id: string; name: string; description: string | null; session_type: string | null; display_order: number }
   type ClauseRow   = { clause_id: string; template_id: string; title: string; body: string; display_order: number }
+  type MessageTemplateRow = { template_id: string; title: string; content: string }
 
   const templates = (rawTemplates ?? []) as unknown as TemplateRow[]
   const allClauses = (rawClauses ?? []) as unknown as ClauseRow[]
@@ -48,6 +54,8 @@ export default async function SettingsPage() {
       .filter(c => c.template_id === t.template_id)
       .map(c => ({ clause_id: c.clause_id, title: c.title, body: c.body, display_order: c.display_order })),
   }))
+
+  const messageTemplates = (rawMessageTemplates ?? []) as unknown as MessageTemplateRow[]
 
   return (
     <div style={{ maxWidth: '680px' }}>
@@ -64,6 +72,7 @@ export default async function SettingsPage() {
         staffRoles={config.staffRoles}
         contractTemplates={contractTemplates}
         teamMembers={(teamMembers ?? []) as unknown as { staff_id: string; full_name: string; email: string; role: string; invite_sent_at: string | null; invite_accepted_at: string | null; user_id: string | null }[]}
+        messageTemplates={messageTemplates}
         studioId={studio.studio_id}
         name={studio.name ?? ''}
         email={studio.email ?? ''}

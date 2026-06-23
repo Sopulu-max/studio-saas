@@ -4,6 +4,7 @@ import FilterSelect from '@/components/filter-select'
 import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
+import { buildPackagesShareLink } from '@/lib/whatsapp-links'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -164,11 +165,12 @@ export default async function PackagesPage({
       .not('package_id', 'is', null)
       .gte('session_date', monthStart),
     context.admin.from('studios')
-      .select('slug')
+      .select('slug, name')
       .eq('studio_id', context.studioId)
       .maybeSingle(),
   ])
-  const studioSlug = (studioSlugRow as unknown as { slug?: string | null } | null)?.slug ?? null
+  const studioSlug = (studioSlugRow as unknown as { slug?: string | null; name?: string | null } | null)?.slug ?? null
+  const studioName = (studioSlugRow as unknown as { slug?: string | null; name?: string | null } | null)?.name ?? 'Studio'
 
   type MinPackage = { package_id: string; base_price?: number | string | null; package_addons?: { addon_id: string }[] | null }
   const allPackages = (allPackagesRaw ?? []) as unknown as MinPackage[]
@@ -192,9 +194,15 @@ export default async function PackagesPage({
       <div>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 2px' }}>Packages</h1>
         {studioSlug && (
-          <Link href={`/packages/${studioSlug}`} target="_blank" style={{ fontSize: '12px', color: 'var(--text-3)', textDecoration: 'none' }}>
-            View public catalog ↗
-          </Link>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '4px' }}>
+            <Link href={`/packages/${studioSlug}`} target="_blank" style={{ fontSize: '12px', color: 'var(--text-3)', textDecoration: 'none' }}>
+              View public catalog ↗
+            </Link>
+            <a href={buildPackagesShareLink(studioName, studioSlug)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#25D366', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 0C5.385 0 0 5.385 0 12.031C0 14.673 1.05 17.202 2.87 19.166L1.134 23.366L5.438 21.63C7.355 23.303 9.773 24 12.031 24C18.677 24 24 18.615 24 11.969C24 5.323 18.677 0 12.031 0ZM18.57 16.711C18.293 17.487 16.892 18.172 16.208 18.256C15.655 18.339 14.898 18.423 11.83 17.151C8.077 15.589 5.666 11.758 5.485 11.517C5.304 11.276 4 9.539 4 7.747C4 5.955 4.908 5.086 5.274 4.721C5.551 4.444 5.986 4.316 6.388 4.316C6.516 4.316 6.634 4.321 6.743 4.326C7.02 4.341 7.159 4.356 7.34 4.789C7.568 5.339 8.125 6.702 8.192 6.841C8.258 6.98 8.35 7.16 8.258 7.34C8.167 7.52 8.106 7.595 7.97 7.747C7.835 7.899 7.7 8.084 7.564 8.192C7.429 8.3 7.279 8.423 7.444 8.708C7.61 8.993 8.183 9.932 9.034 10.688C10.13 11.587 11.018 11.874 11.334 12.008C11.56 12.102 11.846 12.078 12.012 11.898C12.223 11.673 12.479 11.282 12.736 10.891C12.932 10.59 13.174 10.545 13.43 10.635C13.702 10.726 15.134 11.433 15.42 11.568C15.706 11.704 15.897 11.779 15.957 11.884C16.017 11.99 16.017 12.516 15.741 13.292" /></svg>
+              Share via WhatsApp
+            </a>
+          </div>
         )}
       </div>
       <Link href="/dashboard/packages/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>

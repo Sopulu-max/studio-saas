@@ -65,14 +65,14 @@ export async function submitBookingRequest(form: {
 
   const { data: studio } = await admin
     .from('studios')
-    .select('studio_id, name, email, booking_statuses, session_types, service_types')
+    .select('studio_id, name, email, phone, booking_statuses, session_types, service_types')
     .eq('studio_id', form.studio_id)
     .maybeSingle()
 
   if (!studio) return { error: 'Studio not found' }
 
   // Build config so status values are dynamic, not hardcoded strings
-  const studioConfig = studio as PublicStudioRow
+  const studioConfig = studio as PublicStudioRow & { phone?: string | null }
   const config = buildStudioConfig(
     studioConfig.session_types,
     studioConfig.booking_statuses,
@@ -197,7 +197,14 @@ export async function submitBookingRequest(form: {
     }).catch(() => {})
   }
 
-  return { error: null }
+  let whatsappUrl: string | undefined = undefined
+  if (studioConfig.phone) {
+    const cleanPhone = studioConfig.phone.replace(/[^\d+]/g, '')
+    const msg = `Hi ${studio.name}, I just submitted a booking request for a ${form.session_type} session on ${form.preferred_date}. My reference is #${nextRef}. Let's confirm!`
+    whatsappUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`
+  }
+
+  return { error: null, whatsappUrl }
 }
 
 type GalleryStatusRow = { booking_id: string; status: string | null }
