@@ -36,7 +36,7 @@ export default function StorefrontForm({ studio, staff }: Props) {
       {/* Left side: Form */}
       <div>
         <form onSubmit={handleSave} style={{ background: 'var(--surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--line)' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 16px' }}>Edit Storefront</h2>
+          <h2 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 16px' }}>Edit Website</h2>
           
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '8px' }}>Studio Bio</label>
@@ -52,7 +52,7 @@ export default function StorefrontForm({ studio, staff }: Props) {
               }}
             />
             <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-4)' }}>
-              This will be displayed prominently on your public storefront.
+              This will be displayed prominently on your public website.
             </p>
           </div>
 

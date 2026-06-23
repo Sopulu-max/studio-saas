@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import StorefrontForm from './storefront-form'
 
-export const metadata = { title: 'Storefront | Weave' }
+export const metadata = { title: 'Website | Weave' }
 
 export default async function StorefrontPage() {
   const context = await getStudioContext()
@@ -25,9 +25,9 @@ export default async function StorefrontPage() {
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '24px 16px' }}>
       <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '600', margin: '0 0 8px' }}>Storefront</h1>
+          <h1 style={{ fontSize: '24px', fontWeight: '600', margin: '0 0 8px' }}>Website</h1>
           <p style={{ margin: 0, color: 'var(--text-3)', fontSize: '14px' }}>
-            Manage your studio's public profile page.
+            Manage your studio's public website.
           </p>
         </div>
         <a 

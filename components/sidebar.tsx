@@ -13,7 +13,7 @@ type NavItem = { label: string; href: string }
 
 const OWNER_NAV_DEFAULT: NavItem[] = [
   { label: 'Dashboard',    href: '/dashboard' },
-  { label: 'Storefront',   href: '/dashboard/storefront' },
+  { label: 'Website',      href: '/dashboard/storefront' },
   { label: 'Sessions',     href: '/dashboard/sessions' },
   { label: 'Calendar',     href: '/dashboard/calendar' },
   { label: 'Clients',      href: '/dashboard/clients' },
