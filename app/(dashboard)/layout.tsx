@@ -3,6 +3,7 @@ import Sidebar from '@/components/sidebar'
 import { StudioConfigProvider } from '@/components/studio-config-provider'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
+import { cookies } from 'next/headers'
 
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -29,10 +30,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const isOwner = !('role' in context) || context.role === 'owner'
 
+  const cookieStore = await cookies()
+  const navOrderCookie = cookieStore.get('sidebar-nav-order')?.value
+  let initialNavOrder: string[] | null = null
+  if (navOrderCookie) {
+    try { initialNavOrder = JSON.parse(decodeURIComponent(navOrderCookie)) } catch {}
+  }
+
   return (
     <StudioConfigProvider config={config}>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-        <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} />
+        <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} initialNavOrder={initialNavOrder} />
         <main style={{
           flex: 1,
           padding: '2rem 2.5rem',

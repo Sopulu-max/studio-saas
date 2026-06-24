@@ -55,41 +55,52 @@ function GripDots() {
   )
 }
 
-function getInitialNavItems(isOwner: boolean): NavItem[] {
-  if (!isOwner || typeof window === 'undefined') return OWNER_NAV_DEFAULT
-  try {
-    const saved = localStorage.getItem(NAV_STORAGE_KEY)
-    if (!saved) return OWNER_NAV_DEFAULT
-    const parsed: NavItem[] = JSON.parse(saved)
-    const defaultHrefs = OWNER_NAV_DEFAULT.map((n) => n.href)
-    const savedHrefs = parsed.map((n) => n.href)
-    const valid = parsed
-      .filter((n) => defaultHrefs.includes(n.href))
-      .map((n) => ({
-        href: n.href,
-        label: OWNER_NAV_DEFAULT.find(d => d.href === n.href)?.label || n.label
-      }))
-    const newOnes = OWNER_NAV_DEFAULT.filter((n) => !savedHrefs.includes(n.href))
-    return valid.length > 0 ? [...valid, ...newOnes] : OWNER_NAV_DEFAULT
-  } catch {
-    return OWNER_NAV_DEFAULT
+function getInitialNavItems(isOwner: boolean, initialOrder?: string[] | null): NavItem[] {
+  if (!isOwner) return OWNER_NAV_DEFAULT // Wait, fallback
+  
+  let savedHrefs = initialOrder
+  if (!savedHrefs && typeof window !== 'undefined') {
+    try {
+      const saved = localStorage.getItem(NAV_STORAGE_KEY)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (parsed.length > 0) {
+          savedHrefs = typeof parsed[0] === 'string' ? parsed : parsed.map((n: any) => n.href)
+        }
+      }
+    } catch {}
   }
+
+  if (!savedHrefs) return OWNER_NAV_DEFAULT
+
+  const defaultHrefs = OWNER_NAV_DEFAULT.map((n) => n.href)
+  const valid = savedHrefs
+    .filter((href) => defaultHrefs.includes(href))
+    .map((href) => OWNER_NAV_DEFAULT.find(d => d.href === href)!)
+    
+  const newOnes = OWNER_NAV_DEFAULT.filter((n) => !savedHrefs.includes(n.href))
+  
+  return valid.length > 0 ? [...valid, ...newOnes] : OWNER_NAV_DEFAULT
 }
 
-export default function Sidebar({ studioName, studioSlug, isOwner = true, messageTemplates = [] }: { studioName: string; studioSlug?: string; isOwner?: boolean; messageTemplates?: { template_id: string; title: string; content: string }[] }) {
+export default function Sidebar({ studioName, studioSlug, isOwner = true, messageTemplates = [], initialNavOrder = null }: { studioName: string; studioSlug?: string; isOwner?: boolean; messageTemplates?: { template_id: string; title: string; content: string }[]; initialNavOrder?: string[] | null }) {
   const pathname  = usePathname()
   const router    = useRouter()
   const supabase  = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [quickShareOpen, setQuickShareOpen] = useState(false)
   const [editNav,    setEditNav]    = useState(false)
-  const [navItems,   setNavItems]   = useState<NavItem[]>(() => getInitialNavItems(isOwner))
+  const [navItems,   setNavItems]   = useState<NavItem[]>(() => getInitialNavItems(isOwner, initialNavOrder))
   const [dragging,   setDragging]   = useState<string | null>(null)
   const [dragOver,   setDragOver]   = useState<string | null>(null)
 
   function saveNav(items: NavItem[]) {
     setNavItems(items)
-    try { localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(items)) } catch {}
+    const hrefs = items.map(n => n.href)
+    try { 
+      localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(hrefs)) 
+      document.cookie = `sidebar-nav-order=${encodeURIComponent(JSON.stringify(hrefs))}; path=/; max-age=31536000; SameSite=Lax`
+    } catch {}
   }
 
   function onDragStart(href: string) { setDragging(href) }
