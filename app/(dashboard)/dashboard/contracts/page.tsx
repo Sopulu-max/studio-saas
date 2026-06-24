@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -196,7 +197,7 @@ export default async function ContractsPage({
         {!contracts.length ? (
           <EmptyState message="No contracts awaiting signature" sub="All sent contracts have been signed" />
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
             {/* Table header */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Session</span><span>Sent on</span><span>Days waiting</span><span></span>
@@ -206,33 +207,35 @@ export default async function ContractsPage({
               const days   = daysSince(c.created_at)
               const urgent = days >= 7
               return (
-                <div key={c.contract_id} style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px',
-                  padding: '1rem 1.25rem', alignItems: 'center',
-                  borderBottom: i < contracts.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <Link href={`/dashboard/contracts/${c.contract_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.bookings?.clients?.full_name ?? '—'}
+                <AnimatedItem key={c.contract_id} delay={i * 0.05}>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px',
+                    padding: '1rem 1.25rem', alignItems: 'center',
+                    borderBottom: i < contracts.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <Link href={`/dashboard/contracts/${c.contract_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {c.bookings?.clients?.full_name ?? '—'}
+                      </p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                        {sessionName(c.bookings?.clients?.full_name, c.bookings?.booking_ref, c.bookings?.booking_id, c.bookings?.session_date)}
+                      </p>
+                    </Link>
+
+                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(c.created_at)}</p>
+
+                    <p style={{ fontSize: '13px', margin: 0, fontWeight: urgent ? '600' : '400', color: urgent ? '#a32d2d' : 'var(--text-3)' }}>
+                      {days}d{urgent ? ' ⚠' : ''}
                     </p>
-                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                      {sessionName(c.bookings?.clients?.full_name, c.bookings?.booking_ref, c.bookings?.booking_id, c.bookings?.session_date)}
-                    </p>
-                  </Link>
 
-                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(c.created_at)}</p>
-
-                  <p style={{ fontSize: '13px', margin: 0, fontWeight: urgent ? '600' : '400', color: urgent ? '#a32d2d' : 'var(--text-3)' }}>
-                    {days}d{urgent ? ' ⚠' : ''}
-                  </p>
-
-                  <Link href={`/dashboard/contracts/${c.contract_id}`} style={{ fontSize: '13px', color: 'var(--text-3)', textDecoration: 'none', fontWeight: '500' }}>
-                    View →
-                  </Link>
-                </div>
+                    <Link href={`/dashboard/contracts/${c.contract_id}`} style={{ fontSize: '13px', color: 'var(--text-3)', textDecoration: 'none', fontWeight: '500' }}>
+                      View →
+                    </Link>
+                  </div>
+                </AnimatedItem>
               )
             })}
-          </div>
+          </AnimatedList>
         )}
       </div>
     )
@@ -276,38 +279,40 @@ export default async function ContractsPage({
             <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 1rem' }}>
               {noContract.length} active session{noContract.length !== 1 ? 's' : ''} without a contract
             </p>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 120px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                 <span>Session</span><span>Type</span><span>Date</span><span></span>
               </div>
 
               {noContract.map((b, i) => (
-                <div key={b.booking_id} style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 120px',
-                  padding: '1rem 1.25rem', alignItems: 'center',
-                  borderBottom: i < noContract.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <div>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {b.clients?.full_name ?? '—'}
-                    </p>
-                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                      {sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date)}
-                    </p>
+                <AnimatedItem key={b.booking_id} delay={i * 0.05}>
+                  <div style={{
+                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 120px',
+                    padding: '1rem 1.25rem', alignItems: 'center',
+                    borderBottom: i < noContract.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {b.clients?.full_name ?? '—'}
+                      </p>
+                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                        {sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date)}
+                      </p>
+                    </div>
+
+                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{b.session_type ?? '—'}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(b.session_date)}</p>
+
+                    <Link
+                      href={`/dashboard/contracts/new?booking_id=${b.booking_id}`}
+                      style={{ fontSize: '13px', color: 'var(--text)', fontWeight: '500', textDecoration: 'none' }}
+                    >
+                      Create →
+                    </Link>
                   </div>
-
-                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{b.session_type ?? '—'}</p>
-                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(b.session_date)}</p>
-
-                  <Link
-                    href={`/dashboard/contracts/new?booking_id=${b.booking_id}`}
-                    style={{ fontSize: '13px', color: 'var(--text)', fontWeight: '500', textDecoration: 'none' }}
-                  >
-                    Create →
-                  </Link>
-                </div>
+                </AnimatedItem>
               ))}
-            </div>
+            </AnimatedList>
           </>
         )}
       </div>
@@ -362,7 +367,7 @@ export default async function ContractsPage({
           sub={status ? 'Try a different status filter' : 'Create a contract for a booking to get client sign-off'}
         />
       ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+        <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
             <span>Session</span><span>Date</span><span>Signed by</span><span>Status</span>
           </div>
@@ -370,30 +375,32 @@ export default async function ContractsPage({
           {contracts.map((c, i) => {
             const sc = STATUS_COLORS[c.status] ?? STATUS_COLORS.draft
             return (
-              <Link key={c.contract_id} href={`/dashboard/contracts/${c.contract_id}`} style={{
-                display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                borderBottom: i < contracts.length - 1 ? '1px solid var(--line-inner)' : 'none',
-              }}>
-                <div>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {c.bookings?.clients?.full_name ?? '—'}
-                  </p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                    {sessionName(c.bookings?.clients?.full_name, c.bookings?.booking_ref, c.bookings?.booking_id, c.bookings?.session_date)}
-                  </p>
-                </div>
-                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(c.created_at)}</p>
-                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{c.signed_by ?? '—'}</p>
-                <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: sc.bg, color: sc.color, fontWeight: '500', textTransform: 'capitalize' }}>
-                  {c.status}
-                </span>
-              </Link>
+              <AnimatedItem key={c.contract_id} delay={i * 0.05}>
+                <Link href={`/dashboard/contracts/${c.contract_id}`} style={{
+                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                  padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                  borderBottom: i < contracts.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                }}>
+                  <div>
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.bookings?.clients?.full_name ?? '—'}
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
+                      {sessionName(c.bookings?.clients?.full_name, c.bookings?.booking_ref, c.bookings?.booking_id, c.bookings?.session_date)}
+                    </p>
+                  </div>
+                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(c.created_at)}</p>
+                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{c.signed_by ?? '—'}</p>
+                  <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: sc.bg, color: sc.color, fontWeight: '500', textTransform: 'capitalize' }}>
+                    {c.status}
+                  </span>
+                </Link>
+              </AnimatedItem>
             )
           })}
 
           <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
-        </div>
+        </AnimatedList>
       )}
     </div>
   )

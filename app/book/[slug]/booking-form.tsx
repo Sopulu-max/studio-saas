@@ -2,6 +2,8 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import { submitBookingRequest } from '@/app/actions/public'
+import { motion, AnimatePresence } from 'framer-motion'
+import DynamicIntakeForm from '@/components/dynamic-intake-form'
 
 const CATEGORY_SUGGESTIONS = [
   'Birthday','Anniversary','Maternity','Newborn','Graduation',
@@ -326,37 +328,56 @@ export default function BookingForm({
             <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '32px' }}>Choose a base package for your {sessionTypes.find(s=>s.value===form.session_type)?.label.toLowerCase()} session.</p>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
-              {filteredPackages.map(pkg => (
-                <div key={pkg.package_id} className="sf-wizard-card" onClick={() => selectPackage(pkg.package_id)}
+              <AnimatePresence>
+                {filteredPackages.map((pkg, idx) => (
+                  <motion.div 
+                    key={pkg.package_id} 
+                    className="sf-wizard-card" 
+                    onClick={() => selectPackage(pkg.package_id)}
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    style={{
+                      padding: '24px', borderRadius: '16px', cursor: 'pointer',
+                      border: selectedPackageId === pkg.package_id ? '2px solid var(--primary)' : '1px solid var(--card-border)',
+                      background: selectedPackageId === pkg.package_id ? 'var(--primary-dim)' : 'var(--card-bg)',
+                    }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                      <h3 style={{ fontSize: '20px', fontWeight: '600', margin: 0, color: 'var(--text-main)' }}>{pkg.name}</h3>
+                      {pkg.base_price != null && (
+                        <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--primary)' }}>₦{pkg.base_price.toLocaleString()}</span>
+                      )}
+                    </div>
+                    {pkg.tagline && <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: '1.5' }}>{pkg.tagline}</p>}
+                    
+                    <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--text-muted)', flexWrap: 'wrap', fontWeight: '500' }}>
+                      {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0) > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0)} mins</span>}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📸 {pkg.services.filter(s=>!s.is_addon).length} items included</span>
+                    </div>
+                  </motion.div>
+                ))}
+                
+                <motion.div 
+                  className="sf-wizard-card" 
+                  onClick={() => selectPackage(null)}
+                  layout
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: filteredPackages.length * 0.05 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   style={{
                     padding: '24px', borderRadius: '16px', cursor: 'pointer',
-                    border: selectedPackageId === pkg.package_id ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                    background: selectedPackageId === pkg.package_id ? 'var(--primary-dim)' : 'var(--card-bg)',
+                    border: selectedPackageId === null ? '2px solid var(--primary)' : '1px dashed var(--text-4)',
+                    background: selectedPackageId === null ? 'var(--primary-dim)' : 'var(--bg)',
                   }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '20px', fontWeight: '600', margin: 0, color: 'var(--text-main)' }}>{pkg.name}</h3>
-                    {pkg.base_price != null && (
-                      <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--primary)' }}>₦{pkg.base_price.toLocaleString()}</span>
-                    )}
-                  </div>
-                  {pkg.tagline && <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: '1.5' }}>{pkg.tagline}</p>}
-                  
-                  <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--text-muted)', flexWrap: 'wrap', fontWeight: '500' }}>
-                    {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0) > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0)} mins</span>}
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📸 {pkg.services.filter(s=>!s.is_addon).length} items included</span>
-                  </div>
-                </div>
-              ))}
-              
-              <div className="sf-wizard-card" onClick={() => selectPackage(null)}
-                style={{
-                  padding: '24px', borderRadius: '16px', cursor: 'pointer',
-                  border: selectedPackageId === null ? '2px solid var(--primary)' : '1px dashed var(--text-4)',
-                  background: selectedPackageId === null ? 'var(--primary-dim)' : 'var(--bg)',
-                }}>
-                <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 6px', color: 'var(--text-main)' }}>Build Custom Shoot</h3>
-                <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>Start from scratch and choose only what you need.</p>
-              </div>
+                  <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 6px', color: 'var(--text-main)' }}>Build Custom Shoot</h3>
+                  <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>Start from scratch and choose only what you need.</p>
+                </motion.div>
+              </AnimatePresence>
             </div>
             
             <button type="button" onClick={handleNext} disabled={selectedPackageId === undefined} style={{ width: '100%', padding: '16px', background: 'var(--primary)', color: 'var(--on-primary)', borderRadius: '12px', fontSize: '16px', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 16px var(--primary-dim)' }}>
@@ -389,40 +410,60 @@ export default function BookingForm({
               )}
 
               {pkgAddonSvcs.length > 0 && <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '4px' }}>Package Upgrades</p>}
-              {pkgAddonSvcs.map(svc => {
+              {pkgAddonSvcs.map((svc, idx) => {
                 const selected = selectedServiceIds.includes(svc.service_id)
                 return (
-                  <button key={svc.service_id} type="button" onClick={() => toggleService(svc.service_id)} className="sf-wizard-card"
+                  <motion.button 
+                    key={svc.service_id} 
+                    type="button" 
+                    onClick={() => toggleService(svc.service_id)} 
+                    className="sf-wizard-card"
+                    layout
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', textAlign: 'left',
                       border: selected ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                      background: selected ? 'var(--primary-dim)' : 'var(--card-bg)', transition: 'all 0.2s',
+                      background: selected ? 'var(--primary-dim)' : 'var(--card-bg)', transition: 'border 0.2s, background 0.2s',
                     }}>
                     <div>
                       <p style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 4px', color: 'var(--text-main)' }}>{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</p>
                       {svc.description && <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-muted)' }}>{svc.description}</p>}
                     </div>
                     {svc.addon_price != null && <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--primary)' }}>+₦{Number(svc.addon_price).toLocaleString()}</span>}
-                  </button>
+                  </motion.button>
                 )
               })}
 
               {otherCatalogSvcs.length > 0 && <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '16px', marginBottom: '4px' }}>Additional Services & Products</p>}
-              {otherCatalogSvcs.map(svc => {
+              {otherCatalogSvcs.map((svc, idx) => {
                 const selected = selectedServiceIds.includes(svc.service_id)
                 return (
-                  <button key={svc.service_id} type="button" onClick={() => toggleService(svc.service_id)} className="sf-wizard-card"
+                  <motion.button 
+                    key={svc.service_id} 
+                    type="button" 
+                    onClick={() => toggleService(svc.service_id)} 
+                    className="sf-wizard-card"
+                    layout
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', textAlign: 'left',
                       border: selected ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                      background: selected ? 'var(--primary-dim)' : 'var(--card-bg)', transition: 'all 0.2s',
+                      background: selected ? 'var(--primary-dim)' : 'var(--card-bg)', transition: 'border 0.2s, background 0.2s',
                     }}>
                     <div>
                       <p style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 4px', color: 'var(--text-main)' }}>{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</p>
                       {svc.description && <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-muted)' }}>{svc.description}</p>}
                     </div>
                     {svc.price != null && <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--primary)' }}>+₦{Number(svc.price).toLocaleString()}</span>}
-                  </button>
+                  </motion.button>
                 )
               })}
             </div>
@@ -475,20 +516,16 @@ export default function BookingForm({
               </div>
             )}
 
-            {customFields.map(field => (
-              <div style={row} key={field.id}>
-                <label style={label}>{field.label} <span style={field.required ? req : opt}>{field.required ? '*' : '(optional)'}</span></label>
-                {field.type === 'boolean' ? (
-                  <select value={customAnswers[field.id] || ''} onChange={e => setCustomAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} style={input}>
-                    <option value="">-- Select --</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                ) : (
-                  <input type={field.type === 'number' ? 'number' : 'text'} value={customAnswers[field.id] || ''} onChange={e => setCustomAnswers(prev => ({ ...prev, [field.id]: e.target.value }))} style={input} />
-                )}
-              </div>
-            ))}
+            <DynamicIntakeForm 
+              fields={customFields}
+              answers={customAnswers}
+              onChange={(id, value) => setCustomAnswers(prev => ({ ...prev, [id]: value }))}
+              inputStyle={input}
+              labelStyle={label}
+              reqStyle={req}
+              optStyle={opt}
+              rowStyle={row}
+            />
 
             <div style={row}>
               <label style={label}>Notes <span style={opt}>(optional)</span></label>

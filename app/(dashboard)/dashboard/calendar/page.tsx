@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 const DAY_NAMES         = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAMES       = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -223,53 +224,57 @@ export default async function CalendarPage({
                 }}>
                   {daySessions.length === 0 && (weekEventByDate[dayStr] ?? []).length === 0
                     ? <span style={{ fontSize: '11px', color: 'var(--text-4)', margin: 'auto', textAlign: 'center', opacity: 0.4 }}>—</span>
-                    : <>
-                        {daySessions.map((s: CalendarSessionRow) => {
+                    : <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                        {daySessions.map((s: CalendarSessionRow, idx) => {
                           const sc         = getStatusConfig(config, s.status)
                           const typeCfg    = getSessionTypeConfig(config, s.session_type)
                           const clientName = (Array.isArray(s.clients) ? s.clients[0]?.full_name : s.clients?.full_name) ?? null
                           const sName      = sessionName(clientName, s.booking_ref, s.booking_id, s.session_date)
                           return (
-                            <Link key={s.booking_id} href={`/dashboard/sessions/${s.booking_id}`}
-                              style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: sc.color_bg, textDecoration: 'none', border: `1px solid ${sc.color_fg}22` }}>
-                              <p style={{ fontSize: '12px', fontWeight: '600', color: sc.color_fg, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {clientName ?? sName}
-                              </p>
-                              <p style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, margin: '0 0 5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {sName}
-                              </p>
-                              <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' as const }}>
-                                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500', border: `1px solid ${typeCfg.color_fg}22`, whiteSpace: 'nowrap' as const }}>
-                                  {typeCfg.label}
-                                </span>
-                                {s.shoot_type && (
-                                  <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--line-inner)', whiteSpace: 'nowrap' as const }}>
-                                    {s.shoot_type}
+                            <AnimatedItem key={s.booking_id} delay={idx * 0.05}>
+                              <Link href={`/dashboard/sessions/${s.booking_id}`}
+                                style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: sc.color_bg, textDecoration: 'none', border: `1px solid ${sc.color_fg}22` }}>
+                                <p style={{ fontSize: '12px', fontWeight: '600', color: sc.color_fg, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {clientName ?? sName}
+                                </p>
+                                <p style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, margin: '0 0 5px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {sName}
+                                </p>
+                                <div style={{ display: 'flex', gap: '3px', flexWrap: 'wrap' as const }}>
+                                  <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: typeCfg.color_bg, color: typeCfg.color_fg, fontWeight: '500', border: `1px solid ${typeCfg.color_fg}22`, whiteSpace: 'nowrap' as const }}>
+                                    {typeCfg.label}
                                   </span>
-                                )}
-                                <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: sc.color_bg, color: sc.color_fg, border: `1px solid ${sc.color_fg}33`, whiteSpace: 'nowrap' as const, marginLeft: 'auto' }}>
-                                  {sc.label}
-                                </span>
-                              </div>
-                            </Link>
+                                  {s.shoot_type && (
+                                    <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--line-inner)', whiteSpace: 'nowrap' as const }}>
+                                      {s.shoot_type}
+                                    </span>
+                                  )}
+                                  <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: sc.color_bg, color: sc.color_fg, border: `1px solid ${sc.color_fg}33`, whiteSpace: 'nowrap' as const, marginLeft: 'auto' }}>
+                                    {sc.label}
+                                  </span>
+                                </div>
+                              </Link>
+                            </AnimatedItem>
                           )
                         })}
-                        {(weekEventByDate[dayStr] ?? []).map((o: CalendarOccasionRow) => {
+                        {(weekEventByDate[dayStr] ?? []).map((o: CalendarOccasionRow, idx) => {
                           const clientName = (Array.isArray(o.clients) ? o.clients[0]?.full_name : o.clients?.full_name) ?? null
                           const emoji = occasionEmoji(o.event_name)
                           return (
-                            <Link key={`occ-${o.booking_id}`} href={`/dashboard/sessions/${o.booking_id}`}
-                              style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: '#fff8e6', textDecoration: 'none', border: '1px dashed #c9980055' }}>
-                              <p style={{ fontSize: '12px', fontWeight: '600', color: '#8a6a00', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {emoji} {clientName ?? '—'}
-                              </p>
-                              <p style={{ fontSize: '10px', color: '#8a6a00', opacity: 0.75, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {o.event_name ?? 'Occasion'}
-                              </p>
-                            </Link>
+                            <AnimatedItem key={`occ-${o.booking_id}`} delay={(daySessions.length + idx) * 0.05}>
+                              <Link href={`/dashboard/sessions/${o.booking_id}`}
+                                style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: '#fff8e6', textDecoration: 'none', border: '1px dashed #c9980055' }}>
+                                <p style={{ fontSize: '12px', fontWeight: '600', color: '#8a6a00', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {emoji} {clientName ?? '—'}
+                                </p>
+                                <p style={{ fontSize: '10px', color: '#8a6a00', opacity: 0.75, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {o.event_name ?? 'Occasion'}
+                                </p>
+                              </Link>
+                            </AnimatedItem>
                           )
                         })}
-                      </>
+                      </AnimatedList>
                   }
                 </div>
               )
@@ -426,33 +431,34 @@ export default async function CalendarPage({
                       }}>
                         {day}
                       </p>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        {daySessions.slice(0, 3).map((s: CalendarSessionRow) => {
+                      <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        {daySessions.slice(0, 3).map((s: CalendarSessionRow, idx) => {
                           const sc         = getStatusConfig(config, s.status)
                           const clientName = (Array.isArray(s.clients) ? s.clients[0]?.full_name : s.clients?.full_name) ?? null
                           const sName      = sessionName(clientName, s.booking_ref, s.booking_id, s.session_date)
                           return (
-                            <Link
-                              key={s.booking_id}
-                              href={`/dashboard/sessions/${s.booking_id}`}
-                              title={`${sName} · ${clientName ?? 'Unknown'}${s.shoot_type ? ` · ${s.shoot_type}` : ''} — ${sc.label}`}
-                              style={{
-                                display: 'flex', alignItems: 'flex-start', gap: '5px',
-                                padding: '3px 6px', borderRadius: '5px',
-                                background: sc.color_bg, textDecoration: 'none',
-                                overflow: 'hidden',
-                              }}
-                            >
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.color_fg, flexShrink: 0, opacity: 0.75, marginTop: '3px' }} />
-                              <span style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-                                <span style={{ fontSize: '11px', color: sc.color_fg, fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {clientName ?? sName}
+                            <AnimatedItem key={s.booking_id} delay={idx * 0.05}>
+                              <Link
+                                href={`/dashboard/sessions/${s.booking_id}`}
+                                title={`${sName} · ${clientName ?? 'Unknown'}${s.shoot_type ? ` · ${s.shoot_type}` : ''} — ${sc.label}`}
+                                style={{
+                                  display: 'flex', alignItems: 'flex-start', gap: '5px',
+                                  padding: '3px 6px', borderRadius: '5px',
+                                  background: sc.color_bg, textDecoration: 'none',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: sc.color_fg, flexShrink: 0, opacity: 0.75, marginTop: '3px' }} />
+                                <span style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                                  <span style={{ fontSize: '11px', color: sc.color_fg, fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {clientName ?? sName}
+                                  </span>
+                                  <span style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
+                                    {sName}{s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                                  </span>
                                 </span>
-                                <span style={{ fontSize: '10px', color: sc.color_fg, opacity: 0.65, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', letterSpacing: '0.02em' }}>
-                                  {sName}{s.shoot_type ? ` · ${s.shoot_type}` : ''}
-                                </span>
-                              </span>
-                            </Link>
+                              </Link>
+                            </AnimatedItem>
                           )
                         })}
                         {daySessions.length > 3 && (
@@ -460,34 +466,35 @@ export default async function CalendarPage({
                             +{daySessions.length - 3} more
                           </p>
                         )}
-                        {(dateKey ? (eventByDate[dateKey] ?? []) : []).map((o: CalendarOccasionRow) => {
+                        {(dateKey ? (eventByDate[dateKey] ?? []) : []).map((o: CalendarOccasionRow, idx) => {
                           const clientName = (Array.isArray(o.clients) ? o.clients[0]?.full_name : o.clients?.full_name) ?? null
                           const emoji = occasionEmoji(o.event_name)
                           return (
-                            <Link
-                              key={`occ-${o.booking_id}`}
-                              href={`/dashboard/sessions/${o.booking_id}`}
-                              title={`${clientName ?? '—'} — ${o.event_name ?? 'Occasion'}`}
-                              style={{
-                                display: 'flex', alignItems: 'center', gap: '4px',
-                                padding: '2px 5px', borderRadius: '5px',
-                                background: '#fff8e6', textDecoration: 'none',
-                                border: '1px dashed #c9980055', overflow: 'hidden',
-                              }}
-                            >
-                              <span style={{ fontSize: '10px', flexShrink: 0 }}>{emoji}</span>
-                              <span style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
-                                <span style={{ fontSize: '11px', color: '#8a6a00', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {clientName ?? '—'}
+                            <AnimatedItem key={`occ-${o.booking_id}`} delay={(Math.min(3, daySessions.length) + idx) * 0.05}>
+                              <Link
+                                href={`/dashboard/sessions/${o.booking_id}`}
+                                title={`${clientName ?? '—'} — ${o.event_name ?? 'Occasion'}`}
+                                style={{
+                                  display: 'flex', alignItems: 'center', gap: '4px',
+                                  padding: '2px 5px', borderRadius: '5px',
+                                  background: '#fff8e6', textDecoration: 'none',
+                                  border: '1px dashed #c9980055', overflow: 'hidden',
+                                }}
+                              >
+                                <span style={{ fontSize: '10px', flexShrink: 0 }}>{emoji}</span>
+                                <span style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+                                  <span style={{ fontSize: '11px', color: '#8a6a00', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {clientName ?? '—'}
+                                  </span>
+                                  <span style={{ fontSize: '9px', color: '#8a6a00', opacity: 0.75, fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                    {o.event_name ?? 'Occasion'}
+                                  </span>
                                 </span>
-                                <span style={{ fontSize: '10px', color: '#8a6a00', opacity: 0.75, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {o.event_name ?? 'Occasion'}
-                                </span>
-                              </span>
-                            </Link>
+                              </Link>
+                            </AnimatedItem>
                           )
                         })}
-                      </div>
+                      </AnimatedList>
                     </>
                   )}
                 </div>

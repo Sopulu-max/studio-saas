@@ -8,6 +8,7 @@ import { ViewSwitcher } from '@/components/view-switcher'
 import { resolveLayout } from '@/lib/view-mode'
 import BarChart from '@/components/bar-chart'
 import DonutChart from '@/components/donut-chart'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 const PAGE_SIZE = 20
 
@@ -347,57 +348,59 @@ export default async function ClientsPage({
                 <>
                   {/* ── Grid view ── */}
                   {clientLayout === 'grid' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-                      {allClients.map((client) => {
+                    <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+                      {allClients.map((client, i) => {
                         const sessions = sessionCountMap.get(client.client_id) ?? 0
                         const lastDate = lastSessionMap.get(client.client_id)
                         const tier     = getTier(sessions)
                         const ref      = client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${client.client_id.slice(0, 6).toUpperCase()}`
                         return (
-                          <Link key={client.client_id} href={`/dashboard/clients/${client.client_id}`} style={{
-                            background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
-                            padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                              <AvatarUpload entityId={client.client_id} entityType="client"
-                                currentUrl={client.avatar_url ?? null} name={client.full_name} size={38} editable={false} />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.full_name}</p>
-                                <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                                  {ref}{client.email ? ` · ${client.email}` : ''}
-                                </p>
+                          <AnimatedItem key={client.client_id} delay={i * 0.05}>
+                            <Link href={`/dashboard/clients/${client.client_id}`} style={{
+                              background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
+                              padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
+                                <AvatarUpload entityId={client.client_id} entityType="client"
+                                  currentUrl={client.avatar_url ?? null} name={client.full_name} size={38} editable={false} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{client.full_name}</p>
+                                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                                    {ref}{client.email ? ` · ${client.email}` : ''}
+                                  </p>
+                                </div>
+                                <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', flexShrink: 0, letterSpacing: '.03em' }}>
+                                  {tier.label}
+                                </span>
                               </div>
-                              <span style={{ fontSize: '10px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', flexShrink: 0, letterSpacing: '.03em' }}>
-                                {tier.label}
-                              </span>
-                            </div>
-                            <div style={{ display: 'flex', gap: '20px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
-                              <div>
-                                <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Sessions</p>
-                                <p style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: 'var(--text)', lineHeight: 1.1 }}>{sessions}</p>
-                              </div>
-                              {lastDate && (
+                              <div style={{ display: 'flex', gap: '20px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
                                 <div>
-                                  <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Last session</p>
-                                  <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: 'var(--text-2)', lineHeight: 1.2 }}>{relDate(lastDate)}</p>
+                                  <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Sessions</p>
+                                  <p style={{ fontSize: '18px', fontWeight: '600', margin: 0, color: 'var(--text)', lineHeight: 1.1 }}>{sessions}</p>
                                 </div>
-                              )}
-                              {client.phone && (
-                                <div style={{ marginLeft: 'auto' }}>
-                                  <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Phone</p>
-                                  <p style={{ fontSize: '12px', margin: 0, color: 'var(--text-3)' }}>{client.phone}</p>
-                                </div>
-                              )}
-                            </div>
-                          </Link>
+                                {lastDate && (
+                                  <div>
+                                    <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Last session</p>
+                                    <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: 'var(--text-2)', lineHeight: 1.2 }}>{relDate(lastDate)}</p>
+                                  </div>
+                                )}
+                                {client.phone && (
+                                  <div style={{ marginLeft: 'auto' }}>
+                                    <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: '.06em' }}>Phone</p>
+                                    <p style={{ fontSize: '12px', margin: 0, color: 'var(--text-3)' }}>{client.phone}</p>
+                                  </div>
+                                )}
+                              </div>
+                            </Link>
+                          </AnimatedItem>
                         )
                       })}
-                    </div>
+                    </AnimatedList>
                   )}
 
                   {/* ── List view ── */}
                   {clientLayout === 'list' && (
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '2fr 70px 100px 100px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                         <span>Client</span><span>Sessions</span><span>Last session</span><span>Tier</span>
                       </div>
@@ -406,28 +409,30 @@ export default async function ClientsPage({
                         const lastDate = lastSessionMap.get(client.client_id)
                         const tier     = getTier(sessions)
                         return (
-                          <Link key={client.client_id} href={`/dashboard/clients/${client.client_id}`} style={{
-                            display: 'grid', gridTemplateColumns: '2fr 70px 100px 100px',
-                            padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                            borderBottom: i < allClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <AvatarUpload entityId={client.client_id} entityType="client"
-                                currentUrl={client.avatar_url ?? null} name={client.full_name} size={30} editable={false} />
-                              <div>
-                                <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{client.full_name}</p>
-                                <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{client.email ?? client.phone ?? '—'}</p>
+                          <AnimatedItem key={client.client_id} delay={i * 0.05}>
+                            <Link href={`/dashboard/clients/${client.client_id}`} style={{
+                              display: 'grid', gridTemplateColumns: '2fr 70px 100px 100px',
+                              padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                              borderBottom: i < allClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                            }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                <AvatarUpload entityId={client.client_id} entityType="client"
+                                  currentUrl={client.avatar_url ?? null} name={client.full_name} size={30} editable={false} />
+                                <div>
+                                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{client.full_name}</p>
+                                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{client.email ?? client.phone ?? '—'}</p>
+                                </div>
                               </div>
-                            </div>
-                            <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{sessions}</p>
-                            <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{lastDate ? relDate(lastDate) : '—'}</p>
-                            <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', display: 'inline-block', width: 'fit-content', letterSpacing: '.03em' }}>
-                              {tier.label}
-                            </span>
-                          </Link>
+                              <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{sessions}</p>
+                              <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{lastDate ? relDate(lastDate) : '—'}</p>
+                              <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: tier.bg, color: tier.color, fontWeight: '600', display: 'inline-block', width: 'fit-content', letterSpacing: '.03em' }}>
+                                {tier.label}
+                              </span>
+                            </Link>
+                          </AnimatedItem>
                         )
                       })}
-                    </div>
+                    </AnimatedList>
                   )}
 
                   <Pagination
@@ -456,33 +461,35 @@ export default async function ClientsPage({
               <p style={{ fontSize: '15px', margin: 0 }}>No clients with sessions yet</p>
             </div>
           ) : (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 80px 120px 120px', padding: '8px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', letterSpacing: '0.04em', alignItems: 'center' }}>
                 <span>#</span><span>CLIENT</span><span>SESSIONS</span><span>LAST BOOKING</span><span>LAST CATEGORY</span>
               </div>
               {displayClients.map((c, i) => (
-                <Link key={c.client_id} href={`/dashboard/clients/${c.client_id}`} style={{
-                  display: 'grid', gridTemplateColumns: '32px 1fr 80px 120px 120px',
-                  padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                  borderBottom: i < displayClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-4)', fontFamily: 'monospace' }}>{i + 1}</span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <AvatarUpload entityId={c.client_id} entityType="client"
-                      currentUrl={c.avatar_url ?? null} name={c.full_name} size={30} editable={false} />
-                    <div>
-                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{c.full_name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{c.email ?? '—'}</p>
+                <AnimatedItem key={c.client_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/clients/${c.client_id}`} style={{
+                    display: 'grid', gridTemplateColumns: '32px 1fr 80px 120px 120px',
+                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                    borderBottom: i < displayClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-4)', fontFamily: 'monospace' }}>{i + 1}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <AvatarUpload entityId={c.client_id} entityType="client"
+                        currentUrl={c.avatar_url ?? null} name={c.full_name} size={30} editable={false} />
+                      <div>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{c.full_name}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{c.email ?? '—'}</p>
+                      </div>
                     </div>
-                  </div>
-                  <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, color: 'var(--text)' }}>{c._sessions ?? 0}</p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                    {c._lastDate ? new Date(c._lastDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                  </p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{c._lastType || '—'}</p>
-                </Link>
+                    <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, color: 'var(--text)' }}>{c._sessions ?? 0}</p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
+                      {c._lastDate ? new Date(c._lastDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>{c._lastType || '—'}</p>
+                  </Link>
+                </AnimatedItem>
               ))}
-            </div>
+            </AnimatedList>
           )}
         </>
       )}
@@ -500,33 +507,35 @@ export default async function ClientsPage({
               <p style={{ fontSize: '15px', margin: 0 }}>No sessions in the last 30 days</p>
             </div>
           ) : (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
               {displayClients.map((c, i) => (
-                <Link key={c.client_id} href={`/dashboard/clients/${c.client_id}`} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit',
-                  borderBottom: i < displayClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <AvatarUpload entityId={c.client_id} entityType="client"
-                      currentUrl={c.avatar_url ?? null} name={c.full_name} size={36} editable={false} />
-                    <div>
-                      <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{c.full_name}</p>
-                      <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{c.email ?? '—'}</p>
+                <AnimatedItem key={c.client_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/clients/${c.client_id}`} style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit',
+                    borderBottom: i < displayClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <AvatarUpload entityId={c.client_id} entityType="client"
+                        currentUrl={c.avatar_url ?? null} name={c.full_name} size={36} editable={false} />
+                      <div>
+                        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>{c.full_name}</p>
+                        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{c.email ?? '—'}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div style={{ textAlign: 'right' as const }}>
-                    <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 2px' }}>
-                      {c._lastDate ? new Date(c._lastDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                    </p>
-                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
-                      {c._sessions ?? 0} total session{(c._sessions ?? 0) !== 1 ? 's' : ''}
-                      {c._lastType ? ` · ${c._lastType}` : ''}
-                    </p>
-                  </div>
-                </Link>
+                    <div style={{ textAlign: 'right' as const }}>
+                      <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 2px' }}>
+                        {c._lastDate ? new Date(c._lastDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                      </p>
+                      <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
+                        {c._sessions ?? 0} total session{(c._sessions ?? 0) !== 1 ? 's' : ''}
+                        {c._lastType ? ` · ${c._lastType}` : ''}
+                      </p>
+                    </div>
+                  </Link>
+                </AnimatedItem>
               ))}
-            </div>
+            </AnimatedList>
           )}
         </>
       )}
@@ -545,34 +554,36 @@ export default async function ClientsPage({
               <p style={{ fontSize: '13px', margin: 0 }}>All your clients have had a recent session</p>
             </div>
           ) : (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 80px', padding: '8px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', letterSpacing: '0.04em' }}>
                 <span>CLIENT</span><span>LAST SESSION</span><span>DORMANT FOR</span><span>SESSIONS</span>
               </div>
               {displayClients.map((c, i) => (
-                <Link key={c.client_id} href={`/dashboard/clients/${c.client_id}`} style={{
-                  display: 'grid', gridTemplateColumns: '1fr 100px 120px 80px',
-                  padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                  borderBottom: i < displayClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <AvatarUpload entityId={c.client_id} entityType="client"
-                      currentUrl={c.avatar_url ?? null} name={c.full_name} size={30} editable={false} />
-                    <div>
-                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{c.full_name}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{c.phone ?? c.email ?? '—'}</p>
+                <AnimatedItem key={c.client_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/clients/${c.client_id}`} style={{
+                    display: 'grid', gridTemplateColumns: '1fr 100px 120px 80px',
+                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                    borderBottom: i < displayClients.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <AvatarUpload entityId={c.client_id} entityType="client"
+                        currentUrl={c.avatar_url ?? null} name={c.full_name} size={30} editable={false} />
+                      <div>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{c.full_name}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{c.phone ?? c.email ?? '—'}</p>
+                      </div>
                     </div>
-                  </div>
-                  <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                    {c._lastDate ? new Date(c._lastDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
-                  </p>
-                  <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: (c._daysSince ?? 0) > 180 ? '#a32d2d' : '#854f0b' }}>
-                    {c._daysSince === Infinity ? '—' : `${c._daysSince} days`}
-                  </p>
-                  <p style={{ fontSize: '13px', margin: 0 }}>{c._sessions ?? 0}</p>
-                </Link>
+                    <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
+                      {c._lastDate ? new Date(c._lastDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                    </p>
+                    <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, color: (c._daysSince ?? 0) > 180 ? '#a32d2d' : '#854f0b' }}>
+                      {c._daysSince === Infinity ? '—' : `${c._daysSince} days`}
+                    </p>
+                    <p style={{ fontSize: '13px', margin: 0 }}>{c._sessions ?? 0}</p>
+                  </Link>
+                </AnimatedItem>
               ))}
-            </div>
+            </AnimatedList>
           )}
         </>
       )}

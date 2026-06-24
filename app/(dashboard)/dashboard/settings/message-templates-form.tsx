@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { createTemplate, updateTemplate, deleteTemplate } from '@/app/actions/message-templates'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 export type MessageTemplate = {
   template_id: string
@@ -118,32 +119,34 @@ export default function MessageTemplatesForm({ initial }: { initial: MessageTemp
       {initial.length === 0 && !editingId ? (
         <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No templates yet.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {initial.map(template => (
-            <div key={template.template_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px', border: '1px solid var(--line-inner)', borderRadius: '8px', background: 'var(--surface)' }}>
-              <div>
-                <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 4px' }}>{template.title}</p>
-                <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, whiteSpace: 'pre-wrap' }}>{template.content}</p>
+        <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {initial.map((template, i) => (
+            <AnimatedItem key={template.template_id} delay={i * 0.05}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px', border: '1px solid var(--line-inner)', borderRadius: '8px', background: 'var(--surface)' }}>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 4px' }}>{template.title}</p>
+                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, whiteSpace: 'pre-wrap' }}>{template.content}</p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', flexShrink: 0, marginLeft: '16px' }}>
+                  <button 
+                    onClick={() => { setEditingId(template.template_id); setFormData({ title: template.title, content: template.content }) }}
+                    disabled={isSubmitting}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '13px' }}
+                  >
+                    Edit
+                  </button>
+                  <button 
+                    onClick={() => handleDelete(template.template_id)}
+                    disabled={isSubmitting}
+                    style={{ background: 'none', border: 'none', color: '#e24b4a', cursor: 'pointer', fontSize: '13px' }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '8px', flexShrink: 0, marginLeft: '16px' }}>
-                <button 
-                  onClick={() => { setEditingId(template.template_id); setFormData({ title: template.title, content: template.content }) }}
-                  disabled={isSubmitting}
-                  style={{ background: 'none', border: 'none', color: 'var(--text-3)', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Edit
-                </button>
-                <button 
-                  onClick={() => handleDelete(template.template_id)}
-                  disabled={isSubmitting}
-                  style={{ background: 'none', border: 'none', color: '#e24b4a', cursor: 'pointer', fontSize: '13px' }}
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
+            </AnimatedItem>
           ))}
-        </div>
+        </AnimatedList>
       )}
     </div>
   )

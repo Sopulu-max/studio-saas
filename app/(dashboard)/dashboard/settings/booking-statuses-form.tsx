@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { saveBookingStatuses } from '@/app/actions/studio-config'
 import type { BookingStatusConfig, StaffRoleConfig } from '@/lib/studio-config'
 import { COLOR_PRESETS } from '@/lib/color-presets'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 function slug(label: string) {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
@@ -112,11 +113,11 @@ export default function BookingStatusesForm({ initial, staffRoles }: { initial: 
       )}
 
       {/* List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '14px' }}>
+      <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '14px' }}>
         {statuses.map((s, i) => {
           const isExpanded = expandedIdx === i
           return (
-            <div key={s.value}>
+            <AnimatedItem key={s.value} delay={i * 0.05}>
               {/* Row */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
@@ -198,10 +199,10 @@ export default function BookingStatusesForm({ initial, staffRoles }: { initial: 
                   </div>
                 </div>
               )}
-            </div>
+            </AnimatedItem>
           )
         })}
-      </div>
+      </AnimatedList>
 
       <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 14px' }}>
         ⚠ Renaming a status only changes the display label — the internal value stays the same. Deleting a status won&apos;t affect existing sessions that already use it.

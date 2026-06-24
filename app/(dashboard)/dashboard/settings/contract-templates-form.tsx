@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { saveContractTemplate, deleteContractTemplate } from '@/app/actions/contract-templates'
 import type { ContractTemplate } from '@/app/actions/contract-templates'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 type EditClause = { _key: string; title: string; body: string }
 
@@ -161,40 +162,42 @@ export default function ContractTemplatesForm({ initial }: { initial: ContractTe
             <p style={{ fontSize: '13px', margin: 0 }}>Create your first template to speed up contract creation</p>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {templates.map(t => (
-              <div key={t.template_id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px',
-                padding: '12px 1rem', gap: '12px',
-              }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {t.name}
-                  </p>
-                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
-                    {t.clauses.length} clause{t.clauses.length !== 1 ? 's' : ''}
-                    {t.session_type ? ` · ${t.session_type}` : ''}
-                    {t.description ? ` · ${t.description}` : ''}
-                  </p>
+          <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {templates.map((t, i) => (
+              <AnimatedItem key={t.template_id} delay={i * 0.05}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                  background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px',
+                  padding: '12px 1rem', gap: '12px',
+                }}>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {t.name}
+                    </p>
+                    <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
+                      {t.clauses.length} clause{t.clauses.length !== 1 ? 's' : ''}
+                      {t.session_type ? ` · ${t.session_type}` : ''}
+                      {t.description ? ` · ${t.description}` : ''}
+                    </p>
+                  </div>
+                  <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
+                    <button
+                      onClick={() => openEdit(t)}
+                      style={{ padding: '5px 12px', fontSize: '12px', background: 'var(--surface)', border: '1px solid var(--line)', color: 'var(--text-2)' }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(t.template_id, t.name)}
+                      style={{ padding: '5px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: '#e24b4a' }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '6px', flexShrink: 0 }}>
-                  <button
-                    onClick={() => openEdit(t)}
-                    style={{ padding: '5px 12px', fontSize: '12px', background: 'var(--surface)', border: '1px solid var(--line)', color: 'var(--text-2)' }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(t.template_id, t.name)}
-                    style={{ padding: '5px 12px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: '#e24b4a' }}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
+              </AnimatedItem>
             ))}
-          </div>
+          </AnimatedList>
         )}
       </div>
     )
@@ -278,48 +281,50 @@ export default function ContractTemplatesForm({ initial }: { initial: ContractTe
           Clauses <span style={{ fontWeight: '400', color: 'var(--text-4)' }}>— each becomes a headed section in the contract</span>
         </p>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {clauses.map((clause, idx) => (
-            <div key={clause._key} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '1rem' }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
-                <input
-                  type="text"
-                  value={clause.title}
-                  onChange={e => updateClause(clause._key, 'title', e.target.value)}
-                  placeholder="Clause title (e.g. Payment Terms)"
-                  style={{ flex: 1, boxSizing: 'border-box', fontSize: '13px', fontWeight: '500' }}
-                />
-                <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                  <button
-                    onClick={() => moveClause(clause._key, -1)}
-                    disabled={idx === 0}
-                    style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: idx === 0 ? 'var(--text-4)' : 'var(--text-2)' }}
-                    title="Move up"
-                  >↑</button>
-                  <button
-                    onClick={() => moveClause(clause._key, 1)}
-                    disabled={idx === clauses.length - 1}
-                    style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: idx === clauses.length - 1 ? 'var(--text-4)' : 'var(--text-2)' }}
-                    title="Move down"
-                  >↓</button>
-                  <button
-                    onClick={() => removeClause(clause._key)}
-                    disabled={clauses.length === 1}
-                    style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: clauses.length === 1 ? 'var(--text-4)' : '#e24b4a' }}
-                    title="Remove clause"
-                  >×</button>
+            <AnimatedItem key={clause._key} delay={idx * 0.05}>
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '1rem' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
+                  <input
+                    type="text"
+                    value={clause.title}
+                    onChange={e => updateClause(clause._key, 'title', e.target.value)}
+                    placeholder="Clause title (e.g. Payment Terms)"
+                    style={{ flex: 1, boxSizing: 'border-box', fontSize: '13px', fontWeight: '500' }}
+                  />
+                  <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
+                    <button
+                      onClick={() => moveClause(clause._key, -1)}
+                      disabled={idx === 0}
+                      style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: idx === 0 ? 'var(--text-4)' : 'var(--text-2)' }}
+                      title="Move up"
+                    >↑</button>
+                    <button
+                      onClick={() => moveClause(clause._key, 1)}
+                      disabled={idx === clauses.length - 1}
+                      style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: idx === clauses.length - 1 ? 'var(--text-4)' : 'var(--text-2)' }}
+                      title="Move down"
+                    >↓</button>
+                    <button
+                      onClick={() => removeClause(clause._key)}
+                      disabled={clauses.length === 1}
+                      style={{ padding: '4px 8px', fontSize: '12px', background: 'transparent', border: '1px solid var(--line)', color: clauses.length === 1 ? 'var(--text-4)' : '#e24b4a' }}
+                      title="Remove clause"
+                    >×</button>
+                  </div>
                 </div>
+                <textarea
+                  value={clause.body}
+                  onChange={e => updateClause(clause._key, 'body', e.target.value)}
+                  placeholder="Clause body text. Use {{variables}} to auto-fill booking data."
+                  rows={6}
+                  style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', fontSize: '13px', lineHeight: '1.6' }}
+                />
               </div>
-              <textarea
-                value={clause.body}
-                onChange={e => updateClause(clause._key, 'body', e.target.value)}
-                placeholder="Clause body text. Use {{variables}} to auto-fill booking data."
-                rows={6}
-                style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit', fontSize: '13px', lineHeight: '1.6' }}
-              />
-            </div>
+            </AnimatedItem>
           ))}
-        </div>
+        </AnimatedList>
 
         <button
           onClick={addClause}

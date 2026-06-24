@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { saveEquipmentCategories } from '@/app/actions/studio-config'
 import type { EquipmentCategoryConfig } from '@/lib/studio-config'
 import { COLOR_PRESETS } from '@/lib/color-presets'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 function slug(label: string) {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
@@ -100,11 +101,11 @@ export default function EquipmentCategoriesForm({ initial }: { initial: Equipmen
         </div>
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '14px' }}>
+      <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '14px' }}>
         {categories.map((c, i) => {
           const isColorOpen = expandedIdx === i
           return (
-            <div key={c.value}>
+            <AnimatedItem key={c.value} delay={i * 0.05}>
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
                 padding: '7px 10px', background: 'var(--surface)',
@@ -144,10 +145,10 @@ export default function EquipmentCategoriesForm({ initial }: { initial: Equipmen
                   </div>
                 </div>
               )}
-            </div>
+            </AnimatedItem>
           )
         })}
-      </div>
+      </AnimatedList>
 
       <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 14px' }}>
         ⚠ Renaming a category only changes the display label — the internal value stays the same.

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { Toaster } from 'sonner'
-import Script from 'next/script'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -41,7 +40,7 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        <Script id="theme-script" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col">
         {children}

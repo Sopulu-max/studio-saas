@@ -4,6 +4,7 @@ import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -221,7 +222,13 @@ export default async function PrintOrdersPage({
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Session</span><span>Ordered</span><span>Items</span><span>Total</span><span>Status</span>
             </div>
-            {orders.map((o, i) => <OrderRow key={o.order_id} o={o} i={i} isLast={i === orders.length - 1} />)}
+            <AnimatedList>
+              {orders.map((o, i) => (
+                <AnimatedItem key={o.order_id} delay={i * 0.05}>
+                  <OrderRow o={o} i={i} isLast={i === orders.length - 1} />
+                </AnimatedItem>
+              ))}
+            </AnimatedList>
           </div>
         )}
       </div>
@@ -278,7 +285,13 @@ export default async function PrintOrdersPage({
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                       <span>Session</span><span>Date</span><span>Items</span><span>Total</span><span>Status</span>
                     </div>
-                    {group.orders.map((o, i) => <OrderRow key={o.order_id} o={o} i={i} isLast={i === group.orders.length - 1} />)}
+                    <AnimatedList>
+                      {group.orders.map((o, i) => (
+                        <AnimatedItem key={o.order_id} delay={i * 0.05}>
+                          <OrderRow o={o} i={i} isLast={i === group.orders.length - 1} />
+                        </AnimatedItem>
+                      ))}
+                    </AnimatedList>
                   </div>
                 </div>
               )
@@ -341,7 +354,13 @@ export default async function PrintOrdersPage({
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
             <span>Session</span><span>Date</span><span>Items</span><span>Total</span><span>Status</span>
           </div>
-          {orders.map((o, i) => <OrderRow key={o.order_id} o={o} i={i} isLast={i === orders.length - 1} />)}
+          <AnimatedList>
+            {orders.map((o, i) => (
+              <AnimatedItem key={o.order_id} delay={i * 0.05}>
+                <OrderRow o={o} i={i} isLast={i === orders.length - 1} />
+              </AnimatedItem>
+            ))}
+          </AnimatedList>
           <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
         </div>
       )}

@@ -5,6 +5,7 @@ import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { buildPackagesShareLink } from '@/lib/whatsapp-links'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -248,7 +249,7 @@ export default async function PackagesPage({
         {!sorted.length ? (
           <EmptyState message="No packages yet" sub="Create your first package to start tracking usage" />
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '32px 2fr 1fr 1fr 1fr 80px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
               <span>#</span><span>Package</span><span>Category</span><span>Price</span><span>Add-ons</span><span style={{ textAlign: 'right' }}>Bookings</span>
             </div>
@@ -257,29 +258,31 @@ export default async function PackagesPage({
               const usage = usageMap[pkg.package_id] ?? 0
               const s     = shootTypeColor(pkg.shoot_type)
               return (
-                <Link key={pkg.package_id} href={`/dashboard/packages/${pkg.package_id}`} style={{
-                  display: 'grid', gridTemplateColumns: '32px 2fr 1fr 1fr 1fr 80px',
-                  padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                  borderBottom: i < sorted.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{i + 1}</span>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pkg.name}</p>
-                  {pkg.shoot_type ? (
-                    <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
-                      {pkg.shoot_type}
-                    </span>
-                  ) : (
-                    <span style={{ fontSize: '13px', color: 'var(--text-4)' }}>—</span>
-                  )}
-                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>₦{Number(pkg.base_price ?? 0).toLocaleString()}</p>
-                  <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{pkg.package_addons?.length ?? 0}</p>
-                  <p style={{ fontSize: '14px', fontWeight: usage > 0 ? '600' : '400', color: usage > 0 ? 'var(--text)' : 'var(--text-4)', margin: 0, textAlign: 'right' }}>
-                    {usage}
-                  </p>
-                </Link>
+                <AnimatedItem key={pkg.package_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/packages/${pkg.package_id}`} style={{
+                    display: 'grid', gridTemplateColumns: '32px 2fr 1fr 1fr 1fr 80px',
+                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                    borderBottom: i < sorted.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{i + 1}</span>
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pkg.name}</p>
+                    {pkg.shoot_type ? (
+                      <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
+                        {pkg.shoot_type}
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '13px', color: 'var(--text-4)' }}>—</span>
+                    )}
+                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>₦{Number(pkg.base_price ?? 0).toLocaleString()}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{pkg.package_addons?.length ?? 0}</p>
+                    <p style={{ fontSize: '14px', fontWeight: usage > 0 ? '600' : '400', color: usage > 0 ? 'var(--text)' : 'var(--text-4)', margin: 0, textAlign: 'right' }}>
+                      {usage}
+                    </p>
+                  </Link>
+                </AnimatedItem>
               )
             })}
-          </div>
+          </AnimatedList>
         )}
       </div>
     )
@@ -308,7 +311,7 @@ export default async function PackagesPage({
         {!addons.length ? (
           <EmptyState message="No add-ons yet" sub="Add optional extras to your packages from the package detail page" />
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Add-on</span><span>Package</span><span style={{ textAlign: 'right' }}>Price</span>
             </div>
@@ -316,30 +319,32 @@ export default async function PackagesPage({
             {addons.map((a, i) => {
               const s = shootTypeColor(a._shoot_type)
               return (
-                <Link key={a.addon_id} href={`/dashboard/packages/${a._pkg_id}`} style={{
-                  display: 'grid', gridTemplateColumns: '2fr 2fr 1fr',
-                  padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                  borderBottom: i < addons.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                }}>
-                  <div>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{a.name}</p>
-                    {a.description && (
-                      <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
-                    )}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a._pkg_name}</p>
-                    {a._shoot_type && (
-                      <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', flexShrink: 0 }}>{a._shoot_type}</span>
-                    )}
-                  </div>
-                  <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, textAlign: 'right' }}>
-                    {a.price ? `₦${Number(a.price).toLocaleString()}` : '—'}
-                  </p>
-                </Link>
+                <AnimatedItem key={a.addon_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/packages/${a._pkg_id}`} style={{
+                    display: 'grid', gridTemplateColumns: '2fr 2fr 1fr',
+                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                    borderBottom: i < addons.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                  }}>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{a.name}</p>
+                      {a.description && (
+                        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a._pkg_name}</p>
+                      {a._shoot_type && (
+                        <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', flexShrink: 0 }}>{a._shoot_type}</span>
+                      )}
+                    </div>
+                    <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, textAlign: 'right' }}>
+                      {a.price ? `₦${Number(a.price).toLocaleString()}` : '—'}
+                    </p>
+                  </Link>
+                </AnimatedItem>
               )
             })}
-          </div>
+          </AnimatedList>
         )}
       </div>
     )
@@ -397,64 +402,66 @@ export default async function PackagesPage({
         />
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-            {(packages as unknown as PackageRow[]).map(pkg => {
+          <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+            {(packages as unknown as PackageRow[]).map((pkg, i) => {
               const s = shootTypeColor(pkg.shoot_type)
               return (
-                <Link key={pkg.package_id} href={`/dashboard/packages/${pkg.package_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
-                  {/* Cover image */}
-                  {pkg.cover_url ? (
-                    <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
-                      <img src={pkg.cover_url} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                    </div>
-                  ) : (
-                    <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <polyline points="21 15 16 10 5 21" />
-                      </svg>
-                    </div>
-                  )}
-                  <div style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                      <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{pkg.name}</p>
-                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
-                        {pkg.is_public === false && (
-                          <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '20px', background: '#f3f3f3', color: '#888', border: '1px solid #e0e0e0', fontWeight: '500' }}>
-                            Hidden
-                          </span>
-                        )}
-                        {pkg.shoot_type && (
-                          <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', whiteSpace: 'nowrap' }}>
-                            {pkg.shoot_type}
-                          </span>
-                        )}
+                <AnimatedItem key={pkg.package_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/packages/${pkg.package_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                    {/* Cover image */}
+                    {pkg.cover_url ? (
+                      <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
+                        <img src={pkg.cover_url} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
                       </div>
-                    </div>
-                    {(pkg.tagline || pkg.description) && (
-                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
-                        {pkg.tagline || pkg.description}
-                      </p>
+                    ) : (
+                      <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="18" height="18" rx="2" />
+                          <circle cx="8.5" cy="8.5" r="1.5" />
+                          <polyline points="21 15 16 10 5 21" />
+                        </svg>
+                      </div>
                     )}
-                    <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-                      <div>
-                        <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Price</p>
-                        <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
-                      </div>
-
-                      {(pkg.package_addons?.length ?? 0) > 0 && (
-                        <div>
-                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Add-ons</p>
-                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.package_addons!.length}</p>
+                    <div style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{pkg.name}</p>
+                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
+                          {pkg.is_public === false && (
+                            <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '20px', background: '#f3f3f3', color: '#888', border: '1px solid #e0e0e0', fontWeight: '500' }}>
+                              Hidden
+                            </span>
+                          )}
+                          {pkg.shoot_type && (
+                            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', whiteSpace: 'nowrap' }}>
+                              {pkg.shoot_type}
+                            </span>
+                          )}
                         </div>
+                      </div>
+                      {(pkg.tagline || pkg.description) && (
+                        <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
+                          {pkg.tagline || pkg.description}
+                        </p>
                       )}
+                      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
+                        <div>
+                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Price</p>
+                          <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
+                        </div>
+
+                        {(pkg.package_addons?.length ?? 0) > 0 && (
+                          <div>
+                            <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Add-ons</p>
+                            <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.package_addons!.length}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </AnimatedItem>
               )
             })}
-          </div>
+          </AnimatedList>
           {totalPages > 1 && (
             <div style={{ marginTop: '1rem' }}>
               <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />

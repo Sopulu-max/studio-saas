@@ -9,6 +9,7 @@ import { buildStudioConfig, getEquipmentCategoryConfig } from '@/lib/studio-conf
 import { ViewSwitcher } from '@/components/view-switcher'
 import { resolveLayout } from '@/lib/view-mode'
 import DonutChart from '@/components/donut-chart'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -195,17 +196,19 @@ export default async function EquipmentPage({
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>{pct.toFixed(0)}%</span>
                   </div>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                       <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
                     </div>
                     {group.map((item, i) => {
                       const catCfg = getEquipmentCategoryConfig(config, item.category)
                       return (
-                        <EquipmentCard key={item.equipment_id} item={item} catStyle={{ bg: catCfg.color_bg, color: catCfg.color_fg }} statusStyle={sc} isLast={i === group.length - 1} />
+                        <AnimatedItem key={item.equipment_id} delay={i * 0.05}>
+                          <EquipmentCard item={item} catStyle={{ bg: catCfg.color_bg, color: catCfg.color_fg }} statusStyle={sc} isLast={i === group.length - 1} />
+                        </AnimatedItem>
                       )
                     })}
-                  </div>
+                  </AnimatedList>
                 </div>
               )
             })}
@@ -265,17 +268,19 @@ export default async function EquipmentPage({
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>{pct.toFixed(0)}%</span>
                   </div>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                       <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
                     </div>
                     {group.map((item, i) => {
                       const sc = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
                       return (
-                        <EquipmentCard key={item.equipment_id} item={item} catStyle={{ bg: cc.color_bg, color: cc.color_fg }} statusStyle={sc} isLast={i === group.length - 1} />
+                        <AnimatedItem key={item.equipment_id} delay={i * 0.05}>
+                          <EquipmentCard item={item} catStyle={{ bg: cc.color_bg, color: cc.color_fg }} statusStyle={sc} isLast={i === group.length - 1} />
+                        </AnimatedItem>
                       )
                     })}
-                  </div>
+                  </AnimatedList>
                 </div>
               )
             })}
@@ -383,37 +388,39 @@ export default async function EquipmentPage({
       {/* ── Grid view ── */}
       {equipLayout === 'grid' && equipment.length > 0 && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
-            {equipment.map((item) => {
+          <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+            {equipment.map((item, i) => {
               const catCfg = getEquipmentCategoryConfig(config, item.category)
               const st     = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
               return (
-                <Link key={item.equipment_id} href={`/dashboard/equipment/${item.equipment_id}`}
-                  style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ height: '5px', background: st.color }} />
-                  <div style={{ padding: '1rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                      <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, lineHeight: 1.3 }}>{item.name}</p>
-                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                        {STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')}
+                <AnimatedItem key={item.equipment_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/equipment/${item.equipment_id}`}
+                    style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                    <div style={{ height: '5px', background: st.color }} />
+                    <div style={{ padding: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                        <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, lineHeight: 1.3 }}>{item.name}</p>
+                        <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                          {STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: catCfg.color_bg, color: catCfg.color_fg, fontWeight: '500', textTransform: 'capitalize' }}>
+                        {catCfg.label || item.category}
                       </span>
+                      <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                          {item.serial_number ? `S/N ${item.serial_number}` : 'No serial no.'}
+                        </p>
+                        {item.status === 'in_use' && item.assigned_to && (
+                          <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: 0 }}>→ {item.assigned_to}</p>
+                        )}
+                      </div>
                     </div>
-                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: catCfg.color_bg, color: catCfg.color_fg, fontWeight: '500', textTransform: 'capitalize' }}>
-                      {catCfg.label || item.category}
-                    </span>
-                    <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                        {item.serial_number ? `S/N ${item.serial_number}` : 'No serial no.'}
-                      </p>
-                      {item.status === 'in_use' && item.assigned_to && (
-                        <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: 0 }}>→ {item.assigned_to}</p>
-                      )}
-                    </div>
-                  </div>
-                </Link>
+                  </Link>
+                </AnimatedItem>
               )
             })}
-          </div>
+          </AnimatedList>
           {totalPages > 1 && (
             <div style={{ marginTop: '1rem' }}>
               <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
@@ -425,7 +432,7 @@ export default async function EquipmentPage({
       {/* ── List view ── */}
       {equipLayout === 'list' && equipment.length > 0 && (
         <>
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
             </div>
@@ -433,26 +440,28 @@ export default async function EquipmentPage({
               const catCfg = getEquipmentCategoryConfig(config, item.category)
               const st     = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
               return (
-                <Link key={item.equipment_id} href={`/dashboard/equipment/${item.equipment_id}`} style={{
-                  display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                  padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                  borderBottom: i < equipment.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  borderLeft: `4px solid ${st.color}`,
-                }}>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>{item.name}</p>
-                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: catCfg.color_bg, color: catCfg.color_fg, fontWeight: '500', textTransform: 'capitalize', display: 'inline-block', width: 'fit-content' }}>
-                    {catCfg.label || item.category}
-                  </span>
-                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                    {item.serial_number ?? '—'}
-                  </p>
-                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', display: 'inline-block', width: 'fit-content' }}>
-                    {STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')}
-                  </span>
-                </Link>
+                <AnimatedItem key={item.equipment_id} delay={i * 0.05}>
+                  <Link href={`/dashboard/equipment/${item.equipment_id}`} style={{
+                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                    borderBottom: i < equipment.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                    borderLeft: `4px solid ${st.color}`,
+                  }}>
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>{item.name}</p>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: catCfg.color_bg, color: catCfg.color_fg, fontWeight: '500', textTransform: 'capitalize', display: 'inline-block', width: 'fit-content' }}>
+                      {catCfg.label || item.category}
+                    </span>
+                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                      {item.serial_number ?? '—'}
+                    </p>
+                    <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: st.bg, color: st.color, fontWeight: '500', display: 'inline-block', width: 'fit-content' }}>
+                      {STATUS_LABELS[item.status] ?? item.status.replace('_', ' ')}
+                    </span>
+                  </Link>
+                </AnimatedItem>
               )
             })}
-          </div>
+          </AnimatedList>
           {totalPages > 1 && (
             <div style={{ marginTop: '1rem' }}>
               <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />

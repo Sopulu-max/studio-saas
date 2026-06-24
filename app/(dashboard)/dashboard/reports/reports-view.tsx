@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import InlineStatusSelect from '@/components/inline-status-select'
 import { sessionName } from '@/lib/session-title'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -379,19 +380,23 @@ export default function ReportsView(props: ReportsViewProps) {
           <>
             <SecHead>Today&apos;s sessions</SecHead>
             <CardList style={{ marginBottom: '20px' }}>
-              {props.todayBookings.map((s, i) => (
-                <div key={s.booking_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1.25rem', borderBottom: i < props.todayBookings.length - 1 ? '1px solid var(--line-inner)' : 'none', gap: '12px' }}>
-                  <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                      {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
-                      {s.shoot_type ? ` · ${s.shoot_type}` : ''}
-                      {s.package_name ? ` · ${s.package_name}` : ''}
-                    </p>
-                  </Link>
-                  <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
-                </div>
-              ))}
+              <AnimatedList>
+                {props.todayBookings.map((s, i) => (
+                  <AnimatedItem key={s.booking_id} delay={i * 0.05}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1.25rem', borderBottom: i < props.todayBookings.length - 1 ? '1px solid var(--line-inner)' : 'none', gap: '12px' }}>
+                      <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                          {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
+                          {s.shoot_type ? ` · ${s.shoot_type}` : ''}
+                          {s.package_name ? ` · ${s.package_name}` : ''}
+                        </p>
+                      </Link>
+                      <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
+                    </div>
+                  </AnimatedItem>
+                ))}
+              </AnimatedList>
             </CardList>
           </>
         )}
@@ -400,15 +405,19 @@ export default function ReportsView(props: ReportsViewProps) {
           <>
             <SecHead>Upcoming — next 30 days ({props.upcomingBookings.length})</SecHead>
             <CardList>
-              {props.upcomingBookings.slice(0, 15).map((s, i) => (
-                <div key={s.booking_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.25rem', borderBottom: i < Math.min(props.upcomingBookings.length, 15) - 1 ? '1px solid var(--line-inner)' : 'none', gap: '12px' }}>
-                  <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
-                    <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{fmtShort(s.session_date)}{s.shoot_type ? ` · ${s.shoot_type}` : ''}</p>
-                  </Link>
-                  <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
-                </div>
-              ))}
+              <AnimatedList>
+                {props.upcomingBookings.slice(0, 15).map((s, i) => (
+                  <AnimatedItem key={s.booking_id} delay={i * 0.05}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.25rem', borderBottom: i < Math.min(props.upcomingBookings.length, 15) - 1 ? '1px solid var(--line-inner)' : 'none', gap: '12px' }}>
+                      <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
+                        <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{fmtShort(s.session_date)}{s.shoot_type ? ` · ${s.shoot_type}` : ''}</p>
+                      </Link>
+                      <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
+                    </div>
+                  </AnimatedItem>
+                ))}
+              </AnimatedList>
               {props.upcomingBookings.length > 15 && (
                 <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
                   <Link href="/dashboard/sessions" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
@@ -471,17 +480,21 @@ export default function ReportsView(props: ReportsViewProps) {
                   <span style={{ fontSize: '12px', fontWeight: '600', background: g.color_bg, color: g.color_fg, padding: '3px 12px', borderRadius: '20px' }}>{g.label}</span>
                   <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)' }}>{g.sessions.length}</span>
                 </div>
-                {g.sessions.slice(0, 5).map((s, i) => (
-                  <div key={s.booking_id} style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(g.sessions.length, 5) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                    <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
-                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
-                        {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
-                      </p>
-                    </Link>
-                    <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
-                  </div>
-                ))}
+                <AnimatedList>
+                  {g.sessions.slice(0, 5).map((s, i) => (
+                    <AnimatedItem key={s.booking_id} delay={i * 0.05}>
+                      <div style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(g.sessions.length, 5) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+                        <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
+                          <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
+                          <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
+                            {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
+                          </p>
+                        </Link>
+                        <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
+                      </div>
+                    </AnimatedItem>
+                  ))}
+                </AnimatedList>
                 {g.sessions.length > 5 && (
                   <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
                     <Link href={`/dashboard/sessions?status=${g.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
@@ -531,15 +544,19 @@ export default function ReportsView(props: ReportsViewProps) {
                 <span key={h} style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', textAlign: i > 0 ? 'right' as const : 'left' as const }}>{h}</span>
               ))}
             </div>
-            {props.topClients.map((c, i) => (
-              <div key={c.client_id} style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: '12px', padding: '0.75rem 1.25rem', borderBottom: i < props.topClients.length - 1 ? '1px solid var(--line-inner)' : 'none', alignItems: 'center' }}>
-                <Link href={`/dashboard/clients/${c.client_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>{c.name}</p>
-                </Link>
-                <span style={{ fontSize: '13px', fontWeight: '600', textAlign: 'right' as const }}>{c.sessions}</span>
-                <span style={{ fontSize: '12px', color: 'var(--text-4)', textAlign: 'right' as const }}>{fmtDate(c.lastSession)}</span>
-              </div>
-            ))}
+            <AnimatedList>
+              {props.topClients.map((c, i) => (
+                <AnimatedItem key={c.client_id} delay={i * 0.05}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 80px 100px', gap: '12px', padding: '0.75rem 1.25rem', borderBottom: i < props.topClients.length - 1 ? '1px solid var(--line-inner)' : 'none', alignItems: 'center' }}>
+                    <Link href={`/dashboard/clients/${c.client_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>{c.name}</p>
+                    </Link>
+                    <span style={{ fontSize: '13px', fontWeight: '600', textAlign: 'right' as const }}>{c.sessions}</span>
+                    <span style={{ fontSize: '12px', color: 'var(--text-4)', textAlign: 'right' as const }}>{fmtDate(c.lastSession)}</span>
+                  </div>
+                </AnimatedItem>
+              ))}
+            </AnimatedList>
           </CardList>
         )}
       </div>
@@ -565,18 +582,22 @@ export default function ReportsView(props: ReportsViewProps) {
                 <span key={h} style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', textAlign: i === 0 ? 'left' as const : 'right' as const }}>{h}</span>
               ))}
             </div>
-            {props.staffSessions.map((s, i) => (
-              <div key={s.staff_id} style={{ display: 'grid', gridTemplateColumns: '1fr 60px 70px 70px 70px', gap: '8px', padding: '0.75rem 1.25rem', borderBottom: i < props.staffSessions.length - 1 ? '1px solid var(--line-inner)' : 'none', alignItems: 'center' }}>
-                <div>
-                  <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{s.name}</p>
-                  {s.role && <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{s.role}</p>}
-                </div>
-                <span style={{ fontSize: '13px', fontWeight: '700', textAlign: 'right' as const }}>{s.total}</span>
-                <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{s.asPhotographer || '—'}</span>
-                <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{s.asEditor || '—'}</span>
-                <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{(s.asVideographer + s.asVideoEditor) || '—'}</span>
-              </div>
-            ))}
+            <AnimatedList>
+              {props.staffSessions.map((s, i) => (
+                <AnimatedItem key={s.staff_id} delay={i * 0.05}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 60px 70px 70px 70px', gap: '8px', padding: '0.75rem 1.25rem', borderBottom: i < props.staffSessions.length - 1 ? '1px solid var(--line-inner)' : 'none', alignItems: 'center' }}>
+                    <div>
+                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px' }}>{s.name}</p>
+                      {s.role && <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{s.role}</p>}
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: '700', textAlign: 'right' as const }}>{s.total}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{s.asPhotographer || '—'}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{s.asEditor || '—'}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{(s.asVideographer + s.asVideoEditor) || '—'}</span>
+                  </div>
+                </AnimatedItem>
+              ))}
+            </AnimatedList>
           </CardList>
         )}
 
@@ -590,13 +611,17 @@ export default function ReportsView(props: ReportsViewProps) {
                 <span key={h} style={{ fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', textAlign: i === 0 ? 'left' as const : 'right' as const }}>{h}</span>
               ))}
             </div>
-            {props.staffAttendance.map((s, i) => (
-              <div key={s.staff_id} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 110px', gap: '8px', padding: '0.75rem 1.25rem', borderBottom: i < props.staffAttendance.length - 1 ? '1px solid var(--line-inner)' : 'none', alignItems: 'center' }}>
-                <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>{s.name}</p>
-                <span style={{ fontSize: '13px', textAlign: 'right' as const }}>{s.daysPresent}</span>
-                <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{s.totalHours > 0 ? `${s.totalHours}h` : '—'}</span>
-              </div>
-            ))}
+            <AnimatedList>
+              {props.staffAttendance.map((s, i) => (
+                <AnimatedItem key={s.staff_id} delay={i * 0.05}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 110px', gap: '8px', padding: '0.75rem 1.25rem', borderBottom: i < props.staffAttendance.length - 1 ? '1px solid var(--line-inner)' : 'none', alignItems: 'center' }}>
+                    <p style={{ fontSize: '13px', fontWeight: '600', margin: 0 }}>{s.name}</p>
+                    <span style={{ fontSize: '13px', textAlign: 'right' as const }}>{s.daysPresent}</span>
+                    <span style={{ fontSize: '13px', color: 'var(--text-3)', textAlign: 'right' as const }}>{s.totalHours > 0 ? `${s.totalHours}h` : '—'}</span>
+                  </div>
+                </AnimatedItem>
+              ))}
+            </AnimatedList>
           </CardList>
         )}
 
@@ -645,15 +670,18 @@ export default function ReportsView(props: ReportsViewProps) {
               <SxnLabel>PACKAGE BOOKINGS — {rangeLabel.toUpperCase()}</SxnLabel>
             </div>
             <div style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column' as const, gap: '10px' }}>
-              {activeStats.map(p => (
-                <HBar
-                  key={p.package_id}
-                  label={p.name}
-                  sub={`${p.bookings} booking${p.bookings !== 1 ? 's' : ''}`}
-                  value={p.bookings}
-                  max={maxBookings}
-                />
-              ))}
+              <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {activeStats.map((p, i) => (
+                  <AnimatedItem key={p.package_id} delay={i * 0.05}>
+                    <HBar
+                      label={p.name}
+                      sub={`${p.bookings} booking${p.bookings !== 1 ? 's' : ''}`}
+                      value={p.bookings}
+                      max={maxBookings}
+                    />
+                  </AnimatedItem>
+                ))}
+              </AnimatedList>
             </div>
           </CardList>
         )}

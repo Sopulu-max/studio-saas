@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { checkIn, checkOut } from '@/app/actions/attendance'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 const DAY_LABELS: Record<string, string> = {
   monday:    'Mon',
@@ -272,23 +273,26 @@ export default function AttendanceBoard({
   return (
     <div>
       {/* Summary tiles */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
+      <AnimatedList style={{ display: 'flex', gap: '10px', marginBottom: '24px', flexWrap: 'wrap' }}>
         {[
           { label: 'Expected in', value: working.length, bg: 'var(--surface)',  color: 'var(--text)' },
           { label: 'Checked in',  value: checkedIn,      bg: '#e6f1fb',         color: '#185fa5' },
           { label: 'Checked out', value: checkedOut,     bg: '#eaf3de',         color: '#3b6d11' },
           { label: 'Late',        value: late,           bg: '#fcebeb',         color: '#a32d2d' },
           { label: 'Not in yet',  value: notIn,          bg: '#faeeda',         color: '#854f0b' },
-        ].map(s => (
-          <div key={s.label} style={{
-            flex: '1 1 100px', padding: '12px 14px', borderRadius: '10px',
-            background: s.bg, border: '1px solid var(--line)',
-          }}>
-            <p style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 2px', color: s.color }}>{s.value}</p>
-            <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: 0 }}>{s.label}</p>
-          </div>
+        ].map((s, i) => (
+          <AnimatedItem key={s.label} delay={i * 0.05} style={{ flex: '1 1 100px' }}>
+            <div style={{
+              padding: '12px 14px', borderRadius: '10px',
+              background: s.bg, border: '1px solid var(--line)',
+              height: '100%'
+            }}>
+              <p style={{ fontSize: '20px', fontWeight: '700', margin: '0 0 2px', color: s.color }}>{s.value}</p>
+              <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: 0 }}>{s.label}</p>
+            </div>
+          </AnimatedItem>
         ))}
-      </div>
+      </AnimatedList>
 
       {/* Note about late threshold */}
       <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 20px' }}>
@@ -301,11 +305,13 @@ export default function AttendanceBoard({
           <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', margin: '0 0 10px' }}>
             Working today — {todayLabel}
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {working.map(m => (
-              <StaffCard key={m.staff_id} member={m} todayDay={todayDay} onUpdate={onUpdate} />
+          <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {working.map((m, i) => (
+              <AnimatedItem key={m.staff_id} delay={i * 0.05}>
+                <StaffCard member={m} todayDay={todayDay} onUpdate={onUpdate} />
+              </AnimatedItem>
             ))}
-          </div>
+          </AnimatedList>
         </div>
       )}
 
@@ -315,11 +321,13 @@ export default function AttendanceBoard({
           <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.06em', margin: '0 0 10px' }}>
             Day off today
           </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {offToday.map(m => (
-              <StaffCard key={m.staff_id} member={m} todayDay={todayDay} onUpdate={onUpdate} />
+          <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {offToday.map((m, i) => (
+              <AnimatedItem key={m.staff_id} delay={i * 0.05}>
+                <StaffCard member={m} todayDay={todayDay} onUpdate={onUpdate} />
+              </AnimatedItem>
             ))}
-          </div>
+          </AnimatedList>
         </div>
       )}
 

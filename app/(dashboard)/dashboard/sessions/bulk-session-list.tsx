@@ -9,6 +9,7 @@ import { getSessionTypeConfig, getStatusConfig } from '@/lib/studio-config'
 import { bulkUpdateSessionStatus } from '@/app/actions/sessions'
 import { sessionName } from '@/lib/session-title'
 import InlineStatusSelect from '@/components/inline-status-select'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 type SessionRow = {
   booking_id:    string
@@ -72,13 +73,14 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
         </div>
 
         {/* Rows */}
+        <AnimatedList>
         {sessions.map((s, i) => {
           const typeCfg    = getSessionTypeConfig(config, s.session_type)
           const statusCfg  = getStatusConfig(config, s.status)
           const isSelected = selected.has(s.booking_id)
           const name       = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
           return (
-            <div key={s.booking_id} style={{
+            <AnimatedItem key={s.booking_id} delay={i * 0.05} style={{
               display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr 1fr',
               padding: '0.875rem 1.25rem', alignItems: 'center',
               borderBottom: i < sessions.length - 1 ? '1px solid var(--line-inner)' : 'none',
@@ -116,9 +118,10 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               <div style={{ display: 'flex' }}>
                 <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
               </div>
-            </div>
+            </AnimatedItem>
           )
         })}
+        </AnimatedList>
       </div>
 
       {/* Floating bulk action bar */}

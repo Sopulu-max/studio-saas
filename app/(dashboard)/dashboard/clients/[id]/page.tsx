@@ -5,6 +5,7 @@ import AvatarUpload from '@/components/avatar-upload'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
 import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
+import WhatsAppActions from '@/components/whatsapp-actions'
 
 type BookingPackageRelation = { name?: string | null } | null
 
@@ -188,6 +189,25 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           })
         )}
       </div>
+
+      <WhatsAppActions
+        phone={client.phone}
+        actions={[
+          {
+            label: 'Send Check-in',
+            msg: `Hi ${client.full_name?.split(' ')[0] || 'there'}, just checking in from ${context.studioId}!`,
+          },
+          ...(outstanding > 0 ? [{
+            label: 'Send Account Balance Reminder',
+            msg: `Hi ${client.full_name?.split(' ')[0] || 'there'}, a quick reminder that there is an outstanding balance of ₦${outstanding.toLocaleString('en-NG')} on your account. Please let us know if you have any questions!`,
+            priority: true,
+          }] : []),
+          ...(bookings.length > 0 ? [{
+            label: 'Follow up on last session',
+            msg: `Hi ${client.full_name?.split(' ')[0] || 'there'}, we hope you loved the photos from your last session. Let us know if you'd like to book another!`,
+          }] : [])
+        ]}
+      />
 
       <ClientActions clientId={id} />
     </div>

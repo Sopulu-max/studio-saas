@@ -5,6 +5,7 @@ import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -214,9 +215,13 @@ export default async function GalleriesPage({
             <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 1rem' }}>
               {galleries.length} gallery{galleries.length !== 1 ? 's' : ''} pending — oldest first
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-              {galleries.map(g => <GalleryCard key={g.gallery_id} g={g} />)}
-            </div>
+            <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+              {galleries.map((g, i) => (
+                <AnimatedItem key={g.gallery_id} delay={i * 0.05}>
+                  <GalleryCard g={g} />
+                </AnimatedItem>
+              ))}
+            </AnimatedList>
           </>
         )}
       </div>
@@ -253,9 +258,13 @@ export default async function GalleriesPage({
           <EmptyState message="No delivered galleries yet" sub="Delivered galleries will appear here" />
         ) : (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-              {galleries.map(g => <GalleryCard key={g.gallery_id} g={g} />)}
-            </div>
+            <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+              {galleries.map((g, i) => (
+                <AnimatedItem key={g.gallery_id} delay={i * 0.05}>
+                  <GalleryCard g={g} />
+                </AnimatedItem>
+              ))}
+            </AnimatedList>
             {totalPages > 1 && (
               <div style={{ marginTop: '1rem' }}>
                 <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
@@ -317,9 +326,13 @@ export default async function GalleriesPage({
         />
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-            {galleries.map(g => <GalleryCard key={g.gallery_id} g={g} />)}
-          </div>
+          <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
+            {galleries.map((g, i) => (
+              <AnimatedItem key={g.gallery_id} delay={i * 0.05}>
+                <GalleryCard g={g} />
+              </AnimatedItem>
+            ))}
+          </AnimatedList>
           {totalPages > 1 && (
             <div style={{ marginTop: '1rem' }}>
               <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />

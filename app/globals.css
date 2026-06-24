@@ -187,6 +187,12 @@
   --shadow-lg:  0 8px 28px rgba(0, 0, 0, 0.60);
 }
 
+/* ─── Theme Toggle Icons ────────────────────────────── */
+.theme-icon-sun { display: none; }
+.theme-icon-moon { display: block; }
+.dark .theme-icon-sun { display: block; }
+.dark .theme-icon-moon { display: none; }
+
 /* ─── Base element styles ────────────────────────────── */
 @layer base {
   *, *::before, *::after {

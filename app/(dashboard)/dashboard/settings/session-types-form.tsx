@@ -5,6 +5,7 @@ import { toast } from 'sonner'
 import { saveSessionTypes } from '@/app/actions/studio-config'
 import type { SessionTypeConfig } from '@/lib/studio-config'
 import { COLOR_PRESETS } from '@/lib/color-presets'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 function slug(label: string) {
   return label.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '')
@@ -104,11 +105,11 @@ export default function SessionTypesForm({ initial }: { initial: SessionTypeConf
       )}
 
       {/* List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '14px' }}>
+      <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '3px', marginBottom: '14px' }}>
         {types.map((t, i) => {
           const isExpanded = expandedIdx === i
           return (
-            <div key={t.value}>
+            <AnimatedItem key={t.value} delay={i * 0.05}>
               {/* Row */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
@@ -154,10 +155,10 @@ export default function SessionTypesForm({ initial }: { initial: SessionTypeConf
                   </div>
                 </div>
               )}
-            </div>
+            </AnimatedItem>
           )
         })}
-      </div>
+      </AnimatedList>
 
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
         <button onClick={handleSave} disabled={loading} style={{ padding: '7px 18px', fontSize: '13px' }}>

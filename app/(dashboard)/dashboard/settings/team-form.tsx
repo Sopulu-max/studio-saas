@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { inviteStaffMember, revokeStaffInvite, resendStaffInvite } from '@/app/actions/team'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 const ROLE_OPTIONS = [
   { value: 'photographer',   label: 'Photographer' },
@@ -113,63 +114,65 @@ export default function TeamForm({ initial }: { initial: StaffMember[] }) {
           No team members yet. Invite someone to get started.
         </p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-          {members.map(m => (
-            <div key={m.staff_id} style={{
-              display: 'flex', alignItems: 'center', gap: '10px',
-              padding: '9px 12px', background: 'var(--surface)',
-              border: '1px solid var(--line-inner)', borderRadius: '8px',
-            }}>
-              {/* Avatar initials */}
+        <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+          {members.map((m, i) => (
+            <AnimatedItem key={m.staff_id} delay={i * 0.05}>
               <div style={{
-                width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
-                background: 'var(--hover)', border: '1px solid var(--line-inner)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: '11px', fontWeight: '600', color: 'var(--text-3)',
+                display: 'flex', alignItems: 'center', gap: '10px',
+                padding: '9px 12px', background: 'var(--surface)',
+                border: '1px solid var(--line-inner)', borderRadius: '8px',
               }}>
-                {m.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
-              </div>
+                {/* Avatar initials */}
+                <div style={{
+                  width: '30px', height: '30px', borderRadius: '50%', flexShrink: 0,
+                  background: 'var(--hover)', border: '1px solid var(--line-inner)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '11px', fontWeight: '600', color: 'var(--text-3)',
+                }}>
+                  {m.full_name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                </div>
 
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                  {m.full_name}
-                </p>
-                <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
-                  {m.email}
-                </p>
-              </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                    {m.full_name}
+                  </p>
+                  <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>
+                    {m.email}
+                  </p>
+                </div>
 
-              <span style={{ fontSize: '12px', color: 'var(--text-3)', flexShrink: 0 }}>
-                {roleLabel(m.role)}
-              </span>
-
-              {/* Status badge */}
-              {m.user_id || m.invite_accepted_at ? (
-                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#eaf3de', color: '#245a0a', flexShrink: 0, fontWeight: '500' }}>
-                  Active
+                <span style={{ fontSize: '12px', color: 'var(--text-3)', flexShrink: 0 }}>
+                  {roleLabel(m.role)}
                 </span>
-              ) : (
-                <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#faeeda', color: '#7a3800', flexShrink: 0, fontWeight: '500' }}>
-                  Pending
-                </span>
-              )}
 
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
-                {!m.user_id && !m.invite_accepted_at && (
-                  <button type="button" onClick={() => handleResend(m.staff_id)}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-3)', padding: '3px 6px', borderRadius: '4px' }}>
-                    Resend
-                  </button>
+                {/* Status badge */}
+                {m.user_id || m.invite_accepted_at ? (
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#eaf3de', color: '#245a0a', flexShrink: 0, fontWeight: '500' }}>
+                    Active
+                  </span>
+                ) : (
+                  <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#faeeda', color: '#7a3800', flexShrink: 0, fontWeight: '500' }}>
+                    Pending
+                  </span>
                 )}
-                <button type="button" onClick={() => handleRevoke(m.staff_id)}
-                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e24b4a', fontSize: '16px', lineHeight: 1, padding: '2px 4px' }}>
-                  ×
-                </button>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: '2px', flexShrink: 0 }}>
+                  {!m.user_id && !m.invite_accepted_at && (
+                    <button type="button" onClick={() => handleResend(m.staff_id)}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '12px', color: 'var(--text-3)', padding: '3px 6px', borderRadius: '4px' }}>
+                      Resend
+                    </button>
+                  )}
+                  <button type="button" onClick={() => handleRevoke(m.staff_id)}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#e24b4a', fontSize: '16px', lineHeight: 1, padding: '2px 4px' }}>
+                    ×
+                  </button>
+                </div>
               </div>
-            </div>
+            </AnimatedItem>
           ))}
-        </div>
+        </AnimatedList>
       )}
 
       <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '14px 0 0' }}>

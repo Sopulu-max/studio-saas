@@ -8,6 +8,7 @@ import { ViewSwitcher } from '@/components/view-switcher'
 import { resolveLayout } from '@/lib/view-mode'
 import BarChart from '@/components/bar-chart'
 import DonutChart from '@/components/donut-chart'
+import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
 const PAGE_SIZE = 20
 
@@ -307,7 +308,7 @@ export default async function InvoicesPage({
                 <>
                   {/* ── List view ── */}
                   {invoiceLayout === 'list' && (
-                    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                         <span>Session</span><span>Total / paid</span><span>Due date</span><span>Status</span>
                       </div>
@@ -318,11 +319,12 @@ export default async function InvoicesPage({
                         const bal     = Math.max(0, total - paid)
                         const partial = paid > 0 && bal > 0
                         return (
-                          <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`} style={{
-                            display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
-                            padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                            borderBottom: i < invoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                          }}>
+                          <AnimatedItem key={inv.invoice_id} delay={i * 0.05}>
+                            <Link href={`/dashboard/invoices/${inv.invoice_id}`} style={{
+                              display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
+                              padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                              borderBottom: i < invoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                            }}>
                             <div>
                               <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
                               <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
@@ -351,23 +353,25 @@ export default async function InvoicesPage({
                             <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
                               {inv.status}
                             </span>
-                          </Link>
+                            </Link>
+                          </AnimatedItem>
                         )
                       })}
-                    </div>
+                    </AnimatedList>
                   )}
 
                   {/* ── Grid view ── */}
                   {invoiceLayout === 'grid' && (
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
-                      {invoices.map((inv) => {
+                    <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
+                      {invoices.map((inv, i) => {
                         const s     = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
                         const paid  = paidMap[inv.invoice_id] ?? 0
                         const total = Number(inv.total ?? 0)
                         const bal   = Math.max(0, total - paid)
                         return (
-                          <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`}
-                            style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                          <AnimatedItem key={inv.invoice_id} delay={i * 0.05}>
+                            <Link href={`/dashboard/invoices/${inv.invoice_id}`}
+                              style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
                             <div style={{ height: '4px', background: s.color }} />
                             <div style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
@@ -397,11 +401,12 @@ export default async function InvoicesPage({
                                   </p>
                                 )}
                               </div>
-                            </div>
-                          </Link>
+                              </div>
+                            </Link>
+                          </AnimatedItem>
                         )
                       })}
-                    </div>
+                    </AnimatedList>
                   )}
 
                   <Pagination
@@ -431,7 +436,7 @@ export default async function InvoicesPage({
               <p style={{ fontSize: '13px', margin: 0 }}>All sent invoices have been settled</p>
             </div>
           ) : (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 90px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', letterSpacing: '0.04em' }}>
                 <span>SESSION</span><span>INVOICE</span><span>BALANCE DUE</span><span>DUE DATE</span><span>STATUS</span>
               </div>
@@ -439,11 +444,12 @@ export default async function InvoicesPage({
                 const s = STATUS_COLORS[inv.status] ?? STATUS_COLORS.sent
                 const isOverdue = inv._daysOverdue !== undefined && inv._daysOverdue > 0
                 return (
-                  <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`} style={{
-                    display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 90px',
-                    padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                    borderBottom: i < outstandingInvoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  }}>
+                  <AnimatedItem key={inv.invoice_id} delay={i * 0.05}>
+                    <Link href={`/dashboard/invoices/${inv.invoice_id}`} style={{
+                      display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 90px',
+                      padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
+                      borderBottom: i < outstandingInvoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
+                    }}>
                     <div>
                       <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
                       <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
@@ -475,9 +481,10 @@ export default async function InvoicesPage({
                       {inv.status}
                     </span>
                   </Link>
+                  </AnimatedItem>
                 )
               })}
-            </div>
+            </AnimatedList>
           )}
         </>
       )}
