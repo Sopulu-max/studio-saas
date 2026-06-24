@@ -15,6 +15,15 @@ type ServiceRecord = {
   session_type?: string | null
   outfits_count?: number | null
   booking_fields?: any[]
+  service_sections?: {
+    section_id:    string
+    title:         string
+    body:          string | null
+    image_url:     string | null
+    video_url:     string | null
+    layout:        string
+    display_order: number
+  }[]
 }
 
 export default async function EditServicePage({
@@ -28,7 +37,7 @@ export default async function EditServicePage({
 
   const { data: svcRaw } = await context.admin
     .from('services')
-    .select('*')
+    .select('*, service_sections(section_id, title, body, image_url, video_url, layout, display_order)')
     .eq('service_id', id)
     .eq('studio_id', context.studioId)
     .single()

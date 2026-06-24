@@ -20,6 +20,7 @@ type PublicSection = {
   body?:         string | null
   image_url?:    string | null
   video_url?:    string | null
+  layout:        string
   display_order: number
 }
 
@@ -125,7 +126,7 @@ export default async function PublicPackageDetailPage({
     admin.from('studios').select('studio_id, name, slug, logo_url, theme').eq('slug', studioSlug).maybeSingle(),
     admin
       .from('packages')
-      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, video_url, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
+      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, video_url, layout, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
       .eq('package_id', packageId)
       .maybeSingle(),
   ])
@@ -321,6 +322,45 @@ export default async function PublicPackageDetailPage({
           overflow: hidden;
           margin-bottom: 16px;
         }
+        .content-section.layout-standard {
+          display: flex; flex-direction: column;
+        }
+        .content-section.layout-split_left {
+          display: flex; flex-direction: row;
+        }
+        .content-section.layout-split_right {
+          display: flex; flex-direction: row-reverse;
+        }
+        .content-section.layout-split_left .media-wrap,
+        .content-section.layout-split_right .media-wrap {
+          width: 50%; aspect-ratio: auto; min-height: 300px; flex-shrink: 0;
+        }
+        .content-section.layout-split_left .section-body-pad,
+        .content-section.layout-split_right .section-body-pad {
+          width: 50%; display: flex; flex-direction: column; justify-content: center;
+        }
+        .content-section.layout-hero {
+          position: relative;
+          min-height: 400px;
+          display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;
+          color: white; border: none;
+        }
+        .content-section.layout-hero .media-wrap {
+          position: absolute; inset: 0; width: 100%; height: 100%; z-index: 1; aspect-ratio: auto; background: #000;
+        }
+        .content-section.layout-hero .media-wrap::after {
+          content: ""; position: absolute; inset: 0; background: rgba(0,0,0,0.5); pointer-events: none;
+        }
+        .content-section.layout-hero .section-body-pad {
+          position: relative; z-index: 2; width: 100%; max-width: 600px; margin: 0 auto;
+        }
+        .content-section.layout-hero .section-title {
+          color: white; font-size: 32px;
+        }
+        .content-section.layout-hero .section-text {
+          color: rgba(255,255,255,0.9);
+        }
+        
         .media-wrap {
           width: 100%; aspect-ratio: 16/9; overflow: hidden; background: #0f0d0a;
           position: relative;
@@ -380,6 +420,18 @@ export default async function PublicPackageDetailPage({
           .stats-bar, .card { padding: 20px; }
           .section-body-pad { padding: 20px 20px; }
           .cta-block { padding: 36px 20px; }
+          .content-section.layout-split_left,
+          .content-section.layout-split_right {
+            flex-direction: column;
+          }
+          .content-section.layout-split_left .media-wrap,
+          .content-section.layout-split_right .media-wrap {
+            width: 100%; aspect-ratio: 16/9; min-height: auto;
+          }
+          .content-section.layout-split_left .section-body-pad,
+          .content-section.layout-split_right .section-body-pad {
+            width: 100%;
+          }
         }
       `}</style>
 
@@ -510,8 +562,10 @@ export default async function PublicPackageDetailPage({
           const video = parseVideo(sec.video_url)
           const hasMedia = video || sec.image_url
           const hasText  = sec.title || sec.body
+          const layoutClass = `layout-${sec.layout || 'standard'}`
+          
           return (
-            <div key={sec.section_id} className="content-section">
+            <div key={sec.section_id} className={`content-section ${layoutClass}`}>
               {hasMedia && (
                 <div className="media-wrap">
                   {video ? (

@@ -27,6 +27,7 @@ type Section = {
   body:      string
   image_url: string
   video_url: string
+  layout?:   string
 }
 
 type TypedInclusion = {
@@ -124,6 +125,7 @@ export async function addPackage(form: {
         body:          s.body || null,
         image_url:     s.image_url || null,
         video_url:     s.video_url || null,
+        layout:        s.layout || 'standard',
         display_order: i,
       })))
     if (sectionsError) return { error: sectionsError.message }
@@ -248,6 +250,7 @@ export async function updatePackage(packageId: string, form: {
         body:          s.body || null,
         image_url:     s.image_url || null,
         video_url:     s.video_url || null,
+        layout:        s.layout || 'standard',
         display_order: i,
       })))
     if (sectionsError) return { error: sectionsError.message }

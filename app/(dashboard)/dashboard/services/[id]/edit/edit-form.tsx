@@ -5,6 +5,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateService } from '@/app/actions/services'
 import { useStudioConfig } from '@/components/studio-config-provider'
+import { motion, AnimatePresence, Reorder, useDragControls } from 'framer-motion'
+import { GripVertical } from 'lucide-react'
 
 const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
 const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
@@ -19,6 +21,58 @@ const SERVICE_TYPES: { value: 'service' | 'product' | 'digital'; label: string; 
   { value: 'digital', label: 'Digital',  icon: '💻', desc: 'Digital files, gallery access, video reels' },
 ]
 
+type Section = { id: string; title: string; body: string; image_url: string; video_url: string; layout: string }
+
+function SectionItem({ sec, i, updateSection, removeSection }: { sec: Section; i: number; updateSection: (i: number, field: keyof Section, val: string) => void; removeSection: (i: number) => void }) {
+  const controls = useDragControls()
+  return (
+    <Reorder.Item value={sec} dragListener={false} dragControls={controls} style={{ border: '1px solid var(--line-inner)', borderRadius: '8px', padding: '12px', marginBottom: '8px', background: 'var(--surface)', listStyle: 'none' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button type="button" onPointerDown={(e) => controls.start(e)} style={{ cursor: 'grab', background: 'none', border: 'none', color: 'var(--text-3)', padding: '4px', display: 'flex', alignItems: 'center', touchAction: 'none' }}>
+            <GripVertical size={16} />
+          </button>
+          <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: 0 }}>SECTION {i + 1}</p>
+        </div>
+        <button onClick={() => removeSection(i)} type="button" style={{ fontSize: '12px', color: '#e24b4a', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+          Remove
+        </button>
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label style={labelStyle}>Layout</label>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {(['standard', 'split_left', 'split_right', 'hero'] as const).map(l => (
+            <button key={l} type="button" onClick={() => updateSection(i, 'layout', l)}
+              style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '0.5px solid', borderColor: sec.layout === l ? 'var(--text)' : 'var(--line)', background: sec.layout === l ? 'var(--btn)' : 'var(--surface)', color: sec.layout === l ? 'var(--btn-fg)' : 'var(--text-2)' }}>
+              {l === 'standard' ? 'Standard' : l === 'split_left' ? 'Image Left' : l === 'split_right' ? 'Image Right' : 'Hero'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label style={labelStyle}>Title</label>
+        <input type="text" value={sec.title} onChange={e => updateSection(i, 'title', e.target.value)} placeholder="e.g. What to expect..." style={inputStyle} />
+      </div>
+      <div style={{ marginBottom: '10px' }}>
+        <label style={labelStyle}>Body text</label>
+        <textarea value={sec.body} onChange={e => updateSection(i, 'body', e.target.value)} placeholder="Detailed description..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <div>
+          <label style={labelStyle}>Image URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
+          <input type="url" value={sec.image_url} onChange={e => updateSection(i, 'image_url', e.target.value)} placeholder="https://..." style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Video URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(YouTube, Vimeo, or .mp4)</span></label>
+          <input type="url" value={sec.video_url} onChange={e => updateSection(i, 'video_url', e.target.value)} placeholder="https://youtube.com/watch?v=..." style={inputStyle} />
+        </div>
+      </div>
+    </Reorder.Item>
+  )
+}
+
 type ServiceRecord = {
   service_id:    string
   name:          string
@@ -32,6 +86,15 @@ type ServiceRecord = {
   session_type?: string | null
   outfits_count?: number | null
   booking_fields?: any[]
+  service_sections?: {
+    section_id:    string
+    title:         string
+    body:          string | null
+    image_url:     string | null
+    video_url:     string | null
+    layout:        string
+    display_order: number
+  }[]
 }
 
 export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
@@ -52,7 +115,24 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
     session_type:  svc.session_type || 'any',
     outfits_count: svc.outfits_count != null ? String(svc.outfits_count) : '',
     booking_fields: Array.isArray(svc.booking_fields) ? svc.booking_fields : [],
+    sections: (svc.service_sections || []).sort((a, b) => a.display_order - b.display_order).map(s => ({
+      id: s.section_id, title: s.title, body: s.body || '', image_url: s.image_url || '', video_url: s.video_url || '', layout: s.layout || 'standard'
+    })) as Section[],
   })
+
+  function addSection() {
+    setForm(prev => ({ ...prev, sections: [...prev.sections, { id: Math.random().toString(), title: '', body: '', image_url: '', video_url: '', layout: 'standard' }] }))
+  }
+  function updateSection(i: number, field: keyof Section, value: string) {
+    setForm(prev => {
+      const next = [...prev.sections]
+      next[i] = { ...next[i], [field]: value }
+      return { ...prev, sections: next }
+    })
+  }
+  function removeSection(i: number) {
+    setForm(prev => ({ ...prev, sections: prev.sections.filter((_, idx) => idx !== i) }))
+  }
 
   function update(field: string, value: string | boolean | any[]) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -247,6 +327,27 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
                 )}
               </div>
             </div>
+          )}
+        </div>
+
+        {/* Content sections */}
+        <div style={sectionStyle}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Content sections</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Rich blocks for the public service detail page</p>
+            </div>
+            <button onClick={addSection} type="button" style={{ padding: '6px 12px', fontSize: '13px' }}>+ Add section</button>
+          </div>
+          {form.sections.length === 0 && (
+            <p style={{ fontSize: '13px', color: 'var(--text-4)', textAlign: 'center', padding: '1rem 0' }}>No sections yet</p>
+          )}
+          {form.sections.length > 0 && (
+            <Reorder.Group axis="y" values={form.sections} onReorder={(vals) => setForm(prev => ({ ...prev, sections: vals }))} style={{ padding: 0, margin: 0 }}>
+              {form.sections.map((sec, i) => (
+                <SectionItem key={sec.id} sec={sec} i={i} updateSection={updateSection} removeSection={removeSection} />
+              ))}
+            </Reorder.Group>
           )}
         </div>
 

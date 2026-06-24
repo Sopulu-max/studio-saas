@@ -16,6 +16,13 @@ const serviceSchema = z.object({
   session_type:  z.string().optional().nullable(),
   outfits_count: z.string().optional().nullable(),
 })
+type Section = {
+  title:     string
+  body:      string
+  image_url: string
+  video_url: string
+  layout?:   string
+}
 
 export async function addService(form: {
   name: string
@@ -29,6 +36,7 @@ export async function addService(form: {
   session_type?: string | null
   outfits_count?: string | null
   booking_fields?: any[]
+  sections?: Section[]
 }) {
   const result = serviceSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -57,8 +65,26 @@ export async function addService(form: {
 
   if (error) return { error: error.message }
 
+  const svcId = svc?.service_id
+
+  // Insert sections
+  if (svcId && (form.sections ?? []).length > 0) {
+    const { error: sectionsError } = await context.admin
+      .from('service_sections')
+      .insert((form.sections!).map((s, i) => ({
+        service_id:    svcId,
+        title:         s.title,
+        body:          s.body || null,
+        image_url:     s.image_url || null,
+        video_url:     s.video_url || null,
+        layout:        s.layout || 'standard',
+        display_order: i,
+      })))
+    if (sectionsError) return { error: sectionsError.message }
+  }
+
   revalidatePath('/dashboard/services')
-  return { error: null, serviceId: svc?.service_id ?? null }
+  return { error: null, serviceId: svcId ?? null }
 }
 
 export async function updateService(serviceId: string, form: {
@@ -73,6 +99,7 @@ export async function updateService(serviceId: string, form: {
   session_type?: string | null
   outfits_count?: string | null
   booking_fields?: any[]
+  sections?: Section[]
 }) {
   const result = serviceSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -101,11 +128,28 @@ export async function updateService(serviceId: string, form: {
     })
     .eq('service_id', serviceId)
 
-  if (!error) {
-    revalidatePath(`/dashboard/services/${serviceId}`)
-    revalidatePath('/dashboard/services')
+  if (error) return { error: error.message }
+
+  // Sections: delete all + re-insert
+  await context.admin.from('service_sections').delete().eq('service_id', serviceId)
+  if ((form.sections ?? []).length > 0) {
+    const { error: sectionsError } = await context.admin
+      .from('service_sections')
+      .insert((form.sections!).map((s, i) => ({
+        service_id:    serviceId,
+        title:         s.title,
+        body:          s.body || null,
+        image_url:     s.image_url || null,
+        video_url:     s.video_url || null,
+        layout:        s.layout || 'standard',
+        display_order: i,
+      })))
+    if (sectionsError) return { error: sectionsError.message }
   }
-  return { error: error?.message ?? null }
+
+  revalidatePath(`/dashboard/services/${serviceId}`)
+  revalidatePath('/dashboard/services')
+  return { error: null }
 }
 
 export async function toggleServiceActive(serviceId: string, isActive: boolean) {

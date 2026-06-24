@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation'
 import { updatePackage } from '@/app/actions/packages'
 import { useStudioConfig } from '@/components/studio-config-provider'
 import CoverUpload from '@/components/cover-upload'
+import { Reorder, useDragControls } from 'framer-motion'
+import { GripVertical } from 'lucide-react'
 
 const CATEGORY_SUGGESTIONS = [
   'Portrait', 'Wedding', 'Maternity', 'Corporate', 'Fashion',
@@ -23,12 +25,12 @@ const INCLUSION_SUGGESTIONS = [
 ]
 
 type Addon = { name: string; description: string; price: string }
-type Section = { title: string; body: string; image_url: string; video_url: string }
+type Section = { id: string; title: string; body: string; image_url: string; video_url: string; layout: string }
 type TypedInclusion = { label: string; type: 'service' | 'product' | 'digital' }
 type LinkedService = { service_id: string; is_addon: boolean; addon_price: string }
 
 type PackageAddonRecord = { name?: string | null; description?: string | null; price?: number | string | null }
-type PackageSectionRecord = { section_id: string; title: string; body?: string | null; image_url?: string | null; video_url?: string | null; display_order: number }
+type PackageSectionRecord = { section_id: string; title: string; body?: string | null; image_url?: string | null; video_url?: string | null; layout?: string; display_order: number }
 type PackageInclusionRecord = { inclusion_id: string; label: string; type: string; display_order: number }
 
 type EditPackageRecord = {
@@ -87,6 +89,56 @@ const INCLUSION_TYPES: { value: 'service' | 'product' | 'digital'; label: string
   { value: 'digital',  label: 'Digital',  icon: '💻' },
 ]
 
+function SectionItem({ sec, i, updateSection, removeSection }: { sec: Section; i: number; updateSection: (i: number, field: keyof Section, val: string) => void; removeSection: (i: number) => void }) {
+  const controls = useDragControls()
+  return (
+    <Reorder.Item value={sec} dragListener={false} dragControls={controls} style={{ border: '1px solid var(--line-inner)', borderRadius: '8px', padding: '12px', marginBottom: '8px', background: 'var(--surface)', listStyle: 'none' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <button type="button" onPointerDown={(e) => controls.start(e)} style={{ cursor: 'grab', background: 'none', border: 'none', color: 'var(--text-3)', padding: '4px', display: 'flex', alignItems: 'center', touchAction: 'none' }}>
+            <GripVertical size={16} />
+          </button>
+          <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: 0 }}>SECTION {i + 1}</p>
+        </div>
+        <button onClick={() => removeSection(i)} type="button" style={{ fontSize: '12px', color: '#e24b4a', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
+          Remove
+        </button>
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label style={labelStyle}>Layout</label>
+        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          {(['standard', 'split_left', 'split_right', 'hero'] as const).map(l => (
+            <button key={l} type="button" onClick={() => updateSection(i, 'layout', l)}
+              style={{ padding: '5px 10px', borderRadius: '6px', fontSize: '12px', cursor: 'pointer', border: '0.5px solid', borderColor: sec.layout === l ? 'var(--text)' : 'var(--line)', background: sec.layout === l ? 'var(--btn)' : 'var(--surface)', color: sec.layout === l ? 'var(--btn-fg)' : 'var(--text-2)' }}>
+              {l === 'standard' ? 'Standard' : l === 'split_left' ? 'Image Left' : l === 'split_right' ? 'Image Right' : 'Hero'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{ marginBottom: '10px' }}>
+        <label style={labelStyle}>Title</label>
+        <input type="text" value={sec.title} onChange={e => updateSection(i, 'title', e.target.value)} placeholder="e.g. What to expect..." style={inputStyle} />
+      </div>
+      <div style={{ marginBottom: '10px' }}>
+        <label style={labelStyle}>Body text</label>
+        <textarea value={sec.body} onChange={e => updateSection(i, 'body', e.target.value)} placeholder="Detailed description..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+        <div>
+          <label style={labelStyle}>Image URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
+          <input type="url" value={sec.image_url} onChange={e => updateSection(i, 'image_url', e.target.value)} placeholder="https://..." style={inputStyle} />
+        </div>
+        <div>
+          <label style={labelStyle}>Video URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(YouTube, Vimeo, or .mp4)</span></label>
+          <input type="url" value={sec.video_url} onChange={e => updateSection(i, 'video_url', e.target.value)} placeholder="https://youtube.com/watch?v=..." style={inputStyle} />
+        </div>
+      </div>
+    </Reorder.Item>
+  )
+}
+
 export default function EditPackageForm({
   pkg,
   availableServices = [],
@@ -124,7 +176,7 @@ export default function EditPackageForm({
     (pkg.package_addons ?? []).map(a => ({ name: a.name ?? '', description: a.description ?? '', price: String(a.price) }))
   )
   const [sections,       setSections]       = useState<Section[]>(
-    (pkg.package_sections ?? []).map(s => ({ title: s.title, body: s.body ?? '', image_url: s.image_url ?? '', video_url: s.video_url ?? '' }))
+    (pkg.package_sections ?? []).map(s => ({ id: s.section_id || Math.random().toString(), title: s.title, body: s.body ?? '', image_url: s.image_url ?? '', video_url: s.video_url ?? '', layout: s.layout || 'standard' }))
   )
   const [typedInclusions, setTypedInclusions] = useState<TypedInclusion[]>(
     (pkg.package_inclusions ?? []).map(i => ({ label: i.label, type: i.type as 'service' | 'product' | 'digital' }))
@@ -159,20 +211,11 @@ export default function EditPackageForm({
   function removeAddon(i: number) { setAddons(prev => prev.filter((_, idx) => idx !== i)) }
 
   // ─── Sections ────────────────────────────────────────────────────
-  function addSection() { setSections(prev => [...prev, { title: '', body: '', image_url: '', video_url: '' }]) }
+  function addSection() { setSections(prev => [...prev, { id: Math.random().toString(), title: '', body: '', image_url: '', video_url: '', layout: 'standard' }]) }
   function updateSection(i: number, field: keyof Section, value: string) {
     setSections(prev => prev.map((s, idx) => idx === i ? { ...s, [field]: value } : s))
   }
   function removeSection(i: number) { setSections(prev => prev.filter((_, idx) => idx !== i)) }
-  function moveSection(i: number, dir: -1 | 1) {
-    setSections(prev => {
-      const next = [...prev]
-      const j = i + dir
-      if (j < 0 || j >= next.length) return prev
-      ;[next[i], next[j]] = [next[j], next[i]]
-      return next
-    })
-  }
 
   // ─── Typed inclusions ────────────────────────────────────────────
   function addTypedInclusion() { setTypedInclusions(prev => [...prev, { label: '', type: 'service' }]) }
@@ -608,55 +651,13 @@ export default function EditPackageForm({
           <p style={{ fontSize: '13px', color: 'var(--text-4)', textAlign: 'center', padding: '1rem 0' }}>No sections yet — add one to build the public detail page</p>
         )}
 
-        {sections.map((sec, i) => (
-          <div key={i} style={{ border: '1px solid var(--line-inner)', borderRadius: '8px', padding: '12px', marginBottom: '8px' }}>
-            {/* Header row with move + remove */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-              <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: 0 }}>SECTION {i + 1}</p>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button onClick={() => moveSection(i, -1)} type="button" disabled={i === 0}
-                  style={{ fontSize: '13px', background: 'none', border: 'none', cursor: i > 0 ? 'pointer' : 'default', color: i > 0 ? 'var(--text-3)' : 'var(--text-4)', padding: '2px 4px' }}>
-                  ↑
-                </button>
-                <button onClick={() => moveSection(i, 1)} type="button" disabled={i === sections.length - 1}
-                  style={{ fontSize: '13px', background: 'none', border: 'none', cursor: i < sections.length - 1 ? 'pointer' : 'default', color: i < sections.length - 1 ? 'var(--text-3)' : 'var(--text-4)', padding: '2px 4px' }}>
-                  ↓
-                </button>
-                <button onClick={() => removeSection(i)} type="button"
-                  style={{ fontSize: '12px', color: '#e24b4a', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-                  Remove
-                </button>
-              </div>
-            </div>
-            <div style={{ marginBottom: '10px' }}>
-              <label style={labelStyle}>Title</label>
-              <input type="text" value={sec.title}
-                onChange={e => updateSection(i, 'title', e.target.value)}
-                placeholder="e.g. What to expect, Turnaround time..." style={inputStyle} />
-            </div>
-            <div style={{ marginBottom: '10px' }}>
-              <label style={labelStyle}>Body text</label>
-              <textarea value={sec.body}
-                onChange={e => updateSection(i, 'body', e.target.value)}
-                placeholder="Detailed description for this section..."
-                rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-              <div>
-                <label style={labelStyle}>Image URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
-                <input type="url" value={sec.image_url}
-                  onChange={e => updateSection(i, 'image_url', e.target.value)}
-                  placeholder="https://..." style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Video URL <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(YouTube, Vimeo, or .mp4)</span></label>
-                <input type="url" value={sec.video_url}
-                  onChange={e => updateSection(i, 'video_url', e.target.value)}
-                  placeholder="https://youtube.com/watch?v=..." style={inputStyle} />
-              </div>
-            </div>
-          </div>
-        ))}
+        {sections.length > 0 && (
+          <Reorder.Group axis="y" values={sections} onReorder={setSections} style={{ padding: 0, margin: 0 }}>
+            {sections.map((sec, i) => (
+              <SectionItem key={sec.id} sec={sec} i={i} updateSection={updateSection} removeSection={removeSection} />
+            ))}
+          </Reorder.Group>
+        )}
       </div>
 
       {/* Contract template */}

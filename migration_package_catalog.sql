@@ -17,9 +17,14 @@ CREATE TABLE IF NOT EXISTS package_sections (
   title         text        NOT NULL DEFAULT '',
   body          text,
   image_url     text,
+  video_url     text,
+  layout        text        NOT NULL DEFAULT 'standard',
   display_order integer     NOT NULL DEFAULT 0,
   created_at    timestamptz DEFAULT now()
 );
+
+-- ADD COLUMN IF NOT EXISTS for layout (in case the table already exists)
+ALTER TABLE package_sections ADD COLUMN IF NOT EXISTS layout text NOT NULL DEFAULT 'standard';
 
 -- 3. Typed inclusions — what's in the box (service / product / digital)
 --    (distinct from the existing `inclusions` text[] bullet list)
