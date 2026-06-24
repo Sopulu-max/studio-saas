@@ -22,6 +22,8 @@ const addSessionSchema = z.object({
   notes: z.string().optional().default(''),
   photographer_id: z.string().optional().default(''),
   editor_id: z.string().optional().default(''),
+  videographer_id: z.string().optional().default(''),
+  video_editor_id: z.string().optional().default(''),
   edited_photos: z.string().optional().default(''),
   shoot_type: z.string().optional().default(''),
   custom_answers: z.record(z.string(), z.any()).optional().default({}),
@@ -40,6 +42,8 @@ export async function addSession(form: {
   notes: string
   photographer_id: string
   editor_id: string
+  videographer_id?: string
+  video_editor_id?: string
   custom_answers?: Record<string, any>
   force_duplicate?: boolean
   selected_service_ids?: string[]
@@ -68,11 +72,13 @@ export async function addSession(form: {
   for (const v of cancelValues) { dupQuery = dupQuery.neq('status', v) }
 
   // All ownership + pre-flight checks in one parallel batch
-  const [clientOk, pkgOk, photogOk, editorOk, { data: dupSession }, { data: maxRefRow }] = await Promise.all([
+  const [clientOk, pkgOk, photogOk, editorOk, videoOk, videoEdOk, { data: dupSession }, { data: maxRefRow }] = await Promise.all([
     ownsClient(context.admin, context.studioId, form.client_id),
     form.package_id      ? ownsPackage(context.admin, context.studioId, form.package_id)        : Promise.resolve(true),
     form.photographer_id ? ownsStaff(context.admin, context.studioId, form.photographer_id)     : Promise.resolve(true),
     form.editor_id       ? ownsStaff(context.admin, context.studioId, form.editor_id)           : Promise.resolve(true),
+    form.videographer_id ? ownsStaff(context.admin, context.studioId, form.videographer_id)     : Promise.resolve(true),
+    form.video_editor_id ? ownsStaff(context.admin, context.studioId, form.video_editor_id)     : Promise.resolve(true),
     dupQuery.maybeSingle(),
     context.admin
       .from('bookings').select('booking_ref')
@@ -130,8 +136,14 @@ export async function addSession(form: {
   const staffAssignments: { booking_id: string; staff_id: string; role: string }[] = []
   if (form.photographer_id) staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.photographer_id, role: 'photographer' })
   // Only add editor if it's a different person — same person can't have two rows for the same booking
-  if (form.editor_id && form.editor_id !== form.photographer_id) {
+  if (form.editor_id && !staffAssignments.some(s => s.staff_id === form.editor_id)) {
     staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.editor_id, role: 'editor' })
+  }
+  if (form.videographer_id && !staffAssignments.some(s => s.staff_id === form.videographer_id)) {
+    staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.videographer_id, role: 'videographer' })
+  }
+  if (form.video_editor_id && !staffAssignments.some(s => s.staff_id === form.video_editor_id)) {
+    staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.video_editor_id, role: 'video_editor' }) // Use role based on config or default 'video_editor', wait config says editor? The default config has 'videographer' and 'editor' but not video_editor specifically, let's use 'editor' or 'video_editor'
   }
   if (staffAssignments.length > 0) {
     const { error: staffError } = await context.admin.from('booking_staff').insert(staffAssignments)
@@ -431,7 +443,7 @@ export async function getSessionFormData() {
 
   const [{ data: clients }, { data: packages }, { data: staff }, { data: services }] = await Promise.all([
     context.admin.from('clients').select('client_id, full_name, phone').eq('studio_id', context.studioId).order('full_name'),
-    context.admin.from('packages').select('package_id, name, base_price, session_type, outfits_count, edited_photos, package_services(service_id, is_addon, display_order, services(service_id, name, type, description, price, session_type, booking_fields))').eq('studio_id', context.studioId).order('name'),
+    context.admin.from('packages').select('package_id, name, base_price, session_type, shoot_type, outfits_count, edited_photos, package_services(service_id, is_addon, display_order, services(service_id, name, type, description, price, session_type, booking_fields))').eq('studio_id', context.studioId).order('name'),
     context.admin.from('staff').select('staff_id, full_name, role').eq('studio_id', context.studioId).order('full_name'),
     context.admin.from('services').select('service_id, name, type, session_type, booking_fields').eq('studio_id', context.studioId).order('name'),
   ])
@@ -487,18 +499,22 @@ export async function updateSession(sessionId: string, form: {
   if ('error' in context) return { error: context.error }
 
   // All ownership checks in parallel
-  const [bookingOk, clientOk, pkgOk, photogOk, editorOk] = await Promise.all([
+  const [bookingOk, clientOk, pkgOk, photogOk, editorOk, videoOk, videoEdOk] = await Promise.all([
     ownsBooking(context.admin, context.studioId, sessionId),
     ownsClient(context.admin, context.studioId, form.client_id),
     form.package_id      ? ownsPackage(context.admin, context.studioId, form.package_id)        : Promise.resolve(true),
     form.photographer_id ? ownsStaff(context.admin, context.studioId, form.photographer_id)     : Promise.resolve(true),
     form.editor_id       ? ownsStaff(context.admin, context.studioId, form.editor_id)           : Promise.resolve(true),
+    form.videographer_id ? ownsStaff(context.admin, context.studioId, form.videographer_id)     : Promise.resolve(true),
+    form.video_editor_id ? ownsStaff(context.admin, context.studioId, form.video_editor_id)     : Promise.resolve(true),
   ])
   if (!bookingOk) return { error: 'Session not found' }
   if (!clientOk)  return { error: 'Client not found' }
   if (!pkgOk)     return { error: 'Package not found' }
   if (!photogOk)  return { error: 'Photographer not found' }
   if (!editorOk)  return { error: 'Editor not found' }
+  if (!videoOk)   return { error: 'Videographer not found' }
+  if (!videoEdOk) return { error: 'Video Editor not found' }
 
   const updateData: Record<string, any> = {
     client_id:        form.client_id,

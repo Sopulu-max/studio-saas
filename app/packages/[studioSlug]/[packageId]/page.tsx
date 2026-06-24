@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import type { Metadata } from 'next'
 import { buildTheme, themeCssVars } from '@/lib/studio-theme'
+import PackageIntakeDrawer from './package-intake-drawer'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -122,13 +123,18 @@ export default async function PublicPackageDetailPage({
   const { studioSlug, packageId } = await params
   const admin = createAdminClient()
 
-  const [{ data: studioRaw }, { data: pkgRaw }] = await Promise.all([
-    admin.from('studios').select('studio_id, name, slug, logo_url, theme').eq('slug', studioSlug).maybeSingle(),
+  const [{ data: studioRaw }, { data: pkgRaw }, { data: allServicesRaw }] = await Promise.all([
+    admin.from('studios').select('studio_id, name, slug, logo_url, theme, session_types, service_types, booking_statuses').eq('slug', studioSlug).maybeSingle(),
     admin
       .from('packages')
-      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, video_url, layout, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price))')
+      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, video_url, layout, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields))')
       .eq('package_id', packageId)
       .maybeSingle(),
+    admin
+      .from('services')
+      .select('service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields')
+      .eq('is_active', true)
+      // We will filter by studio_id below after fetching studio
   ])
 
   const studio = studioRaw as unknown as StudioMeta | null
@@ -450,9 +456,9 @@ export default async function PublicPackageDetailPage({
             <span className="nav-back-arrow">←</span>{studio.name}
           </Link>
         </div>
-        <Link href={`/book/${studioSlug}?package=${packageId}`} className="nav-book">
+        <a href="#book" className="nav-book">
           Book now →
-        </Link>
+        </a>
       </nav>
 
       {/* ── Header / Hero ── */}
@@ -469,20 +475,20 @@ export default async function PublicPackageDetailPage({
           </div>
           <div className="hero-overlay" />
           <div className="hero-content">
-            <h1 className="hero-name">{heroSec.title || pkg.name}</h1>
-            {heroSec.body && <p className="hero-tagline">{heroSec.body}</p>}
-            <p className="hero-price">₦{price.toLocaleString()}</p>
-            <Link href={`/book/${studioSlug}?package=${packageId}`} className="hero-cta">
-              Book this package →
-            </Link>
+            {pkg.tagline && <p className="hero-tagline">{pkg.tagline}</p>}
+            <h1 className="hero-name">{pkg.name}</h1>
+            {pkg.description && <p className="hero-desc">{pkg.description}</p>}
+            <a href="#book" className="hero-cta">
+              Book now — ₦{price.toLocaleString()} →
+            </a>
           </div>
         </div>
       ) : (
         <div className="pkg-header">
           <h1 className="pkg-header-name">{pkg.name}</h1>
-          <Link href={`/book/${studioSlug}?package=${packageId}`} className="pkg-header-cta">
+          <a href="#book" className="pkg-header-cta">
             Book now — ₦{price.toLocaleString()} →
-          </Link>
+          </a>
         </div>
       )}
 
@@ -662,6 +668,15 @@ export default async function PublicPackageDetailPage({
         </div>
         <p className="powered">Powered by Weave</p>
       </div>
+      
+      {/* ── The Dynamic Intake Drawer ── */}
+      <PackageIntakeDrawer 
+        studioId={studio.studio_id}
+        studioName={studio.name ?? 'Studio'}
+        sessionTypes={(studio as any).session_types as any[]}
+        catalogServices={allServicesRaw || []}
+        pkg={pkg}
+      />
     </>
   )
 }

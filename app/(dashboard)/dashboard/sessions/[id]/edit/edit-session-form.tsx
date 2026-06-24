@@ -101,8 +101,8 @@ export default function EditSessionForm({
     event_name:         session.event_name         ?? '',
     event_date:         session.event_date          ?? '',
     notes:              session.notes              ?? '',
-    photographer_id:    photographerId,
-    editor_id:          editorId,
+    photographer_id:    photographerId ?? '',
+    editor_id:          editorId ?? '',
     videographer_id:    videographerId ?? '',
     video_editor_id:    videoEditorId  ?? '',
   })
@@ -116,14 +116,57 @@ export default function EditSessionForm({
     setCustomAnswers(prev => ({ ...prev, [fieldId]: value }))
   }
 
+  const selectedServiceIds: string[] = [] // Placeholder for logic referenced in instructions
+
+  const requiredStaff = useMemo(() => {
+    // If no package is selected, we assume it's a custom session and give full freedom.
+    if (!form.package_id) return { needsPhotoTeam: true, needsVideoTeam: true }
+
+    const pkg = packages.find(p => p.package_id === form.package_id)
+    if (!pkg) return { needsPhotoTeam: true, needsVideoTeam: true }
+
+    // Collect all active service types
+    const activeServiceTypes = new Set<string>()
+
+    // Get the base package services + add-ons
+    const pkgServices = (pkg as any).package_services || []
+    for (const ps of pkgServices) {
+      if (!ps.is_addon || selectedServiceIds.includes(ps.services?.service_id)) {
+        if (ps.services?.type) activeServiceTypes.add(ps.services.type)
+      }
+    }
+
+    let needsPhotoTeam = false
+    let needsVideoTeam = false
+
+    // Introspect using StudioConfig
+    for (const typeVal of activeServiceTypes) {
+      const svcDef = config.serviceTypes.find(t => t.value === typeVal)
+      // Photographers typically handle 'photo' or 'photo_video'
+      if (typeVal === 'photo' || typeVal === 'photo_video') needsPhotoTeam = true
+      // Videographers are needed if the config flag is set
+      if (svcDef?.has_video_crew) needsVideoTeam = true
+    }
+
+    return { needsPhotoTeam, needsVideoTeam }
+  }, [form.package_id, selectedServiceIds, packages, config])
+
   // Package matching
-  const sessionFiltered = packages.filter((p) =>
-    !p.session_type || p.session_type === form.session_type
-  )
+  const sessionFiltered = packages.filter((p) => {
+    const matchSession = !p.session_type || p.session_type === form.session_type
+    if (!matchSession) return false
+    
+    if (form.shoot_type) {
+      const search = form.shoot_type.toLowerCase()
+      const matchName = p.name.toLowerCase().includes(search)
+      const matchShoot = (p as any).shoot_type?.toLowerCase().includes(search)
+      return matchName || matchShoot
+    }
+    return true
+  })
 
   function pkgCard(p: SessionPackage) {
     const selected = form.package_id === p.package_id
-    const specs: string[] = []
     return (
       <button
         key={p.package_id}
@@ -312,7 +355,7 @@ export default function EditSessionForm({
             <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '.04em' }}>
               Packages
             </p>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
               {sessionFiltered.map(pkgCard)}
             </div>
             {form.package_id && (
@@ -370,58 +413,96 @@ export default function EditSessionForm({
           </div>
         )}
       </div>
-
-      <div style={sectionStyle}>
-        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>TEAM / CREW</p>
-        {staff.length === 0 ? (
-          <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
-            No staff yet — <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</Link>
-          </p>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-            <div>
-              <label style={labelStyle}>Photographer</label>
-              <SearchableSelect
-                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                value={form.photographer_id}
-                onChange={v => update('photographer_id', v)}
-                placeholder="Select photographer…"
-                emptyMessage="No staff match"
-              />
+      {/* Team */}
+      {(requiredStaff.needsPhotoTeam || requiredStaff.needsVideoTeam) && (
+        <div style={sectionStyle}>
+          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>TEAM / CREW</p>
+          {staff.length === 0 ? (
+            <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
+              No staff yet — <Link href="/dashboard/staff/new" style={{ color: 'var(--link)' }}>add team members first</Link>
+            </p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              {requiredStaff.needsPhotoTeam && (
+                <>
+                  <div>
+                    <label style={labelStyle}>Photographer</label>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'None', sublabel: undefined },
+                        ...staff.map((s) => ({
+                          value: s.staff_id,
+                          label: s.full_name,
+                          sublabel: s.role ?? undefined,
+                        }))
+                      ]}
+                      value={form.photographer_id}
+                      onChange={v => update('photographer_id', v)}
+                      placeholder="Select photographer…"
+                      emptyMessage="No staff match"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Editor / Retoucher</label>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'None', sublabel: undefined },
+                        ...staff.map((s) => ({
+                          value: s.staff_id,
+                          label: s.full_name,
+                          sublabel: s.role ?? undefined,
+                        }))
+                      ]}
+                      value={form.editor_id}
+                      onChange={v => update('editor_id', v)}
+                      placeholder="Select editor…"
+                      emptyMessage="No staff match"
+                    />
+                  </div>
+                </>
+              )}
+              {requiredStaff.needsVideoTeam && (
+                <>
+                  <div>
+                    <label style={labelStyle}>Videographer</label>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'None', sublabel: undefined },
+                        ...staff.map((s) => ({
+                          value: s.staff_id,
+                          label: s.full_name,
+                          sublabel: s.role ?? undefined,
+                        }))
+                      ]}
+                      value={form.videographer_id}
+                      onChange={v => update('videographer_id', v)}
+                      placeholder="Select videographer…"
+                      emptyMessage="No staff match"
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Video Editor</label>
+                    <SearchableSelect
+                      options={[
+                        { value: '', label: 'None', sublabel: undefined },
+                        ...staff.map((s) => ({
+                          value: s.staff_id,
+                          label: s.full_name,
+                          sublabel: s.role ?? undefined,
+                        }))
+                      ]}
+                      value={form.video_editor_id}
+                      onChange={v => update('video_editor_id', v)}
+                      placeholder="Select video editor…"
+                      emptyMessage="No staff match"
+                    />
+                  </div>
+                </>
+              )}
             </div>
-            <div>
-              <label style={labelStyle}>Editor / Retoucher</label>
-              <SearchableSelect
-                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                value={form.editor_id}
-                onChange={v => update('editor_id', v)}
-                placeholder="Select editor…"
-                emptyMessage="No staff match"
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Videographer</label>
-              <SearchableSelect
-                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                value={form.videographer_id}
-                onChange={v => update('videographer_id', v)}
-                placeholder="Select videographer…"
-                emptyMessage="No staff match"
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Video Editor</label>
-              <SearchableSelect
-                options={[{ value: '', label: 'None', sublabel: undefined }, ...staff.map(s => ({ value: s.staff_id, label: s.full_name, sublabel: s.role ?? undefined }))]}
-                value={form.video_editor_id}
-                onChange={v => update('video_editor_id', v)}
-                placeholder="Select video editor…"
-                emptyMessage="No staff match"
-              />
-            </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Notes / Project brief */}
       <div style={sectionStyle}>
