@@ -24,12 +24,7 @@ type PackageRow = {
   is_public?:    boolean | null
   shoot_type?:   string | null
   session_type?: string | null
-  service_type?: string | null
   base_price?:   number | string | null
-  duration_mins?: number | null
-  outfits_count?: number | null
-  edited_photos?: number | null
-  coverage_hours?: number | null
   inclusions?:   string[] | null
   created_at?:   string | null
   package_addons?: PackageAddon[] | null
@@ -361,7 +356,7 @@ export default async function PackagesPage({
 
   let q2 = context.admin
     .from('packages')
-    .select('package_id, name, description, tagline, cover_url, is_public, shoot_type, session_type, service_type, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, created_at, package_addons(*)', { count: 'exact' })
+    .select('package_id, name, description, tagline, cover_url, is_public, shoot_type, session_type, base_price, inclusions, created_at, package_addons(*)', { count: 'exact' })
     .eq('studio_id', context.studioId)
 
   if (q)          q2 = q2.ilike('name', `%${q}%`)
@@ -447,24 +442,7 @@ export default async function PackagesPage({
                         <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Price</p>
                         <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
                       </div>
-                      {pkg.outfits_count != null && (
-                        <div>
-                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Outfits</p>
-                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.outfits_count}</p>
-                        </div>
-                      )}
-                      {pkg.edited_photos != null && (
-                        <div>
-                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Photos</p>
-                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.edited_photos}</p>
-                        </div>
-                      )}
-                      {pkg.duration_mins != null && (
-                        <div>
-                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Duration</p>
-                          <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.duration_mins} mins</p>
-                        </div>
-                      )}
+
                       {(pkg.package_addons?.length ?? 0) > 0 && (
                         <div>
                           <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Add-ons</p>

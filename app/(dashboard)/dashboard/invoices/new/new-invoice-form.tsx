@@ -29,7 +29,7 @@ type Booking = {
   package_id?: string | null
   session_type?: string | null
   session_date?: string | null
-  outfits_count?: number | null
+  custom_answers?: Record<string, any> | null
   clients?: BookingClientSummary | null
   packages?: BookingPackageSummary | null
 }
@@ -201,7 +201,7 @@ export default function NewInvoiceForm({
   const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
 
   const selectedBooking = bookings.find((item) => item.booking_id === form.booking_id)
-  const outfitsCount = selectedBooking?.outfits_count ?? null
+  const outfitsCount = selectedBooking?.custom_answers?.legacy_outfits ? Number(selectedBooking.custom_answers.legacy_outfits) : null
   const photosCount = editedPhotos ? parseInt(editedPhotos) : null
   const hasSpecs = outfitsCount != null || photosCount != null
 

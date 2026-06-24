@@ -6,6 +6,9 @@ import QuickPayment from './quick-payment'
 import PendingActions from './pending-actions'
 import DeleteSessionButton from './delete-session-button'
 import EventDateReminderButton from './event-date-reminder-button'
+import SessionServices from './session-services'
+import WhatsAppActions from './whatsapp-actions'
+import SessionSmartForms from './session-smart-forms'
 import Link from 'next/link'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig, getStatusConfig } from '@/lib/studio-config'
@@ -56,7 +59,6 @@ type SessionRecord = {
   booking_ref?: number | null
   session_date?: string | null
   session_type?: string | null
-  service_type?: string | null
   shoot_type?: string | null
   status: string
   notes?: string | null
@@ -64,9 +66,7 @@ type SessionRecord = {
   location_address?: string | null
   event_name?: string | null
   event_date?: string | null
-  outfits_count?: number | null
   selections_count?: number | null
-  edited_photos?: number | null
   extra_outfits?: number | null
   extra_pictures?: number | null
   client_id?: string | null
@@ -146,11 +146,12 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     booking_service_id: string
     quantity:           number
     price_at_booking?:  number | null
-    services?:          { name?: string | null; type?: string | null } | null
+    status?:            string | null
+    services?:          { name?: string | null; type?: string | null; category_value?: string | null; booking_fields?: any[] | null } | null
   }
   const { data: bookedServicesRaw } = await context.admin
     .from('booking_services')
-    .select('booking_service_id, quantity, price_at_booking, services(name, type)')
+    .select('booking_service_id, quantity, price_at_booking, status, services(name, type, category_value, booking_fields)')
     .eq('booking_id', id)
   const bookedServices = (bookedServicesRaw ?? []) as unknown as BookedService[]
 
@@ -163,7 +164,8 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
   const statusCfg      = getStatusConfig(config, session.status)
   const typeCfg        = getSessionTypeConfig(config, session.session_type)
-  const serviceTypeCfg = getServiceTypeConfig(config, session.service_type ?? 'photo')
+  const serviceCategory = bookedServices[0]?.services?.category_value ?? 'photo'
+  const serviceTypeCfg = getServiceTypeConfig(config, serviceCategory)
 
   // Dynamic pending-panel: show when session is in the first (intake) status
   const sortedActive   = config.bookingStatuses.filter(s => !s.is_cancellation && !s.is_terminal).sort((a, b) => a.order - b.order)
@@ -175,7 +177,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
   const isEvent        = session.session_type === 'event'
   const isOutdoor      = session.session_type === 'outdoor'
-  const isVideoSession = session.service_type === 'video' || session.service_type === 'photo_video'
+  const isVideoSession = serviceCategory === 'video' || serviceCategory === 'photo_video'
 
   // Category date reminder — show when event_date is within 7 days and client has email
   const isCancelled = !!statusCfg.is_cancellation
@@ -322,20 +324,6 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          {session.outfits_count != null && (
-            <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Outfits</p>
-              <p style={{ fontSize: '14px', margin: 0 }}>{session.outfits_count}</p>
-            </div>
-          )}
-
-          {session.edited_photos != null && (
-            <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Edited photos</p>
-              <p style={{ fontSize: '14px', margin: 0 }}>{session.edited_photos}</p>
-            </div>
-          )}
-
           {session.selections_count != null && (
             <div>
               <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Selections</p>
@@ -343,31 +331,22 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          {session.custom_answers && Object.entries(session.custom_answers).map(([key, val]) => (
-            <div key={key}>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px', textTransform: 'capitalize' }}>
-                {key.replace(/_/g, ' ')}
-              </p>
-              <p style={{ fontSize: '14px', margin: 0 }}>{String(val)}</p>
-            </div>
-          ))}
-
           {session.packages?.name ? (
-            <div>
-              <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Package</p>
-              {session.package_id ? (
-                <Link href={`/dashboard/packages/${session.package_id}`} style={{ fontSize: '14px', margin: 0, display: 'block', color: 'inherit', textDecoration: 'none' }}>
-                  {session.packages.name}
-                </Link>
-              ) : (
-                <p style={{ fontSize: '14px', margin: 0 }}>{session.packages.name}</p>
-              )}
-              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '2px 0 0' }}>
-                ₦{Number(session.packages.base_price).toLocaleString()}
-                {session.packages.duration_mins ? ` · ${session.packages.duration_mins} mins` : ''}
-              </p>
-            </div>
-          ) : null}
+           <div>
+            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Package</p>
+            {session.package_id ? (
+              <Link href={`/dashboard/packages/${session.package_id}`} style={{ fontSize: '14px', margin: 0, display: 'block', color: 'inherit', textDecoration: 'none' }}>
+                {session.packages.name}
+              </Link>
+            ) : (
+              <p style={{ fontSize: '14px', margin: 0 }}>{session.packages.name}</p>
+            )}
+            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '2px 0 0' }}>
+              ₦{Number(session.packages.base_price).toLocaleString()}
+              {session.packages.duration_mins ? ` · ${session.packages.duration_mins} mins` : ''}
+            </p>
+          </div>
+        ) : null}
 
           {(() => {
             const staffList    = (session.booking_staff as unknown as SessionStaffRelation[]) ?? []
@@ -377,8 +356,8 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             const videoEditor   = staffList.find(s => s.role === 'video_editor')
             const colourGrader  = staffList.find(s => s.role === 'colour_grader')
 
-            const isPhotoVideo = session.service_type === 'photo_video'
-            const isPureVideo  = session.service_type === 'video'
+            const isPhotoVideo = serviceCategory === 'photo_video'
+            const isPureVideo  = serviceCategory === 'video'
 
             if (isPhotoVideo) {
               return (
@@ -432,37 +411,21 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         )}
       </div>
 
-      {/* Booked services — shown when client selected services at booking time */}
-      {bookedServices.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
-          <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>BOOKED SERVICES</p>
-            <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{bookedServices.length} item{bookedServices.length !== 1 ? 's' : ''}</p>
-          </div>
-          {bookedServices.map((bs, i) => {
-            const svc = bs.services as { name?: string | null; type?: string | null } | null
-            const typeIcon = svc?.type === 'product' ? '📦' : svc?.type === 'digital' ? '💻' : '🎯'
-            return (
-              <div key={bs.booking_service_id} style={{
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                padding: '0.875rem 1.25rem',
-                borderBottom: i < bookedServices.length - 1 ? '1px solid var(--line-inner)' : 'none',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '14px' }}>{typeIcon}</span>
-                  <span style={{ fontSize: '14px' }}>{svc?.name ?? 'Unknown service'}</span>
-                  {bs.quantity > 1 && <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>× {bs.quantity}</span>}
-                </div>
-                {bs.price_at_booking != null && (
-                  <span style={{ fontSize: '13px', color: 'var(--text-3)', fontWeight: '500' }}>
-                    ₦{(Number(bs.price_at_booking) * bs.quantity).toLocaleString()}
-                  </span>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <SessionSmartForms services={bookedServices} customAnswers={session.custom_answers as Record<string, any>} />
+
+      {/* WhatsApp Omnichannel Control Center */}
+      <WhatsAppActions 
+        phone={session.clients?.phone ?? null}
+        clientName={session.clients?.full_name ?? null}
+        balanceDue={balanceDue}
+        hasInvoice={!!invoice}
+        hasGallery={!!gallery}
+        status={session.status ?? 'pending'}
+        sessionRef={session.booking_ref ?? null}
+      />
+
+      {/* Booked services fulfillment tracking */}
+      <SessionServices services={bookedServices} />
 
       {/* Extras — post-agreement scope additions */}
       <SessionExtras
@@ -564,8 +527,8 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       <SessionActions
         sessionId={id}
         currentStatus={session.status}
-        serviceType={session.service_type ?? 'photo'}
-        outfitsCount={session.outfits_count ?? null}
+        serviceType={serviceCategory}
+        outfitsCount={session.custom_answers?.legacy_outfits ? Number(session.custom_answers.legacy_outfits) : null}
         invoiceId={invoice?.invoice_id ?? null}
         assignedStaff={((session.booking_staff as unknown as SessionStaffRelation[]) ?? []).map((bs) => ({
           staff_id: bs.staff_id ?? '',

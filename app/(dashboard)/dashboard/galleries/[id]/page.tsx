@@ -12,7 +12,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
     booking_id: string
     session_date: string | null
     status: string | null
-    outfits_count: number | null
+    custom_answers: Record<string, any> | null
     selections_count: number | null
     clients: { client_id: string | null; full_name: string | null; phone: string | null } | null
   }
@@ -36,7 +36,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
         studio_id,
         session_date,
         status,
-        outfits_count,
+        custom_answers,
         selections_count,
         clients(client_id, full_name, phone)
       )
@@ -113,14 +113,18 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
           <p style={{ fontSize: '14px', fontWeight: '500', color: '#3b6d11', margin: '0 0 2px' }}>
             ✓ Client selected {booking.selections_count} image{booking.selections_count !== 1 ? 's' : ''}
           </p>
-          {booking.outfits_count != null && (
-            <p style={{ fontSize: '13px', color: '#3b6d11', margin: 0, opacity: 0.8 }}>
-              Base: {booking.outfits_count * 2} images ({booking.outfits_count} outfit{booking.outfits_count !== 1 ? 's' : ''} × 2)
-              {booking.selections_count > booking.outfits_count * 2
-                ? ` · ${booking.selections_count - booking.outfits_count * 2} extra`
-                : ' · within base'}
-            </p>
-          )}
+          {(() => {
+            const outfitsCount = booking.custom_answers?.legacy_outfits ? Number(booking.custom_answers.legacy_outfits) : null
+            if (outfitsCount == null) return null
+            return (
+              <p style={{ fontSize: '13px', color: '#3b6d11', margin: 0, opacity: 0.8 }}>
+                Base: {outfitsCount * 2} images ({outfitsCount} outfit{outfitsCount !== 1 ? 's' : ''} × 2)
+                {booking.selections_count > outfitsCount * 2
+                  ? ` · ${booking.selections_count - outfitsCount * 2} extra`
+                  : ' · within base'}
+              </p>
+            )
+          })()}
         </div>
       )}
 

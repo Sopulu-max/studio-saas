@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { addPackage } from '@/app/actions/packages'
 import { useStudioConfig } from '@/components/studio-config-provider'
+import { motion, AnimatePresence } from 'framer-motion'
 
 const CATEGORY_SUGGESTIONS = [
   'Portrait', 'Wedding', 'Maternity', 'Corporate', 'Fashion',
@@ -410,69 +411,91 @@ export default function NewPackageForm({
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {availableServices.map(svc => {
-              const link = getServiceLink(svc.service_id)
-              const mode = link ? (link.is_addon ? 'addon' : 'included') : 'none'
-              const tc   = SVC_TYPE_COLORS[svc.type] ?? SVC_TYPE_COLORS.service
+            <AnimatePresence>
+              {availableServices.map((svc, idx) => {
+                const link = getServiceLink(svc.service_id)
+                const mode = link ? (link.is_addon ? 'addon' : 'included') : 'none'
+                const tc   = SVC_TYPE_COLORS[svc.type] ?? SVC_TYPE_COLORS.service
 
-              return (
-                <div key={svc.service_id} style={{
-                  border: '1px solid',
-                  borderColor: mode !== 'none' ? 'var(--text)' : 'var(--line-inner)',
-                  borderRadius: '10px',
-                  padding: '10px 12px',
-                  background: mode !== 'none' ? 'var(--active)' : 'transparent',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' as const }}>
-                    <span style={{
-                      fontSize: '11px', padding: '2px 7px', borderRadius: '20px',
-                      background: tc.bg, color: tc.color, fontWeight: '500', flexShrink: 0,
-                    }}>
-                      {SVC_TYPE_ICONS[svc.type]} {svc.type}
-                    </span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={{ fontSize: '13px', fontWeight: '500' }}>{svc.name}</span>
-                      {svc.price != null && (
-                        <span style={{ fontSize: '12px', color: 'var(--text-3)', marginLeft: '6px' }}>
-                          ₦{Number(svc.price).toLocaleString()}
-                        </span>
+                return (
+                  <motion.div 
+                    key={svc.service_id} 
+                    layout
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.03 }}
+                    style={{
+                      border: '1px solid',
+                      borderColor: mode !== 'none' ? 'var(--text)' : 'var(--line-inner)',
+                      borderRadius: '10px',
+                      padding: '10px 12px',
+                      background: mode !== 'none' ? 'var(--active)' : 'transparent',
+                      transition: 'border-color 0.2s, background 0.2s',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' as const }}>
+                      <span style={{
+                        fontSize: '11px', padding: '2px 7px', borderRadius: '20px',
+                        background: tc.bg, color: tc.color, fontWeight: '500', flexShrink: 0,
+                      }}>
+                        {SVC_TYPE_ICONS[svc.type]} {svc.type}
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: '13px', fontWeight: '500' }}>{svc.name}</span>
+                        {svc.price != null && (
+                          <span style={{ fontSize: '12px', color: 'var(--text-3)', marginLeft: '6px' }}>
+                            ₦{Number(svc.price).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', gap: '4px', flexShrink: 0, background: 'var(--bg)', padding: '4px', borderRadius: '8px', border: '1px solid var(--line-inner)' }}>
+                        {(['none', 'included', 'addon'] as const).map(m => (
+                          <motion.button 
+                            key={m} type="button"
+                            onClick={() => setServiceMode(svc.service_id, m)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            style={{
+                              padding: '4px 12px', borderRadius: '6px', fontSize: '11px', fontWeight: '600',
+                              border: 'none', cursor: 'pointer',
+                              background:  mode === m ? 'var(--text)' : 'transparent',
+                              color:       mode === m ? 'var(--surface)' : 'var(--text-3)',
+                              transition: 'color 0.2s, background 0.2s',
+                            }}>
+                            {m === 'none' ? 'None' : m === 'included' ? 'Included' : 'Add-on'}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <AnimatePresence>
+                      {mode === 'addon' && (
+                        <motion.div 
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          style={{ overflow: 'hidden' }}
+                        >
+                          <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', background: 'var(--bg)', borderRadius: '8px', border: '1px solid var(--line-inner)' }}>
+                            <label style={{ fontSize: '12px', color: 'var(--text-3)', flexShrink: 0, fontWeight: '500' }}>
+                              Price override (₦)
+                            </label>
+                            <input
+                              type="number" min="0"
+                              value={link?.addon_price ?? ''}
+                              onChange={e => setServiceAddonPrice(svc.service_id, e.target.value)}
+                              placeholder={svc.price != null ? `Default: ${Number(svc.price).toLocaleString()}` : 'e.g. 15000'}
+                              style={{ width: '160px', boxSizing: 'border-box' as const, padding: '4px 8px', fontSize: '13px', borderRadius: '6px', border: '1px solid var(--line)' }}
+                            />
+                            <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>Leave blank to use catalog price</span>
+                          </div>
+                        </motion.div>
                       )}
-                    </div>
-                    <div style={{ display: 'flex', gap: '4px', flexShrink: 0 }}>
-                      {(['none', 'included', 'addon'] as const).map(m => (
-                        <button key={m} type="button"
-                          onClick={() => setServiceMode(svc.service_id, m)}
-                          style={{
-                            padding: '4px 10px', borderRadius: '6px', fontSize: '11px', fontWeight: '500',
-                            border: '0.5px solid', cursor: 'pointer',
-                            borderColor: mode === m ? 'var(--text)' : 'var(--line)',
-                            background:  mode === m ? 'var(--btn)' : 'var(--surface)',
-                            color:       mode === m ? 'var(--btn-fg)' : 'var(--text-2)',
-                          }}>
-                          {m === 'none' ? 'None' : m === 'included' ? 'Included' : 'Add-on'}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {mode === 'addon' && (
-                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <label style={{ fontSize: '12px', color: 'var(--text-3)', flexShrink: 0 }}>
-                        Price override (₦)
-                      </label>
-                      <input
-                        type="number" min="0"
-                        value={link?.addon_price ?? ''}
-                        onChange={e => setServiceAddonPrice(svc.service_id, e.target.value)}
-                        placeholder={svc.price != null ? `Default: ${Number(svc.price).toLocaleString()}` : 'e.g. 15000'}
-                        style={{ width: '160px', boxSizing: 'border-box' as const }}
-                      />
-                      <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>Leave blank to use catalog price</span>
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+                    </AnimatePresence>
+                  </motion.div>
+                )
+              })}
+            </AnimatePresence>
           </div>
 
           {linkedServices.length > 0 && (

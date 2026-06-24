@@ -94,13 +94,13 @@ export default async function ReportsPage({
 
     // All bookings (including cancelled for stats)
     admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, service_type, shoot_type, package_id, client_id, clients(full_name), packages(name)')
+      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, package_id, client_id, clients(full_name), packages(name), booking_services(services(category_value))')
       .eq('studio_id', studioId)
       .order('session_date', { ascending: true }),
 
     // Today
     admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, service_type, shoot_type, clients(full_name), packages(name)')
+      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name), booking_services(services(category_value))')
       .eq('studio_id', studioId)
       .gte('session_date', todayISO)
       .lte('session_date', todayEnd)
@@ -109,7 +109,7 @@ export default async function ReportsPage({
 
     // Upcoming — tomorrow to +30 days
     admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, status, session_type, service_type, shoot_type, clients(full_name), packages(name)')
+      .select('booking_id, booking_ref, session_date, status, session_type, shoot_type, clients(full_name), packages(name), booking_services(services(category_value))')
       .eq('studio_id', studioId)
       .gt('session_date', todayEnd)
       .lte('session_date', next30End)
@@ -126,7 +126,7 @@ export default async function ReportsPage({
 
     // All invoices with booking join for session context
     admin.from('invoices')
-      .select('invoice_id, total, status, issued_at, due_date, booking_id, bookings!inner(studio_id, session_type, service_type, client_id)')
+      .select('invoice_id, total, status, issued_at, due_date, booking_id, bookings!inner(studio_id, session_type, client_id, booking_services(services(category_value)))')
       .eq('bookings.studio_id', studioId),
 
     // All payments (all-time) with method
@@ -185,15 +185,16 @@ export default async function ReportsPage({
   type BRow = {
     booking_id: string; booking_ref?: number | null
     session_date?: string | null; status: string
-    session_type?: string | null; service_type?: string | null
+    session_type?: string | null
     shoot_type?: string | null; package_id?: string | null; client_id?: string | null
     clients?: { full_name?: string | null } | null
     packages?: { name?: string | null } | null
+    booking_services?: { services?: { category_value?: string | null } | null }[] | null
   }
   type InvoiceRow = {
     invoice_id: string; total: number | string; status: string
     issued_at?: string | null; due_date?: string | null; booking_id?: string | null
-    bookings?: { studio_id: string; session_type?: string | null; service_type?: string | null; client_id?: string | null } | null
+    bookings?: { studio_id: string; session_type?: string | null; client_id?: string | null; booking_services?: { services?: { category_value?: string | null } | null }[] | null } | null
   }
   type PaymentRow = { amount: number | string; paid_at: string; method?: string; invoice_id?: string }
   type ClientRow  = { client_id: string; full_name: string; created_at?: string | null }
@@ -277,7 +278,9 @@ export default async function ReportsPage({
   for (const inv of allInvoices) {
     if (inv.invoice_id && inv.booking_id) invoiceToBooking[inv.invoice_id] = inv.booking_id
     if (inv.booking_id && inv.bookings?.session_type) bookingToSessionType[inv.booking_id] = inv.bookings.session_type
-    if (inv.booking_id && inv.bookings?.service_type) bookingToServiceType[inv.booking_id] = inv.bookings.service_type
+    if (inv.booking_id && inv.bookings?.booking_services?.[0]?.services?.category_value) {
+      bookingToServiceType[inv.booking_id] = inv.bookings.booking_services[0].services.category_value
+    }
   }
 
   // Revenue by session type (range payments)
@@ -307,7 +310,7 @@ export default async function ReportsPage({
   const revenueByServiceType = config.serviceTypes.map(t => ({
     type: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
     amount: revByService[t.value] ?? 0,
-    count: rangeBookings.filter(b => b.service_type === t.value && !cancelValues.includes(b.status)).length,
+    count: rangeBookings.filter(b => b.booking_services?.[0]?.services?.category_value === t.value && !cancelValues.includes(b.status)).length,
   })).filter(t => t.amount > 0 || t.count > 0)
 
   // Monthly revenue bar chart (last 6 months, always all-time payments)
@@ -337,7 +340,7 @@ export default async function ReportsPage({
   // Breakdown by service type (in range, non-cancelled)
   const sessionsByService = config.serviceTypes.map(t => ({
     type: t.value, label: t.label, color_bg: t.color_bg, color_fg: t.color_fg,
-    count: rangeBookings.filter(b => b.service_type === t.value && !cancelValues.includes(b.status)).length,
+    count: rangeBookings.filter(b => b.booking_services?.[0]?.services?.category_value === t.value && !cancelValues.includes(b.status)).length,
   })).filter(t => t.count > 0)
 
   // Breakdown by shoot category (in range, non-cancelled, non-empty)
@@ -530,7 +533,7 @@ export default async function ReportsPage({
       booking_id: b.booking_id, booking_ref: b.booking_ref ?? null,
       session_date: b.session_date ?? null, status: b.status,
       session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
-      service_type: b.service_type ?? null,
+      service_type: b.booking_services?.[0]?.services?.category_value ?? null,
       client_name: b.clients?.full_name ?? null, package_name: b.packages?.name ?? null,
     })),
     sessionsThisWeek: weekBookings.length,
@@ -541,7 +544,7 @@ export default async function ReportsPage({
       booking_id: b.booking_id, booking_ref: b.booking_ref ?? null,
       session_date: b.session_date ?? null, status: b.status,
       session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
-      service_type: b.service_type ?? null,
+      service_type: b.booking_services?.[0]?.services?.category_value ?? null,
       client_name: b.clients?.full_name ?? null, package_name: b.packages?.name ?? null,
     })),
     weekStrip,
