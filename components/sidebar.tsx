@@ -63,7 +63,12 @@ function getInitialNavItems(isOwner: boolean): NavItem[] {
     const parsed: NavItem[] = JSON.parse(saved)
     const defaultHrefs = OWNER_NAV_DEFAULT.map((n) => n.href)
     const savedHrefs = parsed.map((n) => n.href)
-    const valid = parsed.filter((n) => defaultHrefs.includes(n.href))
+    const valid = parsed
+      .filter((n) => defaultHrefs.includes(n.href))
+      .map((n) => ({
+        href: n.href,
+        label: OWNER_NAV_DEFAULT.find(d => d.href === n.href)?.label || n.label
+      }))
     const newOnes = OWNER_NAV_DEFAULT.filter((n) => !savedHrefs.includes(n.href))
     return valid.length > 0 ? [...valid, ...newOnes] : OWNER_NAV_DEFAULT
   } catch {
