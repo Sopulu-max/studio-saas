@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateService } from '@/app/actions/services'
 import { useStudioConfig } from '@/components/studio-config-provider'
@@ -102,6 +102,7 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
   const config  = useStudioConfig()
   const [loading, setLoading] = useState(false)
   const [error,   setError]   = useState('')
+  const previewRef = useRef<HTMLIFrameElement>(null)
 
   const [form, setForm] = useState({
     name:          svc.name,
@@ -138,6 +139,20 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
     setForm(prev => ({ ...prev, [field]: value }))
   }
 
+  // Sync to live preview
+  useEffect(() => {
+    if (previewRef.current?.contentWindow) {
+      previewRef.current.contentWindow.postMessage({
+        type: 'UPDATE_PREVIEW',
+        data: {
+          svc: form,
+          studio: { name: 'Studio Name', logo_url: '' },
+          theme: { preset: 'modern', primary: '#2563eb', bg: '#ffffff', serif: false, radius: 12 },
+        }
+      }, '*')
+    }
+  }, [form, config])
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!form.name.trim()) { setError('Service name is required'); return }
@@ -155,7 +170,9 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
   }
 
   return (
-    <div style={{ maxWidth: '560px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(350px, 450px) 1fr', gap: '24px', alignItems: 'start', height: 'calc(100vh - 100px)' }}>
+      {/* Left Panel: Form */}
+      <div style={{ overflowY: 'auto', height: '100%', paddingRight: '12px', paddingBottom: '120px' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Edit service</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{svc.name}</p>
@@ -410,6 +427,20 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
           </Link>
         </div>
       </form>
+      </div>
+
+      {/* Right Panel: Live Preview */}
+      <div style={{ height: '100%', background: 'var(--bg)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--line)' }}>
+        <div style={{ padding: '8px 16px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)' }}>Live Preview</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>Updates as you type</span>
+        </div>
+        <iframe
+          ref={previewRef}
+          src="/preview/service"
+          style={{ width: '100%', height: 'calc(100% - 37px)', border: 'none' }}
+        />
+      </div>
     </div>
   )
 }

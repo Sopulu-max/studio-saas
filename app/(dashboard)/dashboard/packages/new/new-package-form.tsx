@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { addPackage } from '@/app/actions/packages'
@@ -147,6 +147,28 @@ export default function NewPackageForm({
   const [typedInclusions, setTypedInclusions] = useState<TypedInclusion[]>([])
   const [linkedServices,  setLinkedServices]  = useState<LinkedService[]>([])
   const inclusionInputRef = useRef<HTMLInputElement>(null)
+  const previewRef        = useRef<HTMLIFrameElement>(null)
+
+  // Sync to live preview
+  useEffect(() => {
+    if (previewRef.current?.contentWindow) {
+      previewRef.current.contentWindow.postMessage({
+        type: 'UPDATE_PREVIEW',
+        data: {
+          pkg: {
+            ...form,
+            sections,
+            addons,
+            typed_inclusions: typedInclusions,
+            linked_services: linkedServices,
+            inclusions,
+          },
+          studio: { name: 'Studio Name', logo_url: '' },
+          theme: { preset: 'modern', primary: '#2563eb', bg: '#ffffff', serif: false, radius: 12 },
+        }
+      }, '*')
+    }
+  }, [form, sections, addons, typedInclusions, linkedServices, inclusions, config])
 
   function update(field: string, value: string) { setForm(prev => ({ ...prev, [field]: value })) }
 
@@ -240,7 +262,9 @@ export default function NewPackageForm({
   const isOutdoor      = form.shoot_type === 'Outdoor' || form.shoot_type === 'Maternity'
 
   return (
-    <div style={{ maxWidth: '560px' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(350px, 450px) 1fr', gap: '24px', alignItems: 'start', height: 'calc(100vh - 100px)' }}>
+      {/* Left Panel: Form */}
+      <div style={{ overflowY: 'auto', height: '100%', paddingRight: '12px', paddingBottom: '120px' }}>
       <div style={{ marginBottom: '1.5rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>New package</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Define a shoot package for your studio</p>
@@ -663,6 +687,20 @@ export default function NewPackageForm({
           style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
           Cancel
         </button>
+      </div>
+      </div>
+
+      {/* Right Panel: Live Preview */}
+      <div style={{ height: '100%', background: 'var(--bg)', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--line)' }}>
+        <div style={{ padding: '8px 16px', background: 'var(--surface)', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-2)' }}>Live Preview</span>
+          <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>Updates as you type</span>
+        </div>
+        <iframe
+          ref={previewRef}
+          src="/preview/package"
+          style={{ width: '100%', height: 'calc(100% - 37px)', border: 'none' }}
+        />
       </div>
     </div>
   )
