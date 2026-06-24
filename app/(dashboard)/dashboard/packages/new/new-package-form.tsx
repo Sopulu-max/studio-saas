@@ -135,7 +135,7 @@ export default function NewPackageForm({
 
   const [form, setForm] = useState({
     name: '', description: '', base_price: defaultPrice ?? '', shoot_type: 'Portrait',
-    coverage_hours: '', tagline: '', display_order: '0',
+    coverage_hours: '', display_order: '0',
   })
 
   const [pricingType,     setPricingType]     = useState<'fixed' | 'per_project'>('fixed')
@@ -274,15 +274,8 @@ export default function NewPackageForm({
               placeholder="0" style={inputStyle} />
           </div>
         </div>
-        <div style={{ marginTop: '14px' }}>
-          <label style={labelStyle}>Tagline</label>
-          <input type="text" value={form.tagline}
-            onChange={e => update('tagline', e.target.value)}
-            placeholder="e.g. Perfect for families who want timeless portraits"
-            style={inputStyle} />
-        </div>
         <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '10px 0 0' }}>
-          You can add a cover image after saving.
+          You can add a thumbnail image after saving.
         </p>
       </div>
 
@@ -294,7 +287,7 @@ export default function NewPackageForm({
             placeholder="e.g. 3-outfit portrait session" style={inputStyle} />
         </div>
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Description</label>
+          <label style={labelStyle}>Brief Summary <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(For bots & invoices - not shown on public page)</span></label>
           <textarea value={form.description} onChange={e => update('description', e.target.value)}
             placeholder="Brief description of what's included..." rows={2}
             style={{ ...inputStyle, resize: 'vertical' }} />

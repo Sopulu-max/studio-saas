@@ -44,7 +44,6 @@ type EditPackageRecord = {
   contract_template_id?: string | null
   pricing_type?:        'fixed' | 'per_project' | null
   inclusions?:          string[] | null
-  tagline?:             string | null
   cover_url?:           string | null
   is_public?:           boolean | null
   display_order?:       number | null
@@ -164,7 +163,6 @@ export default function EditPackageForm({
     base_price:        String(pkg.base_price    ?? ''),
     shoot_type:        pkg.shoot_type     ?? '',
     coverage_hours:    pkg.coverage_hours  != null ? String(pkg.coverage_hours) : '',
-    tagline:           pkg.tagline         ?? '',
     display_order:     String(pkg.display_order ?? '0'),
   })
 
@@ -291,10 +289,7 @@ export default function EditPackageForm({
 
       {/* Cover image */}
       <div style={sectionStyle}>
-        <div style={{ marginBottom: '12px' }}>
-          <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Cover image</p>
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>Shown in the public catalog and on the package detail page</p>
-        </div>
+        <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 16px' }}>Thumbnail Image (For lists and previews)</p>
         <CoverUpload packageId={pkg.package_id} currentUrl={pkg.cover_url} />
       </div>
 
@@ -328,17 +323,9 @@ export default function EditPackageForm({
               placeholder="0" style={inputStyle} />
           </div>
         </div>
-        {/* Tagline */}
-        <div style={{ marginTop: '14px' }}>
-          <label style={labelStyle}>Tagline</label>
-          <input type="text" value={form.tagline}
-            onChange={e => update('tagline', e.target.value)}
-            placeholder="e.g. Perfect for families who want timeless portraits"
-            style={inputStyle} />
-        </div>
       </div>
 
-      {/* Main details */}
+      {/* Package structure */}
       <div style={sectionStyle}>
         {/* Name */}
         <div style={{ marginBottom: '16px' }}>
@@ -349,7 +336,7 @@ export default function EditPackageForm({
 
         {/* Description */}
         <div style={{ marginBottom: '16px' }}>
-          <label style={labelStyle}>Description</label>
+          <label style={labelStyle}>Brief Summary <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(For bots & invoices - not shown on public page)</span></label>
           <textarea value={form.description} onChange={e => update('description', e.target.value)}
             placeholder="Brief description..." rows={2}
             style={{ ...inputStyle, resize: 'vertical' }} />

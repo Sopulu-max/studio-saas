@@ -205,10 +205,8 @@ export default function EditServiceForm({ svc }: { svc: ServiceRecord }) {
           </div>
 
           <div style={{ marginBottom: '16px' }}>
-            <label style={labelStyle}>Description <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(optional)</span></label>
-            <textarea
-              value={form.description}
-              onChange={e => update('description', e.target.value)}
+            <label style={labelStyle}>Brief Summary <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(For bots & invoices - not shown on public page)</span></label>
+            <textarea value={form.description} onChange={e => update('description', e.target.value)}
               placeholder="Brief description clients will see when booking..."
               rows={2}
               style={{ ...inputStyle, resize: 'vertical' }}

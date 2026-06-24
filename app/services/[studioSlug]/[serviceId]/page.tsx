@@ -98,7 +98,11 @@ export default async function PublicServiceDetailPage({
   const svc = svcRaw as unknown as PublicService | null
   if (!svc || svc.is_active === false) notFound()
 
-  const sections = [...(svc.service_sections ?? [])].sort((a, b) => a.display_order - b.display_order)
+  const sections        = [...(svc.service_sections   ?? [])].sort((a, b) => a.display_order - b.display_order)
+  const firstIsHero     = sections[0]?.layout === 'hero'
+  const heroSec         = firstIsHero ? sections[0] : null
+  const contentSections = firstIsHero ? sections.slice(1) : sections
+
   const price    = Number(svc.price ?? 0)
 
   const stats = [
@@ -305,13 +309,37 @@ export default async function PublicServiceDetailPage({
         </Link>
       </nav>
 
-      {/* ── Header ── */}
-      <div className="svc-header">
-        <h1 className="svc-header-name">{svc.name}</h1>
-        <Link href={`/book/${studioSlug}?service=${serviceId}`} className="svc-header-cta">
-          Book now — ₦{price.toLocaleString()} →
-        </Link>
-      </div>
+      {/* ── Header / Hero ── */}
+      {heroSec ? (
+        <div className="content-section layout-hero" style={{ margin: 0, borderRadius: 0, minHeight: '50vh' }}>
+          <div className="media-wrap" style={{ background: '#0f0d0a' }}>
+            {(() => {
+              const video = parseVideo(heroSec.video_url)
+              if (video?.type === 'iframe') return <iframe src={video.src} allowFullScreen title="Video" />
+              if (video?.type === 'video')  return <video src={video.src} poster={heroSec.image_url ?? undefined} autoPlay muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              if (heroSec.image_url)        return <img src={heroSec.image_url} alt={heroSec.title || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              return null
+            })()}
+          </div>
+          <div className="section-body-pad">
+            <h1 className="section-title" style={{ fontSize: 'clamp(32px, 5vw, 52px)', marginBottom: '12px' }}>{heroSec.title || svc.name}</h1>
+            {heroSec.body && <p className="section-text" style={{ fontSize: '16px', marginBottom: '28px' }}>{heroSec.body}</p>}
+            <p style={{ fontSize: '28px', fontWeight: 700, marginBottom: '28px' }}>₦{price.toLocaleString()}</p>
+            <Link href={`/book/${studioSlug}?service=${serviceId}`} style={{
+              display: 'inline-block', fontSize: '15px', fontWeight: 600, padding: '14px 32px', borderRadius: '100px', background: 'var(--primary)', color: 'var(--on-primary)'
+            }}>
+              Book this service →
+            </Link>
+          </div>
+        </div>
+      ) : (
+        <div className="svc-header">
+          <h1 className="svc-header-name">{svc.name}</h1>
+          <Link href={`/book/${studioSlug}?service=${serviceId}`} className="svc-header-cta">
+            Book now — ₦{price.toLocaleString()} →
+          </Link>
+        </div>
+      )}
 
       {/* ── Content ── */}
       <div className="container">
@@ -330,13 +358,10 @@ export default async function PublicServiceDetailPage({
               ))}
             </div>
           )}
-          {svc.description && (
-            <p className="stats-desc">{svc.description}</p>
-          )}
         </div>
 
         {/* Content sections */}
-        {sections.map(sec => {
+        {contentSections.map(sec => {
           const video = parseVideo(sec.video_url)
           const hasMedia = video || sec.image_url
           const hasText  = sec.title || sec.body

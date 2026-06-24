@@ -19,7 +19,6 @@ const packageSchema = z.object({
   pricing_type:   z.enum(['fixed', 'per_project']).optional().default('fixed'),
   is_public:      z.boolean().optional().default(true),
   display_order:  z.number().optional().default(0),
-  tagline:        z.string().optional().default(''),
 })
 
 type Section = {
@@ -53,7 +52,6 @@ export async function addPackage(form: {
   contract_template?: string
   contract_template_id?: string | null
   pricing_type?: string
-  tagline?: string
   is_public?: boolean
   display_order?: number
   addons: { name: string; description: string; price: string }[]
@@ -90,7 +88,6 @@ export async function addPackage(form: {
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',
-      tagline:        form.tagline        || null,
       is_public:      form.is_public      ?? true,
       display_order:  form.display_order  ?? 0,
       studio_id:      context.studioId,
@@ -175,7 +172,6 @@ export async function updatePackage(packageId: string, form: {
   contract_template?: string
   contract_template_id?: string | null
   pricing_type?: string
-  tagline?: string
   is_public?: boolean
   display_order?: number
   addons: { name: string; description: string; price: string }[]
@@ -217,7 +213,6 @@ export async function updatePackage(packageId: string, form: {
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',
-      tagline:        form.tagline        || null,
       is_public:      form.is_public      ?? true,
       display_order:  form.display_order  ?? 0,
     })

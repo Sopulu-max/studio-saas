@@ -141,6 +141,10 @@ export default async function PublicPackageDetailPage({
   if (!pkg || pkg.is_public === false) notFound()
 
   const sections        = [...(pkg.package_sections   ?? [])].sort((a, b) => a.display_order - b.display_order)
+  const firstIsHero     = sections[0]?.layout === 'hero'
+  const heroSec         = firstIsHero ? sections[0] : null
+  const contentSections = firstIsHero ? sections.slice(1) : sections
+
   const typedInclusions = [...(pkg.package_inclusions ?? [])].sort((a, b) => a.display_order - b.display_order)
   const textAddons      = pkg.package_addons ?? []
   const pkgServices     = [...(pkg.package_services ?? [])].sort((a, b) => a.display_order - b.display_order)
@@ -451,15 +455,22 @@ export default async function PublicPackageDetailPage({
         </Link>
       </nav>
 
-      {/* ── Hero ── */}
-      {pkg.cover_url ? (
+      {/* ── Header / Hero ── */}
+      {heroSec ? (
         <div className="hero">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={pkg.cover_url} alt={pkg.name} className="hero-img" />
+          <div className="hero-img" style={{ background: '#0f0d0a' }}>
+            {(() => {
+              const video = parseVideo(heroSec.video_url)
+              if (video?.type === 'iframe') return <iframe src={video.src} allowFullScreen title="Video" style={{ width: '100%', height: '100%', border: 'none' }} />
+              if (video?.type === 'video')  return <video src={video.src} poster={heroSec.image_url ?? undefined} autoPlay muted loop playsInline style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              if (heroSec.image_url)        return <img src={heroSec.image_url} alt={heroSec.title || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              return null
+            })()}
+          </div>
           <div className="hero-overlay" />
           <div className="hero-content">
-            <h1 className="hero-name">{pkg.name}</h1>
-            {pkg.tagline && <p className="hero-tagline">{pkg.tagline}</p>}
+            <h1 className="hero-name">{heroSec.title || pkg.name}</h1>
+            {heroSec.body && <p className="hero-tagline">{heroSec.body}</p>}
             <p className="hero-price">₦{price.toLocaleString()}</p>
             <Link href={`/book/${studioSlug}?package=${packageId}`} className="hero-cta">
               Book this package →
@@ -469,7 +480,6 @@ export default async function PublicPackageDetailPage({
       ) : (
         <div className="pkg-header">
           <h1 className="pkg-header-name">{pkg.name}</h1>
-          {pkg.tagline && <p className="pkg-header-tagline">{pkg.tagline}</p>}
           <Link href={`/book/${studioSlug}?package=${packageId}`} className="pkg-header-cta">
             Book now — ₦{price.toLocaleString()} →
           </Link>
@@ -492,9 +502,6 @@ export default async function PublicPackageDetailPage({
                 </div>
               ))}
             </div>
-          )}
-          {pkg.description && (
-            <p className="stats-desc">{pkg.description}</p>
           )}
         </div>
 
@@ -558,7 +565,7 @@ export default async function PublicPackageDetailPage({
         )}
 
         {/* Content sections */}
-        {sections.map(sec => {
+        {contentSections.map(sec => {
           const video = parseVideo(sec.video_url)
           const hasMedia = video || sec.image_url
           const hasText  = sec.title || sec.body
