@@ -160,7 +160,10 @@ export default function NewPackageForm({
             sections,
             addons,
             typed_inclusions: typedInclusions,
-            linked_services: linkedServices,
+            linked_services: linkedServices.map(ls => ({
+              ...ls,
+              service_id: availableServices.find(as => as.service_id === ls.service_id) || { name: 'Linked Service', type: 'service', price: 0 }
+            })),
             inclusions,
           },
           studio: { name: 'Studio Name', logo_url: '' },

@@ -26,6 +26,7 @@ const addSessionSchema = z.object({
   shoot_type: z.string().optional().default(''),
   custom_answers: z.record(z.string(), z.any()).optional().default({}),
   force_duplicate: z.boolean().optional().default(false),
+  selected_service_ids: z.array(z.string()).optional().default([]),
 })
 
 export async function addSession(form: {
@@ -41,6 +42,7 @@ export async function addSession(form: {
   editor_id: string
   custom_answers?: Record<string, any>
   force_duplicate?: boolean
+  selected_service_ids?: string[]
 }) {
   const result = addSessionSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -117,6 +119,7 @@ export async function addSession(form: {
       studioId: context.studioId,
       bookingId: session.booking_id as string,
       packageId: form.package_id,
+      selectedServiceIds: form.selected_service_ids,
     })
     if (serviceSeed.error) {
       await context.admin.from('bookings').delete().eq('booking_id', session.booking_id as string)

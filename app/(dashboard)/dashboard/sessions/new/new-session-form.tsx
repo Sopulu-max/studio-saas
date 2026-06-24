@@ -71,6 +71,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     editor_id: '',
   })
   const [customAnswers, setCustomAnswers] = useState<Record<string, any>>({})
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([])
 
   function update(field: string, value: string) {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -84,40 +85,104 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     !p.session_type || p.session_type === form.session_type
   )
 
-  function pkgCard(p: SessionPackage) {
+  function toggleService(e: React.MouseEvent, serviceId: string) {
+    e.stopPropagation()
+    setSelectedServiceIds(prev => prev.includes(serviceId) ? prev.filter(id => id !== serviceId) : [...prev, serviceId])
+  }
+
+  function pkgCard(p: SessionPackage & { package_services?: any[] }) {
     const selected = form.package_id === p.package_id
+    const included = p.package_services?.filter(ps => !ps.is_addon) || []
+    const addons = p.package_services?.filter(ps => ps.is_addon) || []
+    
     return (
-      <button
-        key={p.package_id}
-        type="button"
-        onClick={() => update('package_id', selected ? '' : p.package_id)}
-        style={{
-          display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-          padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%',
-          border: selected ? '1.5px solid var(--btn)' : '1px solid var(--line)',
-          background: selected ? 'var(--btn)' : 'var(--surface)',
-          color: selected ? 'var(--btn-fg)' : 'var(--text)',
-        }}
-      >
-        <div>
-          <div style={{ fontSize: '13px', fontWeight: '500' }}>{p.name}</div>
-        </div>
-        <div style={{ fontSize: '13px', fontWeight: '600', flexShrink: 0, marginLeft: '12px' }}>
-          ₦{Number(p.base_price).toLocaleString()}
-        </div>
-      </button>
+      <div key={p.package_id} style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+        <button
+          type="button"
+          onClick={() => {
+            if (selected) {
+              update('package_id', '')
+              setSelectedServiceIds([])
+            } else {
+              update('package_id', p.package_id)
+              // Only auto-select base included items
+              setSelectedServiceIds(included.map(ps => ps.services?.service_id).filter(Boolean))
+            }
+          }}
+          style={{
+            display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+            padding: '10px 12px', borderRadius: '8px', cursor: 'pointer', textAlign: 'left', width: '100%',
+            border: selected ? '1.5px solid var(--btn)' : '1px solid var(--line)',
+            background: selected ? 'var(--btn)' : 'var(--surface)',
+            color: selected ? 'var(--btn-fg)' : 'var(--text)',
+          }}
+        >
+          <div>
+            <div style={{ fontSize: '13px', fontWeight: '500' }}>{p.name}</div>
+          </div>
+          <div style={{ fontSize: '13px', fontWeight: '600', flexShrink: 0, marginLeft: '12px' }}>
+            ₦{Number(p.base_price).toLocaleString()}
+          </div>
+        </button>
+
+        {selected && (included.length > 0 || addons.length > 0) && (
+          <div style={{ padding: '0 12px 12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {included.length > 0 && (
+              <div>
+                <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 6px', textTransform: 'uppercase' }}>Included</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  {included.map(ps => (
+                    <div key={ps.service_id} style={{ fontSize: '12px', color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: 'var(--primary)' }}>✓</span> {ps.services?.name}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {addons.length > 0 && (
+              <div>
+                <p style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 6px', textTransform: 'uppercase' }}>Add-ons</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  {addons.map(ps => {
+                    const svcId = ps.services?.service_id
+                    const isSelected = selectedServiceIds.includes(svcId)
+                    return (
+                      <button
+                        key={ps.service_id}
+                        type="button"
+                        onClick={(e) => toggleService(e, svcId)}
+                        style={{
+                          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                          padding: '8px 10px', borderRadius: '6px', cursor: 'pointer', textAlign: 'left',
+                          border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--line)',
+                          background: isSelected ? 'var(--primary-dim)' : 'var(--bg)',
+                          color: isSelected ? 'var(--primary-dark)' : 'var(--text-2)',
+                        }}
+                      >
+                        <span style={{ fontSize: '12px', fontWeight: '500' }}>{ps.services?.name}</span>
+                        <span style={{ fontSize: '12px', fontWeight: '600' }}>
+                          +₦{Number(ps.addon_price ?? ps.services?.price ?? 0).toLocaleString()}
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     )
   }
 
   const customFields = useMemo(() => {
-    if (!form.package_id) return []
-    const pkg = packages.find(p => p.package_id === form.package_id) as any
-    if (!pkg || !pkg.package_services) return []
     const fields: { id: string; label: string; type: string; required: boolean }[] = []
     const seenIds = new Set<string>()
-    for (const ps of pkg.package_services) {
-      if (ps.services?.booking_fields && Array.isArray(ps.services.booking_fields)) {
-        for (const field of ps.services.booking_fields) {
+
+    for (const svcId of selectedServiceIds) {
+      const svc = services.find(s => s.service_id === svcId)
+      if (svc?.booking_fields && Array.isArray(svc.booking_fields)) {
+        for (const field of svc.booking_fields) {
           if (!seenIds.has(field.id)) {
             seenIds.add(field.id)
             fields.push(field)
@@ -126,7 +191,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
       }
     }
     return fields
-  }, [form.package_id, packages])
+  }, [selectedServiceIds, services])
 
   async function handleSubmit() {
     if (!form.client_id || !form.session_date) {
@@ -167,6 +232,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
       photographer_id: form.photographer_id,
       editor_id:       form.editor_id,
       custom_answers:  customAnswers,
+      selected_service_ids: selectedServiceIds,
     })
     if (result.error === '__DUPLICATE__') {
       setDupId((result as { duplicateId?: string }).duplicateId ?? null)
@@ -303,7 +369,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
           PROJECT DETAILS
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: form.package_id ? '1fr' : '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
           <div>
             <label style={labelStyle}>Category</label>
             <input
@@ -318,12 +384,14 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
               {CATEGORY_SUGGESTIONS.map(c => <option key={c} value={c} />)}
             </datalist>
           </div>
-          <div>
-            <label style={labelStyle}>Price (₦)</label>
-            <input type="number" min="0" value={form.base_price}
-              onChange={e => update('base_price', e.target.value)}
-              placeholder={'e.g. 85000'} style={inputStyle} />
-          </div>
+          {!form.package_id && (
+            <div>
+              <label style={labelStyle}>Custom Price (₦)</label>
+              <input type="number" min="0" value={form.base_price}
+                onChange={e => update('base_price', e.target.value)}
+                placeholder={'e.g. 85000'} style={inputStyle} />
+            </div>
+          )}
         </div>
 
         {!isEvent && form.shoot_type && (
