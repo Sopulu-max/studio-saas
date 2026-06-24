@@ -45,7 +45,8 @@ ALTER TABLE package_inclusions ENABLE ROW LEVEL SECURITY;
 --    (adjust if your policies use a different helper function)
 
 -- package_sections
-CREATE POLICY IF NOT EXISTS "studio members can manage package sections"
+DROP POLICY IF EXISTS "studio members can manage package sections" ON package_sections;
+CREATE POLICY "studio members can manage package sections"
   ON package_sections
   USING (
     package_id IN (
@@ -59,7 +60,8 @@ CREATE POLICY IF NOT EXISTS "studio members can manage package sections"
   );
 
 -- package_inclusions
-CREATE POLICY IF NOT EXISTS "studio members can manage package inclusions"
+DROP POLICY IF EXISTS "studio members can manage package inclusions" ON package_inclusions;
+CREATE POLICY "studio members can manage package inclusions"
   ON package_inclusions
   USING (
     package_id IN (
