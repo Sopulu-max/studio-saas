@@ -1,6 +1,6 @@
 import crypto from 'node:crypto'
 
-type PublicLinkKind = 'invoice' | 'contract'
+type PublicLinkKind = 'invoice' | 'contract' | 'summary'
 
 function getPublicLinkSecret() {
   return process.env.PUBLIC_LINK_SECRET ?? process.env.SUPABASE_SERVICE_ROLE_KEY ?? 'dev-public-link-secret'

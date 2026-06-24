@@ -13,6 +13,7 @@ import Link from 'next/link'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig, getStatusConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
+import { buildSignedPublicLink } from '@/lib/public-links'
 
 type SessionStaffRelation = {
   role?: string | null
@@ -433,6 +434,22 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         extraOutfits={session.extra_outfits ?? null}
         extraPictures={session.extra_pictures ?? null}
       />
+
+      {/* Booking Summary */}
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', marginBottom: '12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 2px' }}>BOOKING SUMMARY</p>
+          <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: 0 }}>View or export the full summary of selected services.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <Link href={`/print/summary/${id}`} target="_blank" style={{ fontSize: '13px', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--bg)' }}>
+            Print PDF
+          </Link>
+          <Link href={buildSignedPublicLink('summary', id)} target="_blank" style={{ fontSize: '13px', padding: '6px 12px', borderRadius: '6px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--bg)' }}>
+            Public Link
+          </Link>
+        </div>
+      </div>
 
       {/* Invoice + Gallery + Print orders + Contract quick links */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
