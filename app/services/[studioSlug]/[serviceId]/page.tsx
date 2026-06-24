@@ -340,10 +340,10 @@ export default async function PublicServiceDetailPage({
           const video = parseVideo(sec.video_url)
           const hasMedia = video || sec.image_url
           const hasText  = sec.title || sec.body
-          const layoutClass = \`layout-\${sec.layout || 'standard'}\`
+          const layoutClass = `layout-${sec.layout || 'standard'}`
           
           return (
-            <div key={sec.section_id} className={\`content-section \${layoutClass}\`}>
+            <div key={sec.section_id} className={`content-section ${layoutClass}`}>
               {hasMedia && (
                 <div className="media-wrap">
                   {video ? (
