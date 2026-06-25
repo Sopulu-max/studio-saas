@@ -15,27 +15,14 @@ import { buildStudioConfig, getSessionTypeConfig, getServiceTypeConfig, getStatu
 import { sessionName } from '@/lib/session-title'
 import { buildSignedPublicLink } from '@/lib/public-links'
 
-type SessionStaffRelation = {
-  role?: string | null
-  staff_id?: string | null
-  staff?: { full_name?: string | null } | null
-}
-
-type SessionAddonRelation = {
-  quantity: number
-  package_addons?: { name?: string | null; price?: number | string | null } | null
-}
-
-type PrintOrderItemRelation = {
-  quantity: number
-  unit_price?: number | string | null
-}
+import { getBookingDetail } from '@/lib/domains/bookings/repository'
+import type { BookingDetailDTO, StaffAssignmentDTO } from '@/lib/domains/bookings/types'
 
 function StaffAssignment({
   member,
   label,
 }: {
-  member: SessionStaffRelation | undefined
+  member: StaffAssignmentDTO | undefined
   label: string
 }) {
   return (
@@ -43,40 +30,15 @@ function StaffAssignment({
       <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>{label}</p>
       {member?.staff_id ? (
         <Link href={`/dashboard/staff/${member.staff_id}`} style={{ fontSize: '14px', display: 'block', margin: 0, color: 'inherit', textDecoration: 'none' }}>
-          {member.staff?.full_name}
+          {member.staff_name}
         </Link>
       ) : (
         <p style={{ fontSize: '14px', margin: 0, color: member ? 'var(--text)' : 'var(--text-4)' }}>
-          {member?.staff?.full_name ?? 'None assigned'}
+          {member?.staff_name ?? 'None assigned'}
         </p>
       )}
     </div>
   )
-}
-
-type SessionRecord = {
-  booking_id: string
-  studio_id?: string | null
-  booking_ref?: number | null
-  session_date?: string | null
-  session_type?: string | null
-  shoot_type?: string | null
-  status: string
-  notes?: string | null
-  drive_link?: string | null
-  location_address?: string | null
-  event_name?: string | null
-  event_date?: string | null
-  selections_count?: number | null
-  extra_outfits?: number | null
-  extra_pictures?: number | null
-  client_id?: string | null
-  package_id?: string | null
-  clients?: { client_id?: string | null; full_name?: string | null; email?: string | null; phone?: string | null } | null
-  packages?: { name?: string | null; base_price?: number | string | null; duration_mins?: number | null } | null
-  booking_staff?: SessionStaffRelation[] | null
-  booking_addons?: SessionAddonRelation[] | null
-  custom_answers?: Record<string, any> | null
 }
 
 export default async function SessionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -84,88 +46,31 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: sessionRaw } = await context.admin
-    .from('bookings')
-    .select(`
-      *,
-      clients ( client_id, full_name, email, phone ),
-      packages ( name, base_price, duration_mins ),
-      booking_staff ( role, staff_id, staff ( full_name ) ),
-      booking_addons ( quantity, package_addons ( name, price ) )
-    `)
-    .eq('booking_id', id)
-    .eq('studio_id', context.studioId)
-    .single()
-  const session = sessionRaw as unknown as SessionRecord | null
-
+  const session = await getBookingDetail(context.admin, context.studioId, id)
   if (!session) redirect('/dashboard/sessions')
 
   const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
-  type SessionInvoice = { invoice_id: string; total: number | string | null; status: string | null; payments: { amount: number }[] | null }
-  type SessionGallery = { gallery_id: string; title: string | null; status: string | null }
-  type SessionPrintOrder = { order_id: string; status: string | null; print_order_items: PrintOrderItemRelation[] | null }
-  type SessionContract = { contract_id: string; status: string | null }
+  const invoice = session.invoice
+  const gallery = session.gallery
+  const printOrder = session.printOrder
+  const contract = session.contract
+  const bookedServices = session.services
 
-  const { data: invoiceRaw } = await context.admin
-    .from('invoices')
-    .select('invoice_id, total, status, payments(amount)')
-    .eq('booking_id', id)
-    .single()
-  const invoice = invoiceRaw as unknown as SessionInvoice | null
-
-  const amountPaid = (invoice?.payments ?? [])
-    .reduce((sum, p) => sum + Number(p.amount), 0)
-  const balanceDue = invoice ? Math.max(0, Number(invoice.total) - amountPaid) : 0
-
-  const { data: galleryRaw } = await context.admin
-    .from('galleries')
-    .select('gallery_id, title, status')
-    .eq('booking_id', id)
-    .single()
-  const gallery = galleryRaw as unknown as SessionGallery | null
-
-  const { data: printOrderRaw } = await context.admin
-    .from('print_orders')
-    .select('order_id, status, print_order_items(quantity, unit_price)')
-    .eq('booking_id', id)
-    .order('created_at', { ascending: false })
-    .limit(1)
-    .single()
-  const printOrder = printOrderRaw as unknown as SessionPrintOrder | null
-
-  const { data: contractRaw } = await context.admin
-    .from('contracts')
-    .select('contract_id, status')
-    .eq('booking_id', id)
-    .single()
-  const contract = contractRaw as unknown as SessionContract | null
-
-  // Fetch booked services (from booking_services join)
-  type BookedService = {
-    booking_service_id: string
-    quantity:           number
-    price_at_booking?:  number | null
-    status?:            string | null
-    services?:          { name?: string | null; type?: string | null; category_value?: string | null; booking_fields?: any[] | null } | null
-  }
-  const { data: bookedServicesRaw } = await context.admin
-    .from('booking_services')
-    .select('booking_service_id, quantity, price_at_booking, status, services(name, type, category_value, booking_fields)')
-    .eq('booking_id', id)
-  const bookedServices = (bookedServicesRaw ?? []) as unknown as BookedService[]
+  const amountPaid = invoice?.amount_paid ?? 0
+  const balanceDue = invoice?.balance_due ?? 0
 
   // Fetch available staff for assignment dropdowns (session.studio_id is already available)
   const { data: availableStaff } = await context.admin
     .from('staff')
-    .select('staff_id, full_name, role')
-    .eq('studio_id', session.studio_id ?? '')
+    .select('staff_id, full_name, roles')
+    .eq('studio_id', context.studioId)
     .order('full_name')
 
   const statusCfg      = getStatusConfig(config, session.status)
   const typeCfg        = getSessionTypeConfig(config, session.session_type)
-  const serviceCategory = bookedServices[0]?.services?.category_value ?? 'photo'
+  const serviceCategory = bookedServices[0]?.service_category ?? 'photo'
   const serviceTypeCfg = getServiceTypeConfig(config, serviceCategory)
 
   // Dynamic pending-panel: show when session is in the first (intake) status
@@ -197,13 +102,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           <h1 style={{ fontSize: '22px', fontWeight: '600', margin: '0 0 4px' }}>
             {session.client_id ? (
               <Link href={`/dashboard/clients/${session.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                {session.clients?.full_name ?? '—'}
+                {session.client_name ?? '—'}
               </Link>
-            ) : (session.clients?.full_name ?? '—')}
+            ) : (session.client_name ?? '—')}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(session.clients?.full_name, session.booking_ref, id, session.session_date)}</span>
-            {session.packages?.name ? ` · ${session.packages.name}` : ''}
+            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(session.client_name, session.booking_ref, id, session.session_date)}</span>
+            {session.package_name ? ` · ${session.package_name}` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' as const, justifyContent: 'flex-end' }}>
@@ -236,11 +141,11 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
       )}
 
       {/* Category date reminder — shown when event_date within 7 days & client has email */}
-      {daysUntilEvent !== null && session.shoot_type && session.clients?.email && (
+      {daysUntilEvent !== null && session.shoot_type && session.client_email && (
         <div style={{ marginBottom: '12px' }}>
           <EventDateReminderButton
             sessionId={id}
-            clientName={session.clients?.full_name ?? 'Client'}
+            clientName={session.client_name ?? 'Client'}
             shootType={session.shoot_type}
             eventDate={session.event_date!}
             daysUntil={daysUntilEvent}
@@ -253,13 +158,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
         {session.client_id ? (
           <Link href={`/dashboard/clients/${session.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
-            {session.clients?.full_name}
+            {session.client_name}
           </Link>
         ) : (
-          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{session.clients?.full_name}</p>
+          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{session.client_name}</p>
         )}
-        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{session.clients?.email}</p>
-        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{session.clients?.phone ?? '—'}</p>
+        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{session.client_email}</p>
+        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{session.client_phone ?? '—'}</p>
         {session.client_id && (
           <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '12px', paddingTop: '12px' }}>
             <Link href={`/dashboard/clients/${session.client_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
@@ -332,25 +237,24 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             </div>
           )}
 
-          {session.packages?.name ? (
+          {session.package_name ? (
            <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Package</p>
             {session.package_id ? (
-              <Link href={`/dashboard/packages/${session.package_id}`} style={{ fontSize: '14px', margin: 0, display: 'block', color: 'inherit', textDecoration: 'none' }}>
-                {session.packages.name}
+              <Link href={`/dashboard/packages/${session.package_id}`} style={{ fontSize: '14px', display: 'block', margin: 0, color: 'inherit', textDecoration: 'none' }}>
+                {session.package_name}
               </Link>
             ) : (
-              <p style={{ fontSize: '14px', margin: 0 }}>{session.packages.name}</p>
+              <p style={{ fontSize: '14px', margin: 0 }}>{session.package_name}</p>
             )}
             <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '2px 0 0' }}>
-              ₦{Number(session.packages.base_price).toLocaleString()}
-              {session.packages.duration_mins ? ` · ${session.packages.duration_mins} mins` : ''}
+              ₦{Number(session.base_price).toLocaleString()}
             </p>
           </div>
         ) : null}
 
           {(() => {
-            const staffList    = (session.booking_staff as unknown as SessionStaffRelation[]) ?? []
+            const staffList    = session.staff ?? []
             const photographer  = staffList.find(s => s.role === 'photographer')
             const editor        = staffList.find(s => s.role === 'editor')
             const videographer  = staffList.find(s => s.role === 'videographer')
@@ -382,13 +286,13 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           })()}
         </div>
 
-        {(session.booking_addons?.length ?? 0) > 0 && (
+        {(session.addons?.length ?? 0) > 0 && (
           <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '16px', paddingTop: '16px' }}>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 8px' }}>ADD-ONS</p>
-            {(session.booking_addons as unknown as SessionAddonRelation[]).map((a, i: number) => (
+            {session.addons.map((a, i: number) => (
               <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '4px' }}>
-                <span>{a.package_addons?.name} × {a.quantity}</span>
-                <span style={{ color: 'var(--text-3)' }}>₦{(Number(a.package_addons?.price) * a.quantity).toLocaleString()}</span>
+                <span>{a.addon_name} × {a.quantity}</span>
+                <span style={{ color: 'var(--text-3)' }}>₦{(Number(a.price) * a.quantity).toLocaleString()}</span>
               </div>
             ))}
           </div>
@@ -416,8 +320,8 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
 
       {/* WhatsApp Omnichannel Control Center */}
       <WhatsAppActions 
-        phone={session.clients?.phone ?? null}
-        clientName={session.clients?.full_name ?? null}
+        phone={session.client_phone ?? null}
+        clientName={session.client_name ?? null}
         balanceDue={balanceDue}
         hasInvoice={!!invoice}
         hasGallery={!!gallery}
@@ -500,7 +404,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           {printOrder ? (
             <>
               <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>
-                ₦{(printOrder.print_order_items ?? []).reduce((sum, item) => sum + Number(item.unit_price) * item.quantity, 0).toLocaleString()}
+                ₦{(printOrder.total_amount ?? 0).toLocaleString()}
               </p>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '12px', color: 'var(--text-3)', textTransform: 'capitalize' }}>{printOrder.status}</span>
@@ -547,9 +451,9 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         serviceType={serviceCategory}
         outfitsCount={session.custom_answers?.legacy_outfits ? Number(session.custom_answers.legacy_outfits) : null}
         invoiceId={invoice?.invoice_id ?? null}
-        assignedStaff={((session.booking_staff as unknown as SessionStaffRelation[]) ?? []).map((bs) => ({
+        assignedStaff={(session.staff ?? []).map((bs) => ({
           staff_id: bs.staff_id ?? '',
-          full_name: bs.staff?.full_name ?? '',
+          full_name: bs.staff_name ?? '',
           role: bs.role ?? '',
         }))}
         availableStaff={(availableStaff ?? []) as unknown as { staff_id: string; full_name: string; role?: string }[]}

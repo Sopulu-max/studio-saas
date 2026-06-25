@@ -19,7 +19,7 @@ type StaffMember = {
   staff_id: string
   full_name: string
   email: string
-  role: string
+  roles: string[]
   invite_sent_at: string | null
   invite_accepted_at: string | null
   user_id: string | null
@@ -42,7 +42,7 @@ export default function TeamForm({ initial }: { initial: StaffMember[] }) {
     // Optimistic add
     setMembers(prev => [...prev, {
       staff_id: crypto.randomUUID(),
-      full_name: newName, email: newEmail, role: newRole,
+      full_name: newName, email: newEmail, roles: [newRole],
       invite_sent_at: new Date().toISOString(), invite_accepted_at: null, user_id: null,
     }])
   }
@@ -142,7 +142,7 @@ export default function TeamForm({ initial }: { initial: StaffMember[] }) {
                 </div>
 
                 <span style={{ fontSize: '12px', color: 'var(--text-3)', flexShrink: 0 }}>
-                  {roleLabel(m.role)}
+                  {m.roles?.map(roleLabel).join(', ')}
                 </span>
 
                 {/* Status badge */}

@@ -6,14 +6,7 @@ import { saveCheckin, deleteCheckin } from '@/app/actions/attendance'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type AttendanceRecord = {
-  checkin_id:     string
-  staff_id:       string
-  date:           string
-  checked_in_at:  string
-  checked_out_at: string | null
-  staff: { full_name: string; roles: string[] | null; role: string | null } | null
-}
+import { AttendanceRecordDTO } from '@/lib/domains/attendance/types'
 
 export type StaffOption = { staff_id: string; full_name: string }
 
@@ -54,7 +47,7 @@ function RecordModal({
   onClose,
 }: {
   staff:   StaffOption[]
-  initial: Partial<AttendanceRecord> | null   // null = new record
+  initial: Partial<AttendanceRecordDTO> | null   // null = new record
   onClose: () => void
 }) {
   const router = useRouter()
@@ -159,7 +152,7 @@ export default function RecordsTable({
   initialTo,
   initialStaffId,
 }: {
-  records:        AttendanceRecord[]
+  records:        AttendanceRecordDTO[]
   staff:          StaffOption[]
   initialFrom:    string
   initialTo:      string
@@ -174,7 +167,7 @@ export default function RecordsTable({
   const [staffId, setStaffId] = useState(initialStaffId)
 
   // Modal state
-  const [modal, setModal] = useState<'add' | AttendanceRecord | null>(null)
+  const [modal, setModal] = useState<'add' | AttendanceRecordDTO | null>(null)
 
   // Delete confirm
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null)
@@ -278,7 +271,7 @@ export default function RecordsTable({
           {records.map((r, i) => {
             const late   = isLate(r.checked_in_at)
             const dur    = r.checked_out_at ? duration(r.checked_in_at, r.checked_out_at) : null
-            const roles: string[] = r.staff?.roles?.length ? r.staff.roles : r.staff?.role ? [r.staff.role] : []
+            const roles: string[] = r.staff?.roles ?? []
             return (
               <div
                 key={r.checkin_id}

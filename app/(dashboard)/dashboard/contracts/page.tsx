@@ -6,31 +6,7 @@ import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
-
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-type ContractListRow = {
-  contract_id:  string
-  created_at?:  string | null
-  signed_by?:   string | null
-  status:       string
-  bookings?: {
-    booking_id?:   string | null
-    booking_ref?:  number | null
-    session_date?: string | null
-    session_type?: string | null
-    clients?: { full_name?: string | null } | null
-  } | null
-}
-
-type BookingRow = {
-  booking_id:    string
-  booking_ref?:  number | null
-  session_date?: string | null
-  session_type?: string | null
-  status:        string
-  clients?: { full_name?: string | null } | null
-}
+import { getContractStats, getContractsList, getBookingsWithoutContracts } from '@/lib/domains/contracts/repository'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -120,7 +96,6 @@ export default async function ContractsPage({
   const { view = 'all', status = '', page = '1' } = await searchParams
   const pageNum = Math.max(1, parseInt(page) || 1)
   const from    = (pageNum - 1) * PAGE_SIZE
-  const to      = from + PAGE_SIZE - 1
 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
@@ -128,43 +103,17 @@ export default async function ContractsPage({
   const studioRow = await fetchStudio(context.admin, context.studioId)
   const config    = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
-  // Terminal statuses — exclude from "active sessions" query in No contract view
   const terminalValues = config.bookingStatuses.filter(s => s.is_terminal).map(s => s.value)
-  const excludeIn      = terminalValues.length ? `(${terminalValues.map(v => `"${v}"`).join(',')})` : '("__none__")'
 
   // ── Stats (always fetched in parallel) ───────────────────────────
-  const [
-    { count: totalContracts },
-    { count: signedCount },
-    { count: sentCount },
-    { count: voidCount },
-  ] = await Promise.all([
-    context.admin.from('contracts')
-      .select('*, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId),
-    context.admin.from('contracts')
-      .select('*, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId).eq('status', 'signed'),
-    context.admin.from('contracts')
-      .select('*, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId).eq('status', 'sent'),
-    context.admin.from('contracts')
-      .select('*, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId).eq('status', 'void'),
-  ])
-
-  const total     = totalContracts ?? 0
-  const signed    = signedCount ?? 0
-  const awaiting  = sentCount ?? 0
-  const voided    = voidCount ?? 0
-  const signRate  = total > 0 ? Math.round((signed / total) * 100) : 0
+  const stats = await getContractStats(context.admin, context.studioId)
 
   const statsItems = [
-    { label: 'Total contracts',      value: total },
-    { label: 'Signed',               value: signed,   accent: '#3b6d11' },
-    { label: 'Awaiting signature',   value: awaiting, accent: '#854f0b' },
-    { label: 'Void',                 value: voided,   accent: '#a32d2d' },
-    { label: 'Sign rate',            value: `${signRate}%` },
+    { label: 'Total contracts',      value: stats.total },
+    { label: 'Signed',               value: stats.signed,   accent: '#3b6d11' },
+    { label: 'Awaiting signature',   value: stats.awaiting, accent: '#854f0b' },
+    { label: 'Void',                 value: stats.voided,   accent: '#a32d2d' },
+    { label: 'Sign rate',            value: `${stats.signRate}%` },
   ]
 
   // ── Header ───────────────────────────────────────────────────────
@@ -179,14 +128,7 @@ export default async function ContractsPage({
 
   // ── Needs signature view ─────────────────────────────────────────
   if (view === 'needs-signature') {
-    const { data: raw } = await context.admin
-      .from('contracts')
-      .select('contract_id, created_at, signed_by, status, bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)')
-      .eq('bookings.studio_id', context.studioId)
-      .eq('status', 'sent')
-      .order('created_at', { ascending: true })
-      .limit(200)
-    const contracts = (raw ?? []) as unknown as ContractListRow[]
+    const { data: contracts } = await getContractsList(context.admin, context.studioId, { status: 'sent', orderBy: 'created_at', ascending: true, limit: 200 })
 
     return (
       <div>
@@ -198,7 +140,6 @@ export default async function ContractsPage({
           <EmptyState message="No contracts awaiting signature" sub="All sent contracts have been signed" />
         ) : (
           <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
-            {/* Table header */}
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Session</span><span>Sent on</span><span>Days waiting</span><span></span>
             </div>
@@ -215,10 +156,10 @@ export default async function ContractsPage({
                   }}>
                     <Link href={`/dashboard/contracts/${c.contract_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                       <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {c.bookings?.clients?.full_name ?? '—'}
+                        {c.client_name ?? '—'}
                       </p>
                       <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                        {sessionName(c.bookings?.clients?.full_name, c.bookings?.booking_ref, c.bookings?.booking_id, c.bookings?.session_date)}
+                        {sessionName(c.client_name, c.booking_ref, c.booking_id, c.session_date)}
                       </p>
                     </Link>
 
@@ -243,25 +184,7 @@ export default async function ContractsPage({
 
   // ── No contract view ─────────────────────────────────────────────
   if (view === 'no-contract') {
-    const [{ data: activeRaw }, { data: contractedRaw }] = await Promise.all([
-      context.admin
-        .from('bookings')
-        .select('booking_id, booking_ref, session_date, session_type, status, clients(full_name)')
-        .eq('studio_id', context.studioId)
-        .not('status', 'in', excludeIn)
-        .order('session_date', { ascending: false })
-        .limit(500),
-      context.admin
-        .from('contracts')
-        .select('booking_id, bookings!inner(studio_id)')
-        .eq('bookings.studio_id', context.studioId),
-    ])
-
-    const activeBookings = (activeRaw ?? []) as unknown as BookingRow[]
-    const contractedIds  = new Set(
-      ((contractedRaw ?? []) as unknown as { booking_id?: string | null }[]).map((r) => r.booking_id).filter(Boolean)
-    )
-    const noContract = activeBookings.filter(b => !contractedIds.has(b.booking_id))
+    const noContract = await getBookingsWithoutContracts(context.admin, context.studioId, terminalValues)
 
     return (
       <div>
@@ -293,10 +216,10 @@ export default async function ContractsPage({
                   }}>
                     <div>
                       <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {b.clients?.full_name ?? '—'}
+                        {b.client_name ?? '—'}
                       </p>
                       <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                        {sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date)}
+                        {sessionName(b.client_name, b.booking_ref, b.booking_id, b.session_date)}
                       </p>
                     </div>
 
@@ -320,18 +243,7 @@ export default async function ContractsPage({
   }
 
   // ── All view (default) ───────────────────────────────────────────
-  let q = context.admin
-    .from('contracts')
-    .select('contract_id, created_at, signed_by, status, bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)', { count: 'exact' })
-    .eq('bookings.studio_id', context.studioId)
-
-  if (status) q = q.eq('status', status)
-
-  const { data: contractsRaw, count: filteredCount } = await q
-    .order('created_at', { ascending: false })
-    .range(from, to)
-  const contracts   = (contractsRaw ?? []) as unknown as ContractListRow[]
-  const listTotal   = filteredCount ?? 0
+  const { data: contracts, count: listTotal } = await getContractsList(context.admin, context.studioId, { status: status || undefined, limit: PAGE_SIZE, offset: from })
   const totalPages  = Math.ceil(listTotal / PAGE_SIZE)
   const prevUrl     = pageNum > 1          ? pageUrl({ view: 'all', status }, pageNum - 1) : undefined
   const nextUrl     = pageNum < totalPages ? pageUrl({ view: 'all', status }, pageNum + 1) : undefined
@@ -383,10 +295,10 @@ export default async function ContractsPage({
                 }}>
                   <div>
                     <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {c.bookings?.clients?.full_name ?? '—'}
+                      {c.client_name ?? '—'}
                     </p>
                     <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                      {sessionName(c.bookings?.clients?.full_name, c.bookings?.booking_ref, c.bookings?.booking_id, c.bookings?.session_date)}
+                      {sessionName(c.client_name, c.booking_ref, c.booking_id, c.session_date)}
                     </p>
                   </div>
                   <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(c.created_at)}</p>

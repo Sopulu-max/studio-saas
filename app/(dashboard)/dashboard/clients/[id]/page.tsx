@@ -7,75 +7,22 @@ import { sessionName } from '@/lib/session-title'
 import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
 import WhatsAppActions from '@/components/whatsapp-actions'
 
-type BookingPackageRelation = { name?: string | null } | null
-
-type ClientRow = {
-  client_id: string
-  client_ref?: number | null
-  full_name: string | null
-  email: string | null
-  phone: string | null
-  address: string | null
-  avatar_url?: string | null
-}
-
-type BookingRow = {
-  booking_id: string
-  booking_ref: number | null
-  session_type: string | null
-  session_date: string | null
-  status: string | null
-  packages: BookingPackageRelation
-}
-
-type ClientInvoiceRow = {
-  invoice_id: string
-  total?:     number | string | null
-  status:     string
-  payments?:  { amount: number | string }[] | null
-}
+import { getClientDetail } from '@/lib/domains/clients/repository'
 
 export default async function ClientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const { data: clientRaw } = await context.admin
-    .from('clients')
-    .select('*')
-    .eq('client_id', id)
-    .eq('studio_id', context.studioId)
-    .single()
-
-  if (!clientRaw) redirect('/dashboard/clients')
-
-  const client = clientRaw as unknown as ClientRow
-
-  const [bookingsResult, studioRow, invoicesResult] = await Promise.all([
-    context.admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_type, session_date, status, packages(name)')
-      .eq('client_id', id)
-      .eq('studio_id', context.studioId)
-      .order('session_date', { ascending: false }),
-    fetchStudio(context.admin, context.studioId),
-    context.admin
-      .from('invoices')
-      .select('invoice_id, total, status, payments(amount), bookings!inner(client_id, studio_id)')
-      .eq('bookings.client_id', id)
-      .eq('bookings.studio_id', context.studioId),
+  const [detailResult, studioRow] = await Promise.all([
+    getClientDetail(context.admin, context.studioId, id),
+    fetchStudio(context.admin, context.studioId)
   ])
 
-  const bookings = (bookingsResult.data ?? []) as unknown as BookingRow[]
-  const config   = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+  const { client, bookings, invoices } = detailResult
+  if (!client) redirect('/dashboard/clients')
 
-  const invoices      = (invoicesResult.data ?? []) as unknown as ClientInvoiceRow[]
-  const totalInvoiced = invoices
-    .filter(inv => inv.status !== 'cancelled')
-    .reduce((sum, inv) => sum + Number(inv.total ?? 0), 0)
-  const totalPaid = invoices
-    .reduce((sum, inv) => sum + (inv.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0), 0)
-  const outstanding = Math.max(0, totalInvoiced - totalPaid)
+  const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -130,19 +77,19 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Total invoiced</p>
             <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em' }}>
-              {invoices.length === 0 ? '—' : `₦${totalInvoiced.toLocaleString('en-NG')}`}
+              {invoices.length === 0 ? '—' : `₦${client.total_invoiced.toLocaleString('en-NG')}`}
             </p>
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Total paid</p>
-            <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em', color: totalPaid > 0 ? '#3b6d11' : 'var(--text)' }}>
-              {invoices.length === 0 ? '—' : `₦${totalPaid.toLocaleString('en-NG')}`}
+            <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em', color: client.total_paid > 0 ? '#3b6d11' : 'var(--text)' }}>
+              {invoices.length === 0 ? '—' : `₦${client.total_paid.toLocaleString('en-NG')}`}
             </p>
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Outstanding</p>
-            <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em', color: outstanding > 0 ? '#a32d2d' : (invoices.length > 0 ? '#3b6d11' : 'var(--text)') }}>
-              {invoices.length === 0 ? '—' : outstanding > 0 ? `₦${outstanding.toLocaleString('en-NG')}` : 'Settled'}
+            <p style={{ fontSize: '16px', fontWeight: '600', margin: 0, letterSpacing: '-0.01em', color: client.outstanding > 0 ? '#a32d2d' : (invoices.length > 0 ? '#3b6d11' : 'var(--text)') }}>
+              {invoices.length === 0 ? '—' : client.outstanding > 0 ? `₦${client.outstanding.toLocaleString('en-NG')}` : 'Settled'}
             </p>
           </div>
         </div>
@@ -167,14 +114,14 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           bookings.map((b, i) => {
             const s = getStatusConfig(config, b.status)
             return (
-              <Link key={b.booking_id} href={`/dashboard/sessions/${b.booking_id}`} style={{
+              <Link key={b.session_id} href={`/dashboard/sessions/${b.booking_id}`} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit',
                 borderBottom: i < bookings.length - 1 ? '1px solid var(--line-inner)' : 'none',
               }}>
                 <div>
                   <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>
-                    {(b.packages as BookingPackageRelation)?.name ?? client.full_name}
+                    {b.package_name ?? client.full_name}
                   </p>
                   <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
                     <span style={{ fontFamily: 'monospace', letterSpacing: '0.02em' }}>{sessionName(client.full_name, b.booking_ref, b.booking_id, b.session_date)}</span>
@@ -197,9 +144,9 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
             label: 'Send Check-in',
             msg: `Hi ${client.full_name?.split(' ')[0] || 'there'}, just checking in from ${context.studioId}!`,
           },
-          ...(outstanding > 0 ? [{
+          ...(client.outstanding > 0 ? [{
             label: 'Send Account Balance Reminder',
-            msg: `Hi ${client.full_name?.split(' ')[0] || 'there'}, a quick reminder that there is an outstanding balance of ₦${outstanding.toLocaleString('en-NG')} on your account. Please let us know if you have any questions!`,
+            msg: `Hi ${client.full_name?.split(' ')[0] || 'there'}, a quick reminder that there is an outstanding balance of ₦${client.outstanding.toLocaleString('en-NG')} on your account. Please let us know if you have any questions!`,
             priority: true,
           }] : []),
           ...(bookings.length > 0 ? [{

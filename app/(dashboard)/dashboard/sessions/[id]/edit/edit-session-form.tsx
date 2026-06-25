@@ -37,18 +37,20 @@ const CATEGORY_SUGGESTIONS = [
 
 type SessionRecord = {
   client_id?: string | null
-  session_type?: string | null
-  service_type?: string | null
-  shoot_type?: string | null
-  session_date?: string | null
   package_id?: string | null
   outfits_count?: number | null
   edited_photos?: number | null
-  location_address?: string | null
-  event_name?: string | null
-  event_date?: string | null
   notes?: string | null
   custom_answers?: Record<string, any> | null
+  sessions?: {
+    session_type?: string | null
+    service_type?: string | null
+    shoot_type?: string | null
+    session_date?: string | null
+    location_address?: string | null
+    event_name?: string | null
+    event_date?: string | null
+  }[] | null
 }
 
 function isEventType(t: string)   { return t === 'event' }
@@ -93,13 +95,13 @@ export default function EditSessionForm({
 
   const [form, setForm] = useState({
     client_id:          session.client_id          ?? '',
-    session_type:       session.session_type       ?? config.sessionTypes[0]?.value ?? 'studio',
-    shoot_type:         session.shoot_type         ?? '',
-    session_date:       toDatetimeLocal(session.session_date),
+    session_type:       session.sessions?.[0]?.session_type       ?? config.sessionTypes[0]?.value ?? 'studio',
+    shoot_type:         session.sessions?.[0]?.shoot_type         ?? '',
+    session_date:       toDatetimeLocal(session.sessions?.[0]?.session_date),
     package_id:         session.package_id         ?? '',
-    location_address:   session.location_address   ?? '',
-    event_name:         session.event_name         ?? '',
-    event_date:         session.event_date          ?? '',
+    location_address:   session.sessions?.[0]?.location_address   ?? '',
+    event_name:         session.sessions?.[0]?.event_name         ?? '',
+    event_date:         session.sessions?.[0]?.event_date          ?? '',
     notes:              session.notes              ?? '',
     photographer_id:    photographerId ?? '',
     editor_id:          editorId ?? '',

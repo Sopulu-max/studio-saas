@@ -5,6 +5,7 @@ import AvatarUpload from '@/components/avatar-upload'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStaffRoleConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
+import { getStaffDetail } from '@/lib/domains/staff/repository'
 
 const WEEKDAYS = [
   { value: 'monday',    label: 'Mon' },
@@ -15,14 +16,6 @@ const WEEKDAYS = [
   { value: 'saturday',  label: 'Sat' },
   { value: 'sunday',    label: 'Sun' },
 ]
-
-type AssignedBooking = {
-  booking_id?: string | null
-  booking_ref?: number | null
-  session_date?: string | null
-  status?: string | null
-  clients?: { full_name?: string | null } | null
-}
 
 const BOOKING_STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   pending_confirmation: { bg: '#faeeda', color: '#854f0b' },
@@ -38,13 +31,8 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const [{ data: member }, studio] = await Promise.all([
-    context.admin
-      .from('staff')
-      .select('*')
-      .eq('staff_id', id)
-      .eq('studio_id', context.studioId)
-      .single(),
+  const [member, studio] = await Promise.all([
+    getStaffDetail(context.admin, context.studioId, id),
     fetchStudio(context.admin, context.studioId),
   ])
 
@@ -55,44 +43,9 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
     studio?.equipment_categories, studio?.staff_roles,
   )
 
-  type StaffRow = {
-    staff_id: string
-    full_name: string
-    email: string | null
-    role: string | null
-    roles: string[] | null
-    avatar_url: string | null
-    hire_date: string | null
-    working_days: string[] | null
-  }
-  const typedMember = member as unknown as StaffRow
-
-  // booking_staff and staff_checkins are not in the generated Supabase types — cast explicitly
-  type AssignmentRow  = { role: string | null; bookings: AssignedBooking }
-  type CheckinRecord  = { checkin_id: string; date: string; checked_in_at: string; checked_out_at: string | null }
-
-  const { data: assignmentsRaw } = await context.admin
-    .from('booking_staff')
-    .select('role, bookings!inner(booking_id, booking_ref, session_date, status, studio_id, clients(full_name))')
-    .eq('staff_id', id)
-    .eq('bookings.studio_id', context.studioId)
-    .order('booking_id', { ascending: false })
-
-  const { data: recentCheckinsRaw } = await context.admin
-    .from('staff_checkins')
-    .select('checkin_id, date, checked_in_at, checked_out_at')
-    .eq('staff_id', id)
-    .eq('studio_id', context.studioId)
-    .order('date', { ascending: false })
-    .limit(14)
-
-  const assignments   = (assignmentsRaw   ?? []) as unknown as AssignmentRow[]
-  const recentCheckins = (recentCheckinsRaw ?? []) as unknown as CheckinRecord[]
-
-  const effectiveRoles: string[] =
-    typedMember.roles && typedMember.roles.length > 0
-      ? typedMember.roles
-      : typedMember.role ? [typedMember.role] : []
+  const assignments    = member.assignments
+  const recentCheckins = member.recent_checkins
+  const effectiveRoles = member.roles
 
   return (
     <div style={{ maxWidth: '600px' }}>
@@ -101,12 +54,12 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
           <AvatarUpload
             entityId={id}
             entityType="staff"
-            currentUrl={typedMember.avatar_url ?? null}
-            name={typedMember.full_name ?? ''}
+            currentUrl={member.avatar_url ?? null}
+            name={member.full_name ?? ''}
             size={56}
           />
           <div>
-            <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{typedMember.full_name}</h1>
+            <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{member.full_name}</h1>
             <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>{assignments?.length ?? 0} sessions assigned</p>
           </div>
         </div>
@@ -133,13 +86,13 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Email</p>
-            <p style={{ fontSize: '14px', margin: 0 }}>{typedMember.email}</p>
+            <p style={{ fontSize: '14px', margin: 0 }}>{member.email}</p>
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Hire date</p>
             <p style={{ fontSize: '14px', margin: 0 }}>
-              {typedMember.hire_date
-                ? new Date(typedMember.hire_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+              {member.hire_date
+                ? new Date(member.hire_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
                 : '—'}
             </p>
           </div>
@@ -149,10 +102,10 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
       {/* Working days */}
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>WORKING DAYS</p>
-        {typedMember.working_days && typedMember.working_days.length > 0 ? (
+        {member.working_days && member.working_days.length > 0 ? (
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
             {WEEKDAYS.map(d => {
-              const active = (typedMember.working_days as string[]).includes(d.value)
+              const active = (member.working_days as string[]).includes(d.value)
               return (
                 <span key={d.value} style={{
                   fontSize: '12px', fontWeight: '500', padding: '5px 12px', borderRadius: '8px',
@@ -220,7 +173,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
 
         // Group by role, preserving order: photographer → editor → colour_grader → others
         const roleOrder = ['photographer', 'editor', 'colour_grader']
-        const grouped: Record<string, AssignmentRow[]> = {}
+        const grouped: Record<string, typeof assignments> = {}
         for (const a of assignments) {
           const role = a.role ?? 'other'
           grouped[role] = grouped[role] ?? []
@@ -242,25 +195,25 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
                   <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{grouped[role].length}</p>
                 </div>
                 {grouped[role].map((a, i) => {
-                  const booking = a.bookings as AssignedBooking
-                  const s = BOOKING_STATUS_COLORS[booking?.status ?? ''] ?? BOOKING_STATUS_COLORS.confirmed
+                  const session = a.session
+                  const s = BOOKING_STATUS_COLORS[session?.status ?? ''] ?? BOOKING_STATUS_COLORS.confirmed
                   return (
-                    <Link key={booking?.booking_id} href={`/dashboard/sessions/${booking?.booking_id}`} style={{
+                    <Link key={session?.booking_id} href={`/dashboard/sessions/${session?.booking_id}`} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit',
                       borderBottom: i < grouped[role].length - 1 ? '1px solid var(--line-inner)' : 'none',
                     }}>
                       <div>
                         <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>
-                          {booking?.clients?.full_name ?? '—'}
+                          {session?.client_name ?? '—'}
                         </p>
                         <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                          <span style={{ fontFamily: 'monospace', letterSpacing: '0.02em' }}>{sessionName(booking?.clients?.full_name, booking?.booking_ref, booking?.booking_id, booking?.session_date)}</span>
-                          {booking?.session_date ? ` · ${new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                          <span style={{ fontFamily: 'monospace', letterSpacing: '0.02em' }}>{sessionName(session?.client_name, session?.booking_ref, session?.booking_id, session?.session_date)}</span>
+                          {session?.session_date ? ` · ${new Date(session.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                         </p>
                       </div>
                       <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', width: 'fit-content' }}>
-                        {booking?.status}
+                        {session?.status}
                       </span>
                     </Link>
                   )

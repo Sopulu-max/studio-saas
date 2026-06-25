@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { sendContractEmail } from '@/lib/email'
 import { getStudioContext, ownsBooking, ownsContract } from '@/lib/studio'
+import { getContractDetail } from '@/lib/domains/contracts/repository'
 
 const addContractSchema = z.object({
   booking_id: z.string().min(1, 'Booking is required'),
@@ -138,32 +139,21 @@ export async function sendContractToClient(contractId: string) {
     .eq('studio_id', context.studioId)
     .single()
 
-  type ContractEmailRecord = {
-    bookings?: {
-      session_date?: string | null
-      clients?: { full_name?: string | null; email?: string | null } | null
-    } | null
-  }
-  const { data: contractRaw } = await context.admin
-    .from('contracts')
-    .select('*, bookings(session_date, clients(full_name, email))')
-    .eq('contract_id', contractId)
-    .single()
-  const contract = contractRaw as unknown as ContractEmailRecord | null
+  const contract = await getContractDetail(context.admin, context.studioId, contractId)
 
   if (!contract) return { error: 'Contract not found' }
 
-  const clientEmail = contract.bookings?.clients?.email
+  const clientEmail = contract.client_email
   if (!clientEmail) return { error: 'Client has no email address' }
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
   const { error: emailError } = await sendContractEmail({
     to:          clientEmail,
-    clientName:  contract.bookings?.clients?.full_name ?? 'Client',
+    clientName:  contract.client_name ?? 'Client',
     studioName:  (studio?.name as string | null | undefined) ?? '',
     contractId,
-    sessionDate: contract.bookings?.session_date ?? undefined,
+    sessionDate: contract.session_date ?? undefined,
     siteUrl,
   })
 

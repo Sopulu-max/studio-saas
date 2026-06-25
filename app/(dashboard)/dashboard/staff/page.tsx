@@ -10,45 +10,8 @@ import { ViewSwitcher } from '@/components/view-switcher'
 import { resolveLayout } from '@/lib/view-mode'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-type StaffMember = {
-  staff_id:     string
-  full_name:    string
-  email:        string | null
-  role:         string | null
-  roles:        string[] | null
-  working_days: string[] | null
-  hire_date:    string | null
-  avatar_url:   string | null
-}
-
-type TodayBooking = {
-  booking_id:    string
-  booking_ref?:  number | null
-  session_date?: string | null
-  session_type?: string | null
-  status:        string
-  clients?:      { full_name?: string | null } | null
-  booking_staff?: { role?: string | null; staff?: { staff_id?: string | null; full_name?: string | null } | null }[] | null
-}
-
-type StaffAssignment = {
-  booking_id?: string | null
-  role?:       string | null
-  staff?: {
-    staff_id?:  string | null
-    full_name?: string | null
-  } | null
-  bookings?: {
-    booking_id?:   string | null
-    booking_ref?:  number | null
-    session_date?: string | null
-    session_type?: string | null
-    studio_id?:    string | null
-    clients?: { full_name?: string | null } | null
-  } | null
-}
+import { getStaffStats, getStaffList, getTodaySessions, getStaffSessionAssignments } from '@/lib/domains/staff/repository'
+import { StaffMemberDTO, StaffSessionAssignmentDTO, TodaySessionDTO } from '@/lib/domains/staff/types'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -139,32 +102,12 @@ export default async function StaffPage({
   )
 
   // ── Stats (always) ───────────────────────────────────────────────
-  const now        = new Date()
-  const todayStr   = now.toISOString().slice(0, 10)
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-
-  const [
-    { count: totalStaff },
-    { count: sessionsThisMonth },
-    { count: todayCount },
-  ] = await Promise.all([
-    context.admin.from('staff')
-      .select('*', { count: 'exact', head: true })
-      .eq('studio_id', context.studioId),
-    context.admin.from('booking_staff')
-      .select('*, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId)
-      .gte('bookings.session_date', monthStart),
-    context.admin.from('bookings')
-      .select('*', { count: 'exact', head: true })
-      .eq('studio_id', context.studioId)
-      .eq('session_date', todayStr),
-  ])
+  const stats = await getStaffStats(context.admin, context.studioId)
 
   const statsItems = [
-    { label: 'Total staff',        value: totalStaff ?? 0 },
-    { label: 'Sessions this month', value: sessionsThisMonth ?? 0 },
-    { label: 'Sessions today',      value: todayCount ?? 0 },
+    { label: 'Total staff',        value: stats.total },
+    { label: 'Sessions this month', value: stats.sessions_this_month },
+    { label: 'Sessions today',      value: stats.sessions_today },
   ]
 
   // ── Header ───────────────────────────────────────────────────────
@@ -179,14 +122,7 @@ export default async function StaffPage({
 
   // ── Today view ───────────────────────────────────────────────────
   if (view === 'today') {
-    const { data: todayRaw } = await context.admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, status, clients(full_name), booking_staff(role, staff(staff_id, full_name))')
-      .eq('studio_id', context.studioId)
-      .eq('session_date', todayStr)
-      .order('booking_ref', { ascending: true })
-
-    const todayBookings = (todayRaw ?? []) as unknown as TodayBooking[]
+    const todayBookings = await getTodaySessions(context.admin, context.studioId)
 
     return (
       <div>
@@ -199,15 +135,15 @@ export default async function StaffPage({
         ) : (
           <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {todayBookings.map((b, i) => {
-              const staffList = b.booking_staff ?? []
+              const staffList = b.assigned_staff ?? []
               return (
                 <AnimatedItem key={b.booking_id} delay={i * 0.05}>
                   <Link href={`/dashboard/sessions/${b.booking_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                       <div>
-                        <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 3px' }}>{b.clients?.full_name ?? '—'}</p>
+                        <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 3px' }}>{b.client_name ?? '—'}</p>
                         <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 10px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                          {sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date)}
+                          {sessionName(b.client_name, b.booking_ref, b.booking_id, b.session_date)}
                           {b.session_type ? ` · ${b.session_type}` : ''}
                         </p>
                       </div>
@@ -220,7 +156,7 @@ export default async function StaffPage({
                           const rc = getStaffRoleConfig(config, bs.role)
                           return (
                             <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--active)', borderRadius: '8px', padding: '5px 10px' }}>
-                              <span style={{ fontSize: '12px', fontWeight: '600' }}>{bs.staff?.full_name ?? '—'}</span>
+                              <span style={{ fontSize: '12px', fontWeight: '600' }}>{bs.full_name ?? '—'}</span>
                               <span style={{ fontSize: '11px', padding: '1px 7px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500' }}>{bs.role ?? '—'}</span>
                             </div>
                           )
@@ -241,15 +177,10 @@ export default async function StaffPage({
 
   // ── Sessions view ────────────────────────────────────────────────
   if (view === 'sessions') {
-    const { data: assignRaw, count: assignCount } = await context.admin
-      .from('booking_staff')
-      .select('booking_id, role, staff(staff_id, full_name), bookings!inner(booking_id, booking_ref, session_date, session_type, studio_id, clients(full_name))', { count: 'exact' })
-      .eq('bookings.studio_id', context.studioId)
-      .order('bookings.session_date', { ascending: false })
-      .range(from, to)
-
-    const assignments = (assignRaw ?? []) as unknown as StaffAssignment[]
-    const listTotal   = assignCount ?? 0
+    const { items: assignments, total: listTotal } = await getStaffSessionAssignments(context.admin, context.studioId, {
+      page: pageNum,
+      pageSize: PAGE_SIZE
+    })
     const totalPages  = Math.ceil(listTotal / PAGE_SIZE)
     const prevUrl     = pageNum > 1          ? pageUrl({ view: 'sessions' }, pageNum - 1) : undefined
     const nextUrl     = pageNum < totalPages ? pageUrl({ view: 'sessions' }, pageNum + 1) : undefined
@@ -276,24 +207,24 @@ export default async function StaffPage({
             {assignments.map((a, i) => {
               const rc = getStaffRoleConfig(config, a.role)
               return (
-                <AnimatedItem key={`${a.booking_id}-${a.staff?.staff_id}-${i}`} delay={i * 0.05}>
-                  <Link href={`/dashboard/sessions/${a.bookings?.booking_id}`} style={{
+                <AnimatedItem key={`${a.booking_id}-${a.staff_id}-${i}`} delay={i * 0.05}>
+                  <Link href={`/dashboard/sessions/${a.booking_id}`} style={{
                     display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr',
                     padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                     borderBottom: i < assignments.length - 1 ? '1px solid var(--line-inner)' : 'none',
                   }}>
                     <p style={{ fontSize: '13px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {a.staff?.full_name ?? '—'}
+                      {a.staff_name ?? '—'}
                     </p>
                     <div>
                       <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {a.bookings?.clients?.full_name ?? '—'}
+                        {a.client_name ?? '—'}
                       </p>
                       <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                        {sessionName(a.bookings?.clients?.full_name, a.bookings?.booking_ref, a.bookings?.booking_id, a.bookings?.session_date)}
+                        {sessionName(a.client_name, a.booking_ref, a.booking_id, a.session_date)}
                       </p>
                     </div>
-                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(a.bookings?.session_date)}</p>
+                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{sDate(a.session_date)}</p>
                     <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: rc.color_bg, color: rc.color_fg, fontWeight: '500', display: 'inline-block', width: 'fit-content', whiteSpace: 'nowrap' }}>
                       {rc.label || a.role?.replace(/_/g, ' ')}
                     </span>
@@ -311,19 +242,11 @@ export default async function StaffPage({
   }
 
   // ── Team view (default) ──────────────────────────────────────────
-  let query = context.admin
-    .from('staff')
-    .select('*', { count: 'exact' })
-    .eq('studio_id', context.studioId)
-
-  if (q) query = query.or(`full_name.ilike.%${q}%,role.ilike.%${q}%`)
-
-  const { data: staffRaw, count } = await query
-    .order('full_name', { ascending: true })
-    .range(from, to)
-  const staff = (staffRaw ?? []) as unknown as StaffMember[]
-
-  const listTotal  = count ?? 0
+  const { items: staff, total: listTotal } = await getStaffList(context.admin, context.studioId, {
+    q,
+    page: pageNum,
+    pageSize: PAGE_SIZE
+  })
   const totalPages = Math.ceil(listTotal / PAGE_SIZE)
   const prevUrl    = pageNum > 1          ? pageUrl({ view: 'team', q }, pageNum - 1) : undefined
   const nextUrl    = pageNum < totalPages ? pageUrl({ view: 'team', q }, pageNum + 1) : undefined
@@ -356,10 +279,7 @@ export default async function StaffPage({
           {teamLayout === 'grid' && (
             <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
               {staff.map((member, i) => {
-                const effectiveRoles: string[] =
-                  member.roles && member.roles.length > 0
-                    ? member.roles
-                    : member.role ? [member.role] : []
+                const effectiveRoles = member.roles
                 return (
                   <AnimatedItem key={member.staff_id} delay={i * 0.05}>
                     <Link href={`/dashboard/staff/${member.staff_id}`} style={{
@@ -420,10 +340,7 @@ export default async function StaffPage({
                 <span>Name</span><span>Roles</span><span>Hire date</span><span>Days / wk</span>
               </div>
               {staff.map((member, i) => {
-                const effectiveRoles: string[] =
-                  member.roles && member.roles.length > 0
-                    ? member.roles
-                    : member.role ? [member.role] : []
+                const effectiveRoles = member.roles
                 return (
                   <AnimatedItem key={member.staff_id} delay={i * 0.05}>
                     <Link href={`/dashboard/staff/${member.staff_id}`} style={{

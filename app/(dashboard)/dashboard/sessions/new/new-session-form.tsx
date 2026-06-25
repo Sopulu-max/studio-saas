@@ -261,8 +261,6 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         description:   '',
         base_price:    form.base_price,
         shoot_type:    form.shoot_type,
-        inclusions:    [],
-        coverage_hours: '',
         addons: [],
       })
       if (pkgError) { setError(pkgError); setLoading(false); return }
@@ -302,8 +300,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
       const autoName = newPackageName.trim() || (form.shoot_type || sessionLabel)
       const { error: pkgError, packageId: newId } = await addPackage({
         name: autoName, description: '', base_price: form.base_price,
-        shoot_type: form.shoot_type, inclusions: [],
-        coverage_hours: '', addons: [],
+        shoot_type: form.shoot_type, addons: [],
       })
       if (pkgError) { setError(pkgError); setLoading(false); return }
       packageId = (newId as string | undefined) ?? ''

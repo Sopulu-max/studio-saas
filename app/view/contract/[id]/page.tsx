@@ -29,7 +29,7 @@ export default async function PublicContractViewPage({
     .select(`
       *,
       bookings (
-        session_date, location_address,
+        sessions ( session_date, location_address ),
         clients ( full_name, email ),
         packages ( name ),
         studios ( name, email, phone, address, logo_url )
@@ -115,11 +115,13 @@ export default async function PublicContractViewPage({
           </div>
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '22px', fontWeight: '300', letterSpacing: '-.02em', color: '#111' }}>CONTRACT</p>
-            <p style={{ fontSize: '12px', color: '#888', marginTop: '6px' }}>
-              {booking?.session_date
-                ? new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
-                : ''}
+            {((booking as any).sessions?.[0]?.session_date) && (
+              <p style={{ fontSize: '13px', color: '#444', marginTop: '6px' }}>
+              {(booking as any).sessions[0].session_date
+                ? new Date((booking as any).sessions[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+                : '—'}
             </p>
+            )}
             <span style={{
               display: 'inline-block', marginTop: '8px', fontSize: '11px', fontWeight: '600',
               padding: '3px 10px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '.04em',
@@ -140,8 +142,8 @@ export default async function PublicContractViewPage({
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '600' }}>Session</p>
             {pkg?.name && <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>{pkg.name}</p>}
-            {booking?.location_address && (
-              <p style={{ fontSize: '13px', color: '#666' }}>{booking.location_address}</p>
+            {((booking as any).sessions?.[0]?.location_address) && (
+              <p style={{ fontSize: '13px', color: '#666' }}>{(booking as any).sessions[0].location_address}</p>
             )}
           </div>
         </div>

@@ -2,7 +2,8 @@
 
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
-import { getStudioContext, ownsBooking, ownsPrintOrder } from '@/lib/studio'
+import { getStudioContext, ownsBooking, ownsPrintOrder, fetchStudio } from '@/lib/studio'
+import { buildStudioConfig } from '@/lib/studio-config'
 
 const itemSchema = z.object({
   product_name: z.string().min(1, 'Product name is required'),
@@ -141,11 +142,18 @@ export async function getPrintOrderFormData() {
   const context = await getStudioContext()
   if ('error' in context) return { sessions: [] as PrintOrderFormSession[] }
 
-  const { data: sessionsRaw } = await context.admin
+  // Use dynamic config so custom cancellation status values are respected
+  const studioRow    = await fetchStudio(context.admin, context.studioId)
+  const config       = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
+  const cancelValues = config.bookingStatuses.filter(s => s.is_cancellation).map(s => s.value)
+
+  let query = context.admin
     .from('bookings')
     .select('booking_id, booking_ref, session_date, session_type, clients(full_name, phone), packages(name)')
     .eq('studio_id', context.studioId)
-    .not('status', 'eq', 'cancelled')
     .order('session_date', { ascending: false })
+  for (const v of cancelValues) { query = query.neq('status', v) }
+
+  const { data: sessionsRaw } = await query
   return { sessions: (sessionsRaw ?? []) as unknown as PrintOrderFormSession[] }
 }

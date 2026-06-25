@@ -59,9 +59,9 @@ export async function addInvoice(form: {
     if (existing) return { error: '__DUPLICATE__', existingInvoiceId: existing.invoice_id as string }
   }
 
-  if (form.package_id) {
-    await context.admin.from('bookings').update({ package_id: form.package_id }).eq('booking_id', form.booking_id)
-  }
+  // NOTE: package_id is intentionally NOT written back to bookings here.
+  // Package assignment is the exclusive responsibility of the booking creation/edit flow.
+  // Reading form.package_id here is only used for addon price lookups below.
 
   // Subtotal = agreed amount + any selected add-ons
   let subtotal = Math.max(0, parseFloat(form.agreed_amount) || 0)
@@ -201,7 +201,7 @@ export async function sendInvoiceToClient(invoiceId: string) {
   }
   const { data: invoiceRaw } = await context.admin
     .from('invoices')
-    .select('*, bookings(session_date, clients(full_name, email))')
+    .select('total, due_date, bookings(session_date, clients(full_name, email))')
     .eq('invoice_id', invoiceId)
     .single()
   const invoice = invoiceRaw as unknown as InvoiceEmailRecord | null
@@ -298,7 +298,7 @@ export async function getInvoiceFormData(bookingId?: string) {
 
   const { data: studioPackages } = await context.admin
     .from('packages')
-    .select('*, package_addons(*)')
+    .select('package_id, name, base_price, package_addons(addon_id, name, price)')
     .eq('studio_id', context.studioId)
     .order('base_price', { ascending: true })
 
@@ -306,10 +306,6 @@ export async function getInvoiceFormData(bookingId?: string) {
     package_id: string
     name: string
     base_price: number | string
-    session_type?: string | null
-    outfits_count?: number | null
-    edited_photos?: number | null
-    inclusions?: string[] | null
     package_addons?: { addon_id: string; name: string; price: number | string }[] | null
   }
   return {

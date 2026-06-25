@@ -115,7 +115,12 @@ export async function checkoutEquipment(
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  if (!(await ownsEquipment(context.admin, context.studioId, equipmentId))) {
+  const [{ data: equipment }, { data: actualSession }] = await Promise.all([
+    context.admin.from('equipment').select('equipment_id').eq('equipment_id', equipmentId).eq('studio_id', context.studioId).maybeSingle(),
+    bookingId ? context.admin.from('sessions').select('session_id').eq('booking_id', bookingId).eq('studio_id', context.studioId).maybeSingle() : Promise.resolve({ data: null })
+  ])
+
+  if (!equipment) {
     return { error: 'Equipment not found' }
   }
 
@@ -129,6 +134,7 @@ export async function checkoutEquipment(
       assigned_to:    assignedTo.trim(),
       checked_out_at: now,
       booking_id:     bookingId || null,
+      session_id:     (actualSession as any)?.session_id || null,
     })
     .eq('equipment_id', equipmentId)
 
@@ -140,6 +146,7 @@ export async function checkoutEquipment(
     studio_id:      context.studioId,
     assigned_to:    assignedTo.trim(),
     booking_id:     bookingId || null,
+    session_id:     (actualSession as any)?.session_id || null,
     checked_out_at: now,
     notes:          checkoutNotes?.trim() || null,
   })

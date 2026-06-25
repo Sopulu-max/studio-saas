@@ -7,29 +7,12 @@ import { getStudioContext } from '@/lib/studio'
 import { buildPackagesShareLink } from '@/lib/whatsapp-links'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-type PackageAddon = {
-  addon_id:     string
-  name:         string
-  description?: string | null
-  price?:       number | string | null
-}
-
-type PackageRow = {
-  package_id:    string
-  name:          string
-  description?:  string | null
-  tagline?:      string | null
-  cover_url?:    string | null
-  is_public?:    boolean | null
-  shoot_type?:   string | null
-  session_type?: string | null
-  base_price?:   number | string | null
-  inclusions?:   string[] | null
-  created_at?:   string | null
-  package_addons?: PackageAddon[] | null
-}
+import {
+  getPackageStats,
+  getPackageList,
+  getPackagesByUsage,
+  getPackageAddonsList
+} from '@/lib/domains/packages/repository'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -144,44 +127,13 @@ export default async function PackagesPage({
   if ('error' in context) redirect('/login')
 
   // ── Stats (always) ───────────────────────────────────────────────
-  const now        = new Date()
-  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
-
-  const [
-    { data: allPackagesRaw },
-    { count: usedThisMonth },
-    { data: studioSlugRow },
-  ] = await Promise.all([
-    context.admin.from('packages')
-      .select('package_id, base_price, package_addons(addon_id)')
-      .eq('studio_id', context.studioId),
-    context.admin.from('bookings')
-      .select('package_id', { count: 'exact', head: true })
-      .eq('studio_id', context.studioId)
-      .not('package_id', 'is', null)
-      .gte('session_date', monthStart),
-    context.admin.from('studios')
-      .select('slug, name')
-      .eq('studio_id', context.studioId)
-      .maybeSingle(),
-  ])
-  const studioSlug = (studioSlugRow as unknown as { slug?: string | null; name?: string | null } | null)?.slug ?? null
-  const studioName = (studioSlugRow as unknown as { slug?: string | null; name?: string | null } | null)?.name ?? 'Studio'
-
-  type MinPackage = { package_id: string; base_price?: number | string | null; package_addons?: { addon_id: string }[] | null }
-  const allPackages = (allPackagesRaw ?? []) as unknown as MinPackage[]
-
-  const totalPackages = allPackages.length
-  const totalAddons   = allPackages.reduce((s, p) => s + (p.package_addons?.length ?? 0), 0)
-  const avgPrice      = totalPackages > 0
-    ? Math.round(allPackages.reduce((s, p) => s + Number(p.base_price ?? 0), 0) / totalPackages)
-    : 0
+  const { stats, studioSlug, studioName } = await getPackageStats(context.admin, context.studioId)
 
   const statsItems = [
-    { label: 'Total packages',   value: totalPackages },
-    { label: 'Avg price',        value: `₦${avgPrice.toLocaleString()}` },
-    { label: 'Total add-ons',    value: totalAddons },
-    { label: 'Used this month',  value: usedThisMonth ?? 0 },
+    { label: 'Total packages',   value: stats.total_packages },
+    { label: 'Avg price',        value: `₦${stats.avg_price.toLocaleString()}` },
+    { label: 'Total add-ons',    value: stats.total_addons },
+    { label: 'Used this month',  value: stats.used_this_month },
   ]
 
   // ── Header ───────────────────────────────────────────────────────
@@ -212,33 +164,7 @@ export default async function PackagesPage({
 
   // ── By usage view ────────────────────────────────────────────────
   if (view === 'by-usage') {
-    // Fetch all bookings with a package, get count per package_id
-    const { data: bookingRefs } = await context.admin
-      .from('bookings')
-      .select('package_id')
-      .eq('studio_id', context.studioId)
-      .not('package_id', 'is', null)
-
-    const usageMap: Record<string, number> = {}
-    for (const b of (bookingRefs ?? []) as unknown as { package_id: string | null }[]) {
-      if (b.package_id) usageMap[b.package_id] = (usageMap[b.package_id] ?? 0) + 1
-    }
-
-    // Fetch all packages (full rows) for display
-    const { data: pkgsRaw } = await context.admin
-      .from('packages')
-      .select('package_id, name, shoot_type, base_price, duration_mins, package_addons(addon_id)')
-      .eq('studio_id', context.studioId)
-      .order('name', { ascending: true })
-
-    const pkgs = (pkgsRaw ?? []) as unknown as (PackageRow & { package_addons?: { addon_id: string }[] | null })[]
-
-    // Sort by usage count desc
-    const sorted = [...pkgs].sort((a, b) => {
-      const ua = usageMap[a.package_id] ?? 0
-      const ub = usageMap[b.package_id] ?? 0
-      return ub - ua
-    })
+    const sorted = await getPackagesByUsage(context.admin, context.studioId)
 
     return (
       <div>
@@ -255,7 +181,7 @@ export default async function PackagesPage({
             </div>
 
             {sorted.map((pkg, i) => {
-              const usage = usageMap[pkg.package_id] ?? 0
+              const usage = pkg.usage_count ?? 0
               const s     = shootTypeColor(pkg.shoot_type)
               return (
                 <AnimatedItem key={pkg.package_id} delay={i * 0.05}>
@@ -290,17 +216,7 @@ export default async function PackagesPage({
 
   // ── Add-ons view ─────────────────────────────────────────────────
   if (view === 'add-ons') {
-    const { data: pkgsRaw } = await context.admin
-      .from('packages')
-      .select('package_id, name, shoot_type, package_addons(*)')
-      .eq('studio_id', context.studioId)
-      .order('name', { ascending: true })
-
-    type PkgWithAddons = { package_id: string; name: string; shoot_type?: string | null; package_addons?: PackageAddon[] | null }
-    const pkgs    = (pkgsRaw ?? []) as unknown as PkgWithAddons[]
-    const addons  = pkgs.flatMap(pkg =>
-      (pkg.package_addons ?? []).map(a => ({ ...a, _pkg_name: pkg.name, _pkg_id: pkg.package_id, _shoot_type: pkg.shoot_type }))
-    )
+    const addons = await getPackageAddonsList(context.admin, context.studioId)
 
     return (
       <div>
@@ -317,10 +233,10 @@ export default async function PackagesPage({
             </div>
 
             {addons.map((a, i) => {
-              const s = shootTypeColor(a._shoot_type)
+              const s = shootTypeColor(a.shoot_type)
               return (
                 <AnimatedItem key={a.addon_id} delay={i * 0.05}>
-                  <Link href={`/dashboard/packages/${a._pkg_id}`} style={{
+                  <Link href={`/dashboard/packages/${a.pkg_id}`} style={{
                     display: 'grid', gridTemplateColumns: '2fr 2fr 1fr',
                     padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                     borderBottom: i < addons.length - 1 ? '1px solid var(--line-inner)' : 'none',
@@ -332,9 +248,9 @@ export default async function PackagesPage({
                       )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a._pkg_name}</p>
-                      {a._shoot_type && (
-                        <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', flexShrink: 0 }}>{a._shoot_type}</span>
+                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pkg_name}</p>
+                      {a.shoot_type && (
+                        <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', flexShrink: 0 }}>{a.shoot_type}</span>
                       )}
                     </div>
                     <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, textAlign: 'right' }}>
@@ -351,27 +267,15 @@ export default async function PackagesPage({
   }
 
   // ── All view (default) — card grid preserved ─────────────────────
-  const { data: typeRows } = await context.admin
-    .from('packages')
-    .select('shoot_type')
-    .eq('studio_id', context.studioId)
-    .not('shoot_type', 'is', null)
+  const { packages, total: listTotal, distinctTypes } = await getPackageList(
+    context.admin,
+    context.studioId,
+    pageNum,
+    q,
+    shoot_type,
+    PAGE_SIZE
+  )
 
-  const distinctTypes = [...new Set((typeRows ?? []).map(r => (r as { shoot_type: string }).shoot_type).filter(Boolean))].sort()
-
-  let q2 = context.admin
-    .from('packages')
-    .select('package_id, name, description, tagline, cover_url, is_public, shoot_type, session_type, base_price, inclusions, created_at, package_addons(*)', { count: 'exact' })
-    .eq('studio_id', context.studioId)
-
-  if (q)          q2 = q2.ilike('name', `%${q}%`)
-  if (shoot_type) q2 = q2.eq('shoot_type', shoot_type)
-
-  const { data: packages, count } = await q2
-    .order('created_at', { ascending: false })
-    .range(from, to)
-
-  const listTotal   = count ?? 0
   const totalPages  = Math.ceil(listTotal / PAGE_SIZE)
   const params      = { view: 'all', q, shoot_type }
   const prevUrl     = pageNum > 1          ? pageUrl(params, pageNum - 1) : undefined
@@ -403,7 +307,7 @@ export default async function PackagesPage({
       ) : (
         <>
           <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-            {(packages as unknown as PackageRow[]).map((pkg, i) => {
+            {packages.map((pkg, i) => {
               const s = shootTypeColor(pkg.shoot_type)
               return (
                 <AnimatedItem key={pkg.package_id} delay={i * 0.05}>

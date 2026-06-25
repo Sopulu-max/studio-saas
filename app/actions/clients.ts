@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { getStudioContext, ownsClient } from '@/lib/studio'
 
 import { createClient, editClient } from '@/lib/services/client-service'
+import { searchClientsQuery } from '@/lib/domains/clients/repository'
 
 const addClientSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
@@ -20,13 +21,7 @@ export async function searchClients(query: string) {
   if ('error' in context) return { data: [] }
 
   const q = query.trim()
-  const { data } = await context.admin
-    .from('clients')
-    .select('client_id, full_name, email, phone')
-    .eq('studio_id', context.studioId)
-    .or(`full_name.ilike.%${q}%,email.ilike.%${q}%,phone.ilike.%${q}%`)
-    .order('full_name')
-    .limit(6)
+  const data = await searchClientsQuery(context.admin, context.studioId, q)
 
   return { data: data ?? [] }
 }

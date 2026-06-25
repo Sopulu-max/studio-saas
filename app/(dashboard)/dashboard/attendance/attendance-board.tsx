@@ -24,7 +24,6 @@ const LATE_MINUTE = 30
 type StaffRow = {
   staff_id:     string
   full_name:    string
-  role:         string | null
   roles:        string[] | null
   working_days: string[] | null
   checkin: {
@@ -99,7 +98,7 @@ function StaffCard({ member, todayDay, onUpdate }: {
   const effectiveRoles =
     member.roles && member.roles.length > 0
       ? member.roles
-      : member.role ? [member.role] : ['—']
+      : ['—']
 
   function handleConfirmIn() {
     setErr('')

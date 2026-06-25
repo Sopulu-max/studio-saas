@@ -28,7 +28,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
     bookings?: {
       studio_id?: string | null
       booking_id?: string | null
-      session_date?: string | null
+      sessions?: { session_date?: string | null }[] | null
       location?: string | null
       clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
       packages?: { name?: string | null; base_price?: number | string | null } | null
@@ -40,7 +40,8 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
       *,
       bookings!inner (
         studio_id,
-        booking_id, session_date, location,
+        booking_id, location,
+        sessions ( session_date ),
         clients ( full_name, email, phone ),
         packages ( name, base_price )
       )
@@ -147,9 +148,9 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
           </div>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Session</p>
-            {invoice.bookings?.session_date && (
+            {((invoice.bookings?.sessions as any)?.[0]?.session_date) && (
               <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>
-                {new Date(invoice.bookings.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {new Date((invoice.bookings?.sessions as any)[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
             {invoice.bookings?.location && (

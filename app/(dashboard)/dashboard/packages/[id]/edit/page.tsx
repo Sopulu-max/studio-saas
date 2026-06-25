@@ -7,17 +7,12 @@ type EditPackageRecord = {
   name?:                string | null
   description?:         string | null
   base_price?:          number | string | null
-  duration_mins?:       number | null
   shoot_type?:          string | null
-  outfits_count?:       number | null
   edited_photos?:       number | null
   coverage_hours?:      number | null
   contract_template?:   string | null
   contract_template_id?: string | null
-  session_type?:        string | null
-  service_type?:        string | null
   pricing_type?:        'fixed' | 'per_project' | null
-  inclusions?:          string[] | null
   tagline?:             string | null
   cover_url?:           string | null
   is_public?:           boolean | null

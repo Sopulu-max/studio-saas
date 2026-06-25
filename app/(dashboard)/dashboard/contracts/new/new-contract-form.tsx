@@ -8,15 +8,7 @@ import SearchableSelect from '@/components/searchable-select'
 import { sessionName } from '@/lib/session-title'
 import type { ContractTemplate } from '@/app/actions/contract-templates'
 
-type Booking = {
-  booking_id:    string
-  booking_ref?:  number | null
-  session_date?: string | null
-  status:        string | null
-  session_type?: string | null
-  clients?:      { full_name?: string | null; phone?: string | null } | null
-  packages?:     { package_id: string; name?: string | null; contract_template_id?: string | null } | null
-}
+import type { BookingOptionDTO } from '@/lib/domains/contracts/types'
 
 type StudioInfo = {
   name:    string
@@ -42,9 +34,9 @@ function fmtDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
 }
 
-function buildVars(booking: Booking | undefined, studio: StudioInfo): Record<string, string> {
+function buildVars(booking: BookingOptionDTO | undefined, studio: StudioInfo): Record<string, string> {
   return {
-    client_name:    booking?.clients?.full_name ?? '',
+    client_name:    booking?.client_name ?? '',
     studio_name:    studio.name,
     studio_email:   studio.email,
     studio_phone:   studio.phone,
@@ -52,7 +44,7 @@ function buildVars(booking: Booking | undefined, studio: StudioInfo): Record<str
     session_date:   fmtDate(booking?.session_date),
     session_type:   booking?.session_type ?? '',
     booking_ref:    booking?.booking_ref ? `#${booking.booking_ref}` : '',
-    package_name:   booking?.packages?.name ?? '',
+    package_name:   booking?.package_name ?? '',
     total_amount:   '',
     deposit_amount: '',
   }
@@ -73,7 +65,7 @@ export default function NewContractForm({
   templates,
   studio,
 }: {
-  bookings:              Booking[]
+  bookings:              BookingOptionDTO[]
   preselectedSessionId?: string
   templates:             ContractTemplate[]
   studio:                StudioInfo
@@ -128,7 +120,7 @@ export default function NewContractForm({
   function handleSessionChange(id: string) {
     setSelectedId(id)
     const booking  = bookings.find(b => b.booking_id === id)
-    const pkgTplId = booking?.packages?.contract_template_id
+    const pkgTplId = booking?.contract_template_id
     if (pkgTplId && templates.some(t => t.template_id === pkgTplId)) {
       setSelectedTplId(pkgTplId)
       applyTemplate(id, pkgTplId)
@@ -191,8 +183,8 @@ export default function NewContractForm({
             <SearchableSelect
               options={bookings.map(b => ({
                 value:    b.booking_id,
-                label:    sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date),
-                sublabel: [b.clients?.phone, b.status].filter(Boolean).join(' · '),
+                label:    sessionName(b.client_name, b.booking_ref, b.booking_id, b.session_date),
+                sublabel: [b.client_phone, b.status].filter(Boolean).join(' · '),
               }))}
               value={selectedId}
               onChange={handleSessionChange}

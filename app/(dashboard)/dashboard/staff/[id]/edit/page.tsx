@@ -16,7 +16,7 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
   const [{ data: memberRaw }, studio] = await Promise.all([
     context.admin
       .from('staff')
-      .select('staff_id, full_name, email, roles, role, phone, hire_date, working_days')
+      .select('staff_id, full_name, email, roles, phone, hire_date, working_days')
       .eq('staff_id', id)
       .eq('studio_id', context.studioId)
       .single(),

@@ -11,17 +11,8 @@ import { resolveLayout } from '@/lib/view-mode'
 import DonutChart from '@/components/donut-chart'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-type EquipmentItem = {
-  equipment_id:  string
-  name:          string
-  category:      string
-  serial_number?: string | null
-  status:        string
-  notes?:        string | null
-  assigned_to?:  string | null
-}
+import { getEquipmentStats, getEquipmentList } from '@/lib/domains/equipment/repository'
+import { EquipmentRowDTO } from '@/lib/domains/equipment/types'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -122,22 +113,13 @@ export default async function EquipmentPage({
   )
 
   // ── Stats (always) ───────────────────────────────────────────────
-  const { data: allEquipmentRaw } = await context.admin
-    .from('equipment')
-    .select('status, category')
-    .eq('studio_id', context.studioId)
-  const allEquipment = (allEquipmentRaw ?? []) as { status: string; category: string }[]
-
-  const totalItems  = allEquipment.length
-  const available   = allEquipment.filter(e => e.status === 'available').length
-  const inUse       = allEquipment.filter(e => e.status === 'in_use').length
-  const maintenance = allEquipment.filter(e => e.status === 'maintenance').length
+  const stats = await getEquipmentStats(context.admin, context.studioId)
 
   const statsItems = [
-    { label: 'Total items',  value: totalItems },
-    { label: 'Available',    value: available,   accent: '#3b6d11' },
-    { label: 'In use',       value: inUse,       accent: '#185fa5' },
-    { label: 'Maintenance',  value: maintenance, accent: '#854f0b' },
+    { label: 'Total items',  value: stats.total },
+    { label: 'Available',    value: stats.available,   accent: '#3b6d11' },
+    { label: 'In use',       value: stats.in_use,       accent: '#185fa5' },
+    { label: 'Maintenance',  value: stats.maintenance, accent: '#854f0b' },
   ]
 
   // ── Header ───────────────────────────────────────────────────────
@@ -152,16 +134,10 @@ export default async function EquipmentPage({
 
   // ── By status view ───────────────────────────────────────────────
   if (view === 'by-status') {
-    const { data: raw } = await context.admin
-      .from('equipment')
-      .select('equipment_id, name, category, serial_number, status, notes, assigned_to')
-      .eq('studio_id', context.studioId)
-      .order('name', { ascending: true })
-
-    const items = (raw ?? []) as unknown as EquipmentItem[]
+    const { items } = await getEquipmentList(context.admin, context.studioId)
 
     // Group by status in defined order
-    const groups: Record<string, EquipmentItem[]> = {}
+    const groups: Record<string, EquipmentRowDTO[]> = {}
     for (const s of STATUS_ORDER) groups[s] = []
     for (const item of items) {
       const key = item.status in groups ? item.status : 'available'
@@ -183,7 +159,7 @@ export default async function EquipmentPage({
             {nonEmptyGroups.map(statusKey => {
               const sc    = STATUS_COLORS[statusKey] ?? STATUS_COLORS.available
               const group = groups[statusKey]
-              const pct   = totalItems > 0 ? (group.length / totalItems) * 100 : 0
+              const pct   = stats.total > 0 ? (group.length / stats.total) * 100 : 0
               return (
                 <div key={statusKey}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
@@ -220,17 +196,11 @@ export default async function EquipmentPage({
 
   // ── By category view ─────────────────────────────────────────────
   if (view === 'by-category') {
-    const { data: raw } = await context.admin
-      .from('equipment')
-      .select('equipment_id, name, category, serial_number, status, notes, assigned_to')
-      .eq('studio_id', context.studioId)
-      .order('name', { ascending: true })
-
-    const items = (raw ?? []) as unknown as EquipmentItem[]
+    const { items } = await getEquipmentList(context.admin, context.studioId)
 
     // Build category groups (config order first, then unknown)
     const configCatOrder = config.equipmentCategories.map(c => c.value)
-    const catGroups: Record<string, EquipmentItem[]> = {}
+    const catGroups: Record<string, EquipmentRowDTO[]> = {}
     for (const item of items) {
       const key = item.category ?? 'other'
       if (!catGroups[key]) catGroups[key] = []
@@ -255,7 +225,7 @@ export default async function EquipmentPage({
             {allCats.map(catKey => {
               const cc    = getEquipmentCategoryConfig(config, catKey)
               const group = catGroups[catKey]
-              const pct   = totalItems > 0 ? (group.length / totalItems) * 100 : 0
+              const pct   = stats.total > 0 ? (group.length / stats.total) * 100 : 0
               return (
                 <div key={catKey}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
@@ -291,22 +261,13 @@ export default async function EquipmentPage({
   }
 
   // ── All view (default) ───────────────────────────────────────────
-  let query = context.admin
-    .from('equipment')
-    .select('equipment_id, name, category, serial_number, status, notes, assigned_to', { count: 'exact' })
-    .eq('studio_id', context.studioId)
-
-  if (q)        query = query.ilike('name', `%${q}%`)
-  if (category) query = query.eq('category', category)
-  if (status)   query = query.eq('status', status)
-
-  const { data: equipmentRaw, count } = await query
-    .order('category', { ascending: true })
-    .order('name',     { ascending: true })
-    .range(from, to)
-  const equipment = (equipmentRaw ?? []) as unknown as EquipmentItem[]
-
-  const listTotal  = count ?? 0
+  const { items: equipment, total: listTotal } = await getEquipmentList(context.admin, context.studioId, {
+    q,
+    category,
+    status,
+    page: pageNum,
+    pageSize: PAGE_SIZE
+  })
   const totalPages = Math.ceil(listTotal / PAGE_SIZE)
   const prevUrl    = pageNum > 1          ? pageUrl({ view: 'all', q, category, status }, pageNum - 1) : undefined
   const nextUrl    = pageNum < totalPages ? pageUrl({ view: 'all', q, category, status }, pageNum + 1) : undefined
@@ -347,27 +308,21 @@ export default async function EquipmentPage({
 
       {/* ── Chart: donut breakdown ── */}
       {equipLayout === 'chart-donut' && (() => {
-        const catCounts = new Map<string, number>()
-        for (const e of allEquipment) {
-          const k = e.category ?? 'other'
-          catCounts.set(k, (catCounts.get(k) ?? 0) + 1)
-        }
-        const retired = allEquipment.filter(e => e.status === 'retired').length
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By status</p>
               <DonutChart title="items" segments={[
-                { label: 'Available',    value: available,   color: '#3b6d11' },
-                { label: 'In use',       value: inUse,       color: '#185fa5' },
-                { label: 'Maintenance',  value: maintenance, color: '#854f0b' },
-                { label: 'Retired',      value: retired,     color: '#a32d2d' },
+                { label: 'Available',    value: stats.available,   color: '#3b6d11' },
+                { label: 'In use',       value: stats.in_use,       color: '#185fa5' },
+                { label: 'Maintenance',  value: stats.maintenance, color: '#854f0b' },
+                { label: 'Retired',      value: stats.total - stats.available - stats.in_use - stats.maintenance, color: '#a32d2d' },
               ]} />
             </div>
             <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By category</p>
               <DonutChart title="items" segments={
-                [...catCounts.entries()].map(([cat, cnt], idx) => {
+                Object.entries(stats.by_category).map(([cat, cnt], idx) => {
                   const cc = getEquipmentCategoryConfig(config, cat)
                   const palette = ['#534ab7','#185fa5','#3b6d11','#854f0b','#a32d2d','#888']
                   return { label: cc.label || cat, value: cnt, color: cc.color_fg || palette[idx % palette.length] }

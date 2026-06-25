@@ -39,9 +39,7 @@ type Package = {
   name: string
   base_price: number | string
   session_type?: string | null
-  outfits_count?: number | null
   edited_photos?: number | null
-  inclusions?: string[] | null
   package_addons?: Addon[] | null
 }
 
@@ -201,9 +199,8 @@ export default function NewInvoiceForm({
   const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
 
   const selectedBooking = bookings.find((item) => item.booking_id === form.booking_id)
-  const outfitsCount = selectedBooking?.custom_answers?.legacy_outfits ? Number(selectedBooking.custom_answers.legacy_outfits) : null
   const photosCount = editedPhotos ? parseInt(editedPhotos) : null
-  const hasSpecs = outfitsCount != null || photosCount != null
+  const hasSpecs = photosCount != null
 
   const sessionMatches = packages.filter((pkg) =>
     !selectedBooking?.session_type || pkg.session_type === selectedBooking.session_type
@@ -211,9 +208,8 @@ export default function NewInvoiceForm({
 
   const exactMatches = hasSpecs
     ? sessionMatches.filter((pkg) => {
-        const outfitsOk = outfitsCount != null ? pkg.outfits_count === outfitsCount : true
         const photosOk = photosCount != null ? pkg.edited_photos === photosCount : true
-        return outfitsOk && photosOk
+        return photosOk
       })
     : []
 
@@ -223,7 +219,7 @@ export default function NewInvoiceForm({
 
   const canSaveAsPackage = selectedBooking && parseFloat(form.agreed_amount) > 0 && hasSpecs
   const saveAsPackageUrl = canSaveAsPackage
-    ? `/dashboard/packages/new?outfits=${outfitsCount ?? ''}&photos=${editedPhotos}&price=${form.agreed_amount}&session_type=${selectedBooking.session_type ?? 'studio'}`
+    ? `/dashboard/packages/new?photos=${editedPhotos}&price=${form.agreed_amount}&session_type=${selectedBooking.session_type ?? 'studio'}`
     : null
 
   const baseAmount = parseFloat(form.agreed_amount) || 0
@@ -236,12 +232,8 @@ export default function NewInvoiceForm({
   function renderPackageCard(pkg: Package) {
     const selected = selectedPackageId === pkg.package_id
     const specs: string[] = []
-    if (pkg.outfits_count != null) specs.push(`${pkg.outfits_count} outfit${pkg.outfits_count !== 1 ? 's' : ''}`)
     if (pkg.edited_photos != null) specs.push(`${pkg.edited_photos} photos`)
     const specsLine = specs.length > 0 ? specs.join(' . ') : null
-    const inclusionsPreview = !specsLine && pkg.inclusions?.length
-      ? pkg.inclusions.slice(0, 3).join(' . ')
-      : null
 
     return (
       <button
@@ -264,9 +256,9 @@ export default function NewInvoiceForm({
       >
         <div>
           <div style={{ fontSize: '14px', fontWeight: '500' }}>{pkg.name}</div>
-          {(specsLine ?? inclusionsPreview) && (
+          {specsLine && (
             <div style={{ fontSize: '12px', opacity: 0.65, marginTop: '2px' }}>
-              {specsLine ?? inclusionsPreview}
+              {specsLine}
             </div>
           )}
         </div>
@@ -316,15 +308,6 @@ export default function NewInvoiceForm({
             </p>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <div>
-                <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 4px' }}>Outfits</p>
-                <p style={{ fontSize: '15px', fontWeight: '500', margin: 0, color: outfitsCount != null ? 'var(--text)' : 'var(--text-4)' }}>
-                  {outfitsCount != null ? outfitsCount : '-'}
-                </p>
-                {outfitsCount == null && (
-                  <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '2px 0 0' }}>From session record</p>
-                )}
-              </div>
-              <div>
                 <label style={{ fontSize: '12px', color: 'var(--text-4)', display: 'block', marginBottom: '4px' }}>
                   Edited photos
                 </label>
@@ -355,7 +338,7 @@ export default function NewInvoiceForm({
                     </div>
                   ) : (
                     <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '8px 0' }}>
-                      No saved package matches{outfitsCount != null ? ` ${outfitsCount} outfit${outfitsCount !== 1 ? 's' : ''}` : ''}{photosCount != null ? ` . ${photosCount} photos` : ''}. Enter the price below and save it as a package afterward if you want to reuse it.
+                      No saved package matches{photosCount != null ? ` for ${photosCount} photos` : ''}. Enter the price below and save it as a package afterward if you want to reuse it.
                     </p>
                   )}
                 </div>

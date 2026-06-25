@@ -13,9 +13,9 @@ type ServiceOption = {
 export default async function NewPackagePage({
   searchParams,
 }: {
-  searchParams: Promise<{ outfits?: string; photos?: string; price?: string; session_type?: string }>
+  searchParams: Promise<{ price?: string }>
 }) {
-  const { outfits, photos, price, session_type } = await searchParams
+  const { price } = await searchParams
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
@@ -41,10 +41,7 @@ export default async function NewPackagePage({
     <NewPackageForm
       templates={templates}
       availableServices={services}
-      defaultOutfits={outfits}
-      defaultPhotos={photos}
       defaultPrice={price}
-      defaultSessionType={session_type}
     />
   )
 }

@@ -48,7 +48,8 @@ export default async function PublicInvoiceViewPage({
     .select(`
       *,
       bookings (
-        booking_id, session_date, location,
+        booking_id, location,
+        sessions ( session_date ),
         clients ( full_name, email, phone ),
         packages ( name, base_price ),
         studios ( name, email, phone, address, logo_url )
@@ -179,9 +180,9 @@ export default async function PublicInvoiceViewPage({
           </div>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Session</p>
-            {booking?.session_date && (
+            {((booking as any).sessions?.[0]?.session_date) && (
               <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>
-                {new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {new Date((booking as any).sessions[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
             {pkg?.name && <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>{pkg.name}</p>}

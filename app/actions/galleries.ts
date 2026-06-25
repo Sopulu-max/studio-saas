@@ -132,16 +132,6 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
     .update({ status: 'delivered' })
     .eq('gallery_id', galleryId)
 
-  if (galleryError) return { error: galleryError.message }
-
-  // Persist drive link on the booking if a new one was supplied
-  if (driveLink && gallery.bookings?.booking_id) {
-    await context.admin
-      .from('bookings')
-      .update({ drive_link: driveLink })
-      .eq('booking_id', gallery.bookings.booking_id)
-  }
-
   revalidatePath(`/dashboard/galleries/${galleryId}`)
   revalidatePath('/dashboard/galleries')
   return { error: null }

@@ -17,7 +17,7 @@ type StaffMember = {
   staff_id: string
   full_name: string
   email: string
-  role: string
+  roles: string[]
   invite_sent_at: string | null
   invite_accepted_at: string | null
   user_id: string | null

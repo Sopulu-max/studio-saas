@@ -27,7 +27,7 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
     signed_by?: string | null
     bookings?: {
       studio_id?: string | null
-      session_date?: string | null
+      sessions?: { session_date?: string | null }[] | null
       location?: string | null
       clients?: { full_name?: string | null; email?: string | null; phone?: string | null } | null
       packages?: { name?: string | null } | null
@@ -40,7 +40,8 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
       *,
       bookings!inner (
         studio_id,
-        session_date, location,
+        location,
+        sessions ( session_date ),
         clients ( full_name, email, phone ),
         packages ( name )
       )
@@ -53,8 +54,9 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
   if (!contract) redirect('/dashboard/contracts')
 
   const clauses    = parseContent(contract.content)
-  const sessionDate = contract.bookings?.session_date
-    ? new Date(contract.bookings.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+  const rawSessionDate = (contract.bookings?.sessions as any)?.[0]?.session_date
+  const sessionDate = rawSessionDate
+    ? new Date(rawSessionDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
 
   const studioContact = [studio?.email, studio?.phone, studio?.address].filter(Boolean).join('  ·  ')

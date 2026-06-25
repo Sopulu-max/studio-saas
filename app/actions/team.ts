@@ -63,7 +63,7 @@ export async function inviteStaffMember(data: {
       studio_id:      context.studioId,
       full_name:      data.fullName.trim(),
       email:          data.email.toLowerCase(),
-      role:           data.role,
+      roles:          [data.role],
       invite_token:   inviteToken,
       invite_sent_at: inviteSentAt,
     })
@@ -108,7 +108,7 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
 
   const { data: staffMember } = await context.admin
     .from('staff')
-    .select('full_name, email, role')
+    .select('full_name, email, roles')
     .eq('staff_id', staffId)
     .eq('studio_id', context.studioId)
     .maybeSingle()
@@ -133,7 +133,7 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
     to:          staffMember.email as string,
     inviteeName: staffMember.full_name as string,
     studioName:  (studio?.name as string | null | undefined) ?? 'your studio',
-    role:        ROLE_LABELS[staffMember.role as string] ?? (staffMember.role as string),
+    role:        ROLE_LABELS[(staffMember.roles as string[] | null)?.[0] as string] ?? ((staffMember.roles as string[] | null)?.[0] as string),
     inviteUrl,
   })
   return { error: emailErr ?? null }

@@ -3,18 +3,17 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext, fetchStudio, ownsBooking, ownsClient, ownsPackage, ownsStaff } from '@/lib/studio'
-import { runPhase3Automation } from '@/lib/phase3-automation'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sendStatusUpdateEmail, sendBookingConfirmationEmail, sendEventDateReminderEmail } from '@/lib/email'
 import { seedBookingServicesFromPromise } from '@/lib/booking-services'
+import { getBookingClientContact, verifyBookingOwnership, getSessionIdForBooking, getBookingSelectionsCount, getBookingEventDetails, getSessionFormData as getSessionFormDataRepo } from '@/lib/domains/bookings/repository'
+import { bookSession } from '@/lib/services/booking-service'
 
 const addSessionSchema = z.object({
   client_id: z.string().min(1, 'Client is required'),
   session_type: z.string().min(1, 'Session type is required'),
-  service_type: z.string().optional().default(''),
   session_date: z.string().min(1, 'Session date is required'),
   package_id: z.string().optional().default(''),
-  outfits_count: z.string().optional().default(''),
   location_address: z.string().optional().default(''),
   event_name: z.string().optional().default(''),
   event_date: z.string().optional().default(''),
@@ -63,110 +62,73 @@ export async function addSession(form: {
   // Staff-created sessions skip the intake/pending stage → start at the second active status
   const staffInitialStatus = sortedActive[1]?.value ?? sortedActive[0]?.value ?? 'confirmed'
 
-  // Build duplicate-check query without hardcoded 'cancelled'
-  let dupQuery = context.admin
-    .from('bookings').select('booking_id')
-    .eq('studio_id', context.studioId)
-    .eq('client_id', form.client_id)
-    .eq('session_date', form.session_date)
-  for (const v of cancelValues) { dupQuery = dupQuery.neq('status', v) }
-
-  // All ownership + pre-flight checks in one parallel batch
-  const [clientOk, pkgOk, photogOk, editorOk, videoOk, videoEdOk, { data: dupSession }, { data: maxRefRow }] = await Promise.all([
+  // Ownership checks for staff/client/package — run in parallel
+  const [clientOk, pkgOk, photogOk, editorOk] = await Promise.all([
     ownsClient(context.admin, context.studioId, form.client_id),
     form.package_id      ? ownsPackage(context.admin, context.studioId, form.package_id)        : Promise.resolve(true),
     form.photographer_id ? ownsStaff(context.admin, context.studioId, form.photographer_id)     : Promise.resolve(true),
     form.editor_id       ? ownsStaff(context.admin, context.studioId, form.editor_id)           : Promise.resolve(true),
-    form.videographer_id ? ownsStaff(context.admin, context.studioId, form.videographer_id)     : Promise.resolve(true),
-    form.video_editor_id ? ownsStaff(context.admin, context.studioId, form.video_editor_id)     : Promise.resolve(true),
-    dupQuery.maybeSingle(),
-    context.admin
-      .from('bookings').select('booking_ref')
-      .eq('studio_id', context.studioId).not('booking_ref', 'is', null)
-      .order('booking_ref', { ascending: false }).limit(1).maybeSingle(),
   ])
 
   if (!clientOk)  return { error: 'Client not found' }
   if (!pkgOk)     return { error: 'Package not found' }
   if (!photogOk)  return { error: 'Staff member not found' }
   if (!editorOk)  return { error: 'Staff member not found' }
-  if (dupSession && !form.force_duplicate) {
-    return { error: '__DUPLICATE__', duplicateId: dupSession.booking_id }
-  }
 
-  const nextRef = ((maxRefRow?.booking_ref as number | null) ?? 0) + 1
+  // ── Core booking creation — same engine as public & WhatsApp ──────────────
+  const { bookingId, sessionId, error: bookingError } = await bookSession(context.admin, {
+    client_id:            form.client_id,
+    studio_id:            context.studioId,
+    session_type:         form.session_type,
+    preferred_date:       form.session_date,
+    package_id:           form.package_id || null,
+    location_address:     form.location_address || null,
+    event_name:           form.event_name || null,
+    event_date:           form.event_date || null,
+    notes:                form.notes || null,
+    custom_answers:       form.custom_answers || null,
+    selected_service_ids: form.selected_service_ids ?? [],
+    initialStatus:        staffInitialStatus,
+    cancelValues,
+  })
 
-  const insertData: Record<string, any> = {
-    client_id: form.client_id,
-    session_date: form.session_date,
-    studio_id: context.studioId,
-    status: staffInitialStatus, // staff-created sessions skip the intake/pending stage
-    notes: form.notes || null,
-    booking_ref: nextRef,
-    session_type: form.session_type,
-    location_address: form.location_address || null,
-    package_id: form.package_id || null,
-    event_name: form.event_name || null,
-    event_date: form.event_date || null,
-    custom_answers: form.custom_answers || null,
-  }
-
-  const { data: session, error } = await context.admin
-    .from('bookings')
-    .insert(insertData)
-    .select()
-    .single()
-
-  if (error || !session) return { error: error?.message ?? 'Failed to create session' }
-
-  if (form.package_id) {
-    const serviceSeed = await seedBookingServicesFromPromise({
-      admin: context.admin,
-      studioId: context.studioId,
-      bookingId: session.booking_id as string,
-      packageId: form.package_id,
-      selectedServiceIds: form.selected_service_ids,
-    })
-    if (serviceSeed.error) {
-      await context.admin.from('bookings').delete().eq('booking_id', session.booking_id as string)
-      return { error: serviceSeed.error }
+  if (bookingError) {
+    if (bookingError === '__DUPLICATE__' && !form.force_duplicate) {
+      return { error: '__DUPLICATE__' }
     }
+    return { error: bookingError }
   }
 
-  const staffAssignments: { booking_id: string; staff_id: string; role: string }[] = []
-  if (form.photographer_id) staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.photographer_id, role: 'photographer' })
+  if (!bookingId) return { error: 'Failed to create session' }
+
+  // ── Staff assignment (dashboard-specific — not part of public flow) ────────
+  const staffAssignments: { booking_id: string; session_id: string | null; staff_id: string; role: string }[] = []
+  if (form.photographer_id) staffAssignments.push({ booking_id: bookingId, session_id: sessionId, staff_id: form.photographer_id, role: 'photographer' })
   // Only add editor if it's a different person — same person can't have two rows for the same booking
   if (form.editor_id && !staffAssignments.some(s => s.staff_id === form.editor_id)) {
-    staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.editor_id, role: 'editor' })
+    staffAssignments.push({ booking_id: bookingId, session_id: sessionId, staff_id: form.editor_id, role: 'editor' })
   }
   if (form.videographer_id && !staffAssignments.some(s => s.staff_id === form.videographer_id)) {
-    staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.videographer_id, role: 'videographer' })
+    staffAssignments.push({ booking_id: bookingId, session_id: sessionId, staff_id: form.videographer_id, role: 'videographer' })
   }
   if (form.video_editor_id && !staffAssignments.some(s => s.staff_id === form.video_editor_id)) {
-    staffAssignments.push({ booking_id: session.booking_id as string, staff_id: form.video_editor_id, role: 'video_editor' }) // Use role based on config or default 'video_editor', wait config says editor? The default config has 'videographer' and 'editor' but not video_editor specifically, let's use 'editor' or 'video_editor'
+    staffAssignments.push({ booking_id: bookingId, session_id: sessionId, staff_id: form.video_editor_id, role: 'video_editor' })
   }
   if (staffAssignments.length > 0) {
     const { error: staffError } = await context.admin.from('booking_staff').insert(staffAssignments)
     if (staffError) {
       // Roll back the booking so we don't leave an orphan that triggers false duplicate warnings
-      await context.admin.from('bookings').delete().eq('booking_id', session.booking_id as string)
+      await context.admin.from('bookings').delete().eq('booking_id', bookingId)
       return { error: staffError.message }
     }
   }
-  
-  await runPhase3Automation(context.admin, context.studioId, session.booking_id as string, form.package_id)
 
   revalidatePath('/dashboard/sessions')
 
   // Fire-and-forget booking confirmation email — failures must never block the response
   ;(async () => {
     try {
-      const { data: clientRow } = await context.admin
-        .from('clients')
-        .select('full_name, email')
-        .eq('client_id', form.client_id)
-        .single()
-      const clientData  = clientRow as unknown as { full_name?: string | null; email?: string | null } | null
+      const clientData = await getBookingClientContact(context.admin, context.studioId, form.client_id)
       const clientEmail = clientData?.email
       if (!clientEmail) return  // no email on file — skip silently
       const typeLabel = getSessionTypeConfig(config, form.session_type).label
@@ -180,7 +142,7 @@ export async function addSession(form: {
     } catch { /* swallow — email is best-effort */ }
   })()
 
-  return { error: null, sessionId: session.booking_id }
+  return { error: null, sessionId: bookingId }
 }
 
 export async function updateSessionStatus(sessionId: string, status: string) {
@@ -202,16 +164,10 @@ export async function updateSessionStatus(sessionId: string, status: string) {
   // Fire-and-forget status update email — failures must never block the response
   ;(async () => {
     try {
-      const [{ data: booking }, studioRow] = await Promise.all([
-        context.admin
-          .from('bookings')
-          .select('clients ( full_name, email )')
-          .eq('booking_id', sessionId)
-          .single(),
+      const [client, studioRow] = await Promise.all([
+        getBookingClientContact(context.admin, context.studioId, sessionId),
         fetchStudio(context.admin, context.studioId),
       ])
-
-      const client      = (booking?.clients as unknown) as { full_name: string; email: string } | null
       const clientEmail = client?.email
       if (!clientEmail) return  // no email on file — skip silently
 
@@ -238,13 +194,7 @@ export async function bulkUpdateSessionStatus(sessionIds: string[], status: stri
   if ('error' in context) return { error: context.error }
 
   // Verify all sessions belong to this studio
-  const { data: owned } = await context.admin
-    .from('bookings')
-    .select('booking_id')
-    .eq('studio_id', context.studioId)
-    .in('booking_id', sessionIds)
-
-  const ownedIds = (owned ?? []).map(b => b.booking_id)
+  const ownedIds = await verifyBookingOwnership(context.admin, context.studioId, sessionIds)
   if (ownedIds.length !== sessionIds.length) return { error: 'One or more sessions not found' }
 
   const { error } = await context.admin
@@ -274,17 +224,17 @@ export async function assignSessionStaff(sessionId: string, staffId: string, rol
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  // Run both ownership checks in parallel instead of sequentially
-  const [bookingOk, staffOk] = await Promise.all([
-    ownsBooking(context.admin, context.studioId, sessionId),
+  // Resolve actual session_id while checking ownership
+  const [actualSessionId, staffOk] = await Promise.all([
+    getSessionIdForBooking(context.admin, context.studioId, sessionId),
     ownsStaff(context.admin, context.studioId, staffId),
   ])
-  if (!bookingOk) return { error: 'Session not found' }
-  if (!staffOk)   return { error: 'Staff member not found' }
+  if (!actualSessionId) return { error: 'Session not found' }
+  if (!staffOk)       return { error: 'Staff member not found' }
 
   const { error } = await context.admin
     .from('booking_staff')
-    .upsert({ booking_id: sessionId, staff_id: staffId, role }, { onConflict: 'booking_id,staff_id' })
+    .upsert({ booking_id: sessionId, session_id: actualSessionId || null, staff_id: staffId, role }, { onConflict: 'booking_id,staff_id' })
   return { error: error?.message ?? null }
 }
 
@@ -299,19 +249,13 @@ export async function removeSessionStaff(sessionId: string, staffId: string) {
     .eq('staff_id', staffId)
   return { error: error?.message ?? null }
 }
-
 export async function deleteSession(sessionId: string) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  // Verify ownership before touching anything
-  const { data: booking } = await context.admin
-    .from('bookings')
-    .select('booking_id')
-    .eq('booking_id', sessionId)
-    .eq('studio_id', context.studioId)
-    .single()
-  if (!booking) return { error: 'Session not found' }
+  // 1. Verify ownership of the booking
+  const ownedIds = await verifyBookingOwnership(context.admin, context.studioId, [sessionId])
+  if (!ownedIds.length) return { error: 'Session not found' }
 
   const db = context.admin
 
@@ -353,6 +297,15 @@ export async function deleteSession(sessionId: string) {
   await db.from('booking_staff').delete().eq('booking_id', sessionId)
   await db.from('booking_addons').delete().eq('booking_id', sessionId)
   await db.from('booking_services').delete().eq('booking_id', sessionId)
+
+  // 4b. Null out equipment that was checked out to this booking
+  // (equipment.booking_id uses ON DELETE SET NULL in the new schema, but
+  //  we null it here explicitly for the legacy equipment.booking_id column
+  //  that doesn't have that constraint yet)
+  await db
+    .from('equipment')
+    .update({ booking_id: null, session_id: null, assigned_to: null, checked_out_at: null, status: 'available' })
+    .eq('booking_id', sessionId)
 
   // 5. Finally delete the booking itself
   const { error } = await db
@@ -441,19 +394,7 @@ export async function getSessionFormData() {
     return { clients: [], packages: [], staff: [], services: [] }
   }
 
-  const [{ data: clients }, { data: packages }, { data: staff }, { data: services }] = await Promise.all([
-    context.admin.from('clients').select('client_id, full_name, phone').eq('studio_id', context.studioId).order('full_name'),
-    context.admin.from('packages').select('package_id, name, base_price, session_type, shoot_type, outfits_count, edited_photos, package_services(service_id, is_addon, display_order, services(service_id, name, type, description, price, session_type, booking_fields))').eq('studio_id', context.studioId).order('name'),
-    context.admin.from('staff').select('staff_id, full_name, role').eq('studio_id', context.studioId).order('full_name'),
-    context.admin.from('services').select('service_id, name, type, session_type, booking_fields').eq('studio_id', context.studioId).order('name'),
-  ])
-
-  return {
-    clients: (clients ?? []) as unknown as { client_id: string; full_name: string; phone?: string | null }[],
-    packages: (packages ?? []) as unknown as any[],
-    staff: (staff ?? []) as unknown as { staff_id: string; full_name: string; role?: string | null }[],
-    services: (services ?? []) as unknown as any[],
-  }
+  return getSessionFormDataRepo(context.admin, context.studioId)
 }
 
 export async function updateSessionScope(sessionId: string, data: {
@@ -499,8 +440,8 @@ export async function updateSession(sessionId: string, form: {
   if ('error' in context) return { error: context.error }
 
   // All ownership checks in parallel
-  const [bookingOk, clientOk, pkgOk, photogOk, editorOk, videoOk, videoEdOk] = await Promise.all([
-    ownsBooking(context.admin, context.studioId, sessionId),
+  const [actualSessionId, clientOk, pkgOk, photogOk, editorOk, videoOk, videoEdOk] = await Promise.all([
+    getSessionIdForBooking(context.admin, context.studioId, sessionId),
     ownsClient(context.admin, context.studioId, form.client_id),
     form.package_id      ? ownsPackage(context.admin, context.studioId, form.package_id)        : Promise.resolve(true),
     form.photographer_id ? ownsStaff(context.admin, context.studioId, form.photographer_id)     : Promise.resolve(true),
@@ -508,7 +449,7 @@ export async function updateSession(sessionId: string, form: {
     form.videographer_id ? ownsStaff(context.admin, context.studioId, form.videographer_id)     : Promise.resolve(true),
     form.video_editor_id ? ownsStaff(context.admin, context.studioId, form.video_editor_id)     : Promise.resolve(true),
   ])
-  if (!bookingOk) return { error: 'Session not found' }
+  if (!actualSessionId) return { error: 'Session not found' }
   if (!clientOk)  return { error: 'Client not found' }
   if (!pkgOk)     return { error: 'Package not found' }
   if (!photogOk)  return { error: 'Photographer not found' }
@@ -536,6 +477,22 @@ export async function updateSession(sessionId: string, form: {
 
   if (updateError) return { error: updateError.message }
 
+  const sessionUpdateData: Record<string, any> = {
+    session_date:     form.session_date,
+    session_type:     form.session_type,
+    shoot_type:       form.shoot_type        || null,
+    location_address: form.location_address  || null,
+    event_name:       form.event_name        || null,
+    event_date:       form.event_date        || null,
+  }
+
+  const { error: sessionUpdateError } = await context.admin
+    .from('sessions')
+    .update(sessionUpdateData)
+    .eq('session_id', actualSessionId)
+
+  if (sessionUpdateError) return { error: sessionUpdateError.message }
+
   // Replace crew assignments — delete all then re-insert
   const rolesToDelete = ['photographer', 'editor', 'videographer', 'video_editor']
 
@@ -545,11 +502,12 @@ export async function updateSession(sessionId: string, form: {
     .eq('booking_id', sessionId)
     .in('role', rolesToDelete)
 
-  const assignments: { booking_id: string; staff_id: string; role: string }[] = []
+  const assignments: { booking_id: string; session_id: string | null; staff_id: string; role: string }[] = []
 
   function addStaff(staffId: string | undefined, role: string) {
     if (!staffId) return
-    assignments.push({ booking_id: sessionId, staff_id: staffId, role })
+    const sessionIdToUse = actualSessionId || null
+    assignments.push({ booking_id: sessionId, session_id: sessionIdToUse, staff_id: staffId, role })
   }
 
   addStaff(form.photographer_id, 'photographer')
@@ -568,6 +526,23 @@ export async function updateSession(sessionId: string, form: {
     if (staffError) return { error: staffError.message }
   }
 
+  // Re-seed booking_services whenever the package changes
+  // This ensures the service records are never stale after a package edit
+  if (form.package_id) {
+    await context.admin.from('booking_services').delete().eq('booking_id', sessionId)
+    const serviceSeed = await seedBookingServicesFromPromise({
+      admin: context.admin,
+      studioId: context.studioId,
+      bookingId: sessionId,
+      packageId: form.package_id,
+      selectedServiceIds: [],
+    })
+    if (serviceSeed.error) return { error: serviceSeed.error }
+  } else if (!form.package_id) {
+    // Package was removed — clear all service records
+    await context.admin.from('booking_services').delete().eq('booking_id', sessionId)
+  }
+
   revalidatePath(`/dashboard/sessions/${sessionId}`)
   revalidatePath('/dashboard/sessions')
   return { error: null }
@@ -580,25 +555,14 @@ export async function sendEventDateReminder(sessionId: string) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  // Fetch booking + client email in one query
-  const { data: row } = await context.admin
-    .from('bookings')
-    .select('booking_id, event_date, shoot_type, clients(full_name, email)')
-    .eq('booking_id', sessionId)
-    .eq('studio_id', context.studioId)
-    .single()
+  const booking = await getBookingEventDetails(context.admin, context.studioId, sessionId)
+  if (!booking) return { error: 'Session not found' }
 
-  if (!row) return { error: 'Session not found' }
+  const clientEmail = booking.client_email
+  if (!clientEmail) return { error: 'Client has no email address on file' }
 
-  const booking = row as unknown as {
-    booking_id: string
-    event_date: string | null
-    shoot_type: string | null
-    clients: { full_name: string | null; email: string | null } | null
-  }
-
+  const clientName = booking.client_name ?? 'there'
   if (!booking.event_date) return { error: 'This session has no category date set' }
-  if (!booking.clients?.email) return { error: 'Client has no email address on file' }
   if (!booking.shoot_type)  return { error: 'Session has no category type set' }
 
   // Compute days until event
@@ -613,8 +577,8 @@ export async function sendEventDateReminder(sessionId: string) {
   const studioName = studioRow?.name ?? 'Your Studio'
 
   const { error: emailError } = await sendEventDateReminderEmail({
-    to:          booking.clients.email,
-    clientName:  booking.clients.full_name ?? 'there',
+    to:          clientEmail,
+    clientName:  clientName,
     studioName,
     shootType:   booking.shoot_type,
     eventDate:   booking.event_date,

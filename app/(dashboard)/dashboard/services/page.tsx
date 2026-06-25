@@ -9,18 +9,7 @@ import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-type ServiceItem = {
-  service_id:    string
-  name:          string
-  type:          string
-  description?:  string | null
-  price?:        number | null
-  duration_mins?: number | null
-  is_active:     boolean
-  display_order: number
-}
+import { getServiceStats, getServiceList } from '@/lib/domains/services/repository'
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -94,44 +83,26 @@ export default async function ServicesPage({
   if ('error' in context) redirect('/login')
 
   // ── Stats (always full set) ──────────────────────────────────────────
-  const { data: allRaw } = await context.admin
-    .from('services')
-    .select('type, is_active')
-    .eq('studio_id', context.studioId)
-  const all = (allRaw ?? []) as { type: string; is_active: boolean }[]
-
-  const totalCount   = all.length
-  const activeCount  = all.filter(s => s.is_active).length
-  const serviceCount = all.filter(s => s.type === 'service').length
-  const productCount = all.filter(s => s.type === 'product').length
-  const digitalCount = all.filter(s => s.type === 'digital').length
+  const stats = await getServiceStats(context.admin, context.studioId)
 
   const statsItems = [
-    { label: 'Total',    value: totalCount },
-    { label: 'Active',   value: activeCount,  accent: '#3b6d11' },
-    { label: '🎯 Service', value: serviceCount, accent: '#534ab7' },
-    { label: '📦 Product', value: productCount, accent: '#854f0b' },
-    { label: '💻 Digital', value: digitalCount, accent: '#185fa5' },
+    { label: 'Total',    value: stats.total },
+    { label: 'Active',   value: stats.active,  accent: '#3b6d11' },
+    { label: '🎯 Service', value: stats.service_count, accent: '#534ab7' },
+    { label: '📦 Product', value: stats.product_count, accent: '#854f0b' },
+    { label: '💻 Digital', value: stats.digital_count, accent: '#185fa5' },
   ]
 
   // ── List query with filters ──────────────────────────────────────────
-  let query = context.admin
-    .from('services')
-    .select('service_id, name, type, description, price, duration_mins, is_active, display_order', { count: 'exact' })
-    .eq('studio_id', context.studioId)
-
-  if (q)    query = query.ilike('name', `%${q}%`)
-  if (type) query = query.eq('type', type)
-  if (active === 'active')   query = query.eq('is_active', true)
-  if (active === 'inactive') query = query.eq('is_active', false)
-
-  const { data: servicesRaw, count } = await query
-    .order('display_order', { ascending: true })
-    .order('name',          { ascending: true })
-    .range(from, to)
-  const services = (servicesRaw ?? []) as unknown as ServiceItem[]
-
-  const listTotal  = count ?? 0
+  const { services, total: listTotal } = await getServiceList(
+    context.admin,
+    context.studioId,
+    pageNum,
+    q,
+    type,
+    active,
+    PAGE_SIZE
+  )
   const totalPages = Math.ceil(listTotal / PAGE_SIZE)
   const prevUrl    = pageNum > 1          ? pageUrl({ q, type, active }, pageNum - 1) : undefined
   const nextUrl    = pageNum < totalPages ? pageUrl({ q, type, active }, pageNum + 1) : undefined
@@ -190,16 +161,16 @@ export default async function ServicesPage({
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
             <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By type</p>
             <DonutChart title="services" segments={[
-              { label: '🎯 Service', value: serviceCount, color: '#534ab7' },
-              { label: '📦 Product', value: productCount, color: '#854f0b' },
-              { label: '💻 Digital', value: digitalCount, color: '#185fa5' },
+              { label: '🎯 Service', value: stats.service_count, color: '#534ab7' },
+              { label: '📦 Product', value: stats.product_count, color: '#854f0b' },
+              { label: '💻 Digital', value: stats.digital_count, color: '#185fa5' },
             ]} />
           </div>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
             <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>Active vs inactive</p>
             <DonutChart title="services" segments={[
-              { label: 'Active',   value: activeCount,            color: '#3b6d11' },
-              { label: 'Inactive', value: totalCount - activeCount, color: '#888' },
+              { label: 'Active',   value: stats.active,            color: '#3b6d11' },
+              { label: 'Inactive', value: stats.total - stats.active, color: '#888' },
             ]} />
           </div>
         </div>

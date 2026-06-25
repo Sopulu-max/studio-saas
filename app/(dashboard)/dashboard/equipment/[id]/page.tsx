@@ -4,33 +4,7 @@ import EquipmentActions from './equipment-actions'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getEquipmentCategoryConfig } from '@/lib/studio-config'
 
-// ─── Types ──────────────────────────────────────────────────────────────────
-
-type EquipmentRow = {
-  equipment_id:   string
-  name:           string | null
-  category:       string | null
-  serial_number:  string | null
-  status:         string
-  notes:          string | null
-  purchase_date:  string | null
-  purchase_price: number | string | null
-  assigned_to:    string | null
-  checked_out_at: string | null
-  booking_id:     string | null
-}
-
-type CheckoutRow = {
-  checkout_id:    string
-  assigned_to:    string
-  checked_out_at: string
-  checked_in_at:  string | null
-  notes:          string | null
-  booking_id:     string | null
-  bookings?: { booking_ref?: number | null; session_date?: string | null } | null
-}
-
-type StaffRow = { staff_id: string; full_name: string }
+import { getEquipmentDetail } from '@/lib/domains/equipment/repository'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -58,37 +32,19 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const [
-    { data: itemRaw },
-    { data: checkoutsRaw },
-    { data: staffRaw },
-    studio,
-  ] = await Promise.all([
-    context.admin
-      .from('equipment')
-      .select('*')
-      .eq('equipment_id', id)
-      .eq('studio_id', context.studioId)
-      .single(),
-    context.admin
-      .from('equipment_checkouts')
-      .select('checkout_id, assigned_to, checked_out_at, checked_in_at, notes, booking_id, bookings(booking_ref, session_date)')
-      .eq('equipment_id', id)
-      .order('checked_out_at', { ascending: false })
-      .limit(20),
-    context.admin
-      .from('staff')
-      .select('staff_id, full_name')
-      .eq('studio_id', context.studioId)
-      .order('full_name', { ascending: true }),
-    fetchStudio(context.admin, context.studioId),
-  ])
+  const item = await getEquipmentDetail(context.admin, context.studioId, id)
+  if (!item) redirect('/dashboard/equipment')
 
-  if (!itemRaw) redirect('/dashboard/equipment')
+  const { data: staffRaw } = await context.admin
+    .from('staff')
+    .select('staff_id, full_name')
+    .eq('studio_id', context.studioId)
+    .order('full_name', { ascending: true })
+  
+  const staffList = (staffRaw ?? []) as { staff_id: string; full_name: string }[]
 
-  const item     = itemRaw as unknown as EquipmentRow
-  const checkouts = (checkoutsRaw ?? []) as unknown as CheckoutRow[]
-  const staffList = (staffRaw ?? []) as unknown as StaffRow[]
+  const checkouts = item.checkouts
+  const studio = await fetchStudio(context.admin, context.studioId)
 
   const config  = buildStudioConfig(
     studio?.session_types, studio?.booking_statuses, studio?.service_types,
@@ -192,7 +148,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
             <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>CHECKOUT HISTORY</p>
           </div>
           {checkouts.map((c, i) => {
-            const bk = c.bookings as { booking_ref?: number | null; session_date?: string | null } | null
+
             const isOpen = !c.checked_in_at
             return (
               <div key={c.checkout_id} style={{
@@ -203,10 +159,13 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
                 <div>
                   <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 1px', color: 'var(--text)' }}>{c.assigned_to}</p>
                   {c.notes && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{c.notes}</p>}
-                  {bk?.booking_ref && (
-                    <Link href={`/dashboard/sessions/${c.booking_id}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
-                      Session #{bk.booking_ref}{bk.session_date ? ` · ${fmtDate(bk.session_date)}` : ''}
-                    </Link>
+                  {c.session && (
+                    <div style={{ fontSize: '12px', marginTop: '4px' }}>
+                      <Link href={`/dashboard/sessions/${c.booking_id}`} style={{ color: 'var(--text-3)', textDecoration: 'none' }}>
+                        Session {c.session.booking_ref ? `#${c.session.booking_ref}` : ''}
+                        {c.session.session_date ? ` (${fmtDate(c.session.session_date)})` : ''}
+                      </Link>
+                    </div>
                   )}
                 </div>
                 <div>

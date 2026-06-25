@@ -23,7 +23,7 @@ export async function GET() {
     issued_at?: string | null
     bookings?: {
       booking_ref?:  number | null
-      session_date?: string | null
+      sessions?: { session_date?: string | null }[] | null
       clients?: { full_name?: string | null; email?: string | null } | null
     } | null
     payments?: { amount: number | string }[] | null
@@ -31,7 +31,7 @@ export async function GET() {
 
   const { data } = await context.admin
     .from('invoices')
-    .select('invoice_id, total, status, due_date, issued_at, bookings!inner(booking_ref, session_date, clients(full_name, email)), payments(amount)')
+    .select('invoice_id, total, status, due_date, issued_at, bookings!inner(booking_ref, sessions(session_date), clients(full_name, email)), payments(amount)')
     .eq('bookings.studio_id', context.studioId)
     .order('issued_at', { ascending: false })
 
@@ -52,7 +52,7 @@ export async function GET() {
       r.bookings?.clients?.full_name,
       r.bookings?.clients?.email,
       sessionRef,
-      fmtDate(r.bookings?.session_date),
+      fmtDate((r.bookings?.sessions as any)?.[0]?.session_date),
       total,
       paid,
       outstanding,

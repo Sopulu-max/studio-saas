@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation'
 import { getAttendanceRecords } from '@/app/actions/attendance'
 import { getStudioContext } from '@/lib/studio'
 import RecordsTable from './records-table'
-import type { AttendanceRecord, StaffOption } from './records-table'
+import type { StaffOption } from './records-table'
+import { getAttendanceStaffOptions } from '@/lib/domains/attendance/repository'
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -81,29 +82,11 @@ export default async function AttendanceRecordsPage({
   const to      = params.to   ?? todayStr()
   const staffId = params.staff ?? ''
 
-  // ── Staff list (used in both views) ──────────────────────────────
-  const { data: staffList } = await context.admin
-    .from('staff')
-    .select('staff_id, full_name')
-    .eq('studio_id', context.studioId)
-    .order('full_name')
-
-  const staff: StaffOption[] = ((staffList ?? []) as unknown as StaffOption[]).map(m => ({
-    staff_id:  m.staff_id,
-    full_name: m.full_name,
-  }))
+  const staff: StaffOption[] = await getAttendanceStaffOptions(context.admin, context.studioId)
 
   // ── All records in range (no staff filter) — used for stats + by-person ──
-  const { data: allRaw } = await getAttendanceRecords({ from, to, staffId: null })
-
-  type RawRecord = Omit<AttendanceRecord, 'staff'> & {
-    staff: AttendanceRecord['staff'] | AttendanceRecord['staff'][] | null
-  }
-
-  const allRecords: AttendanceRecord[] = ((allRaw ?? []) as unknown as RawRecord[]).map(r => ({
-    ...r,
-    staff: Array.isArray(r.staff) ? (r.staff[0] ?? null) : (r.staff ?? null),
-  }))
+  const { data: allRecords } = await getAttendanceRecords({ from, to, staffId: null })
+  if (!allRecords) return <div>Failed to load records</div>
 
   // ── Stats ────────────────────────────────────────────────────────
   const uniqueStaffIds = new Set(allRecords.map(r => r.staff_id))
@@ -216,11 +199,8 @@ export default async function AttendanceRecordsPage({
   }
 
   // ── Records view (default) — preserved exactly ───────────────────
-  const { data: filteredRaw } = await getAttendanceRecords({ from, to, staffId: staffId || null })
-  const records: AttendanceRecord[] = ((filteredRaw ?? []) as unknown as RawRecord[]).map(r => ({
-    ...r,
-    staff: Array.isArray(r.staff) ? (r.staff[0] ?? null) : (r.staff ?? null),
-  }))
+  const { data: records } = await getAttendanceRecords({ from, to, staffId: staffId || null })
+  if (!records) return <div>Failed to load records</div>
 
   return (
     <div style={{ maxWidth: '900px' }}>

@@ -9,8 +9,6 @@ const packageSchema = z.object({
   description: z.string().optional().default(''),
   base_price: z.string().refine(v => parseFloat(v) >= 0, 'Price must be 0 or more'),
   shoot_type: z.string().min(1, 'Category is required'),
-  inclusions: z.array(z.string()),
-  coverage_hours: z.string().optional(),
   addons: z.array(z.object({
     name: z.string().min(1, 'Add-on name is required'),
     description: z.string().optional().default(''),
@@ -47,8 +45,6 @@ export async function addPackage(form: {
   description: string
   base_price: string
   shoot_type: string
-  inclusions: string[]
-  coverage_hours?: string
   contract_template?: string
   contract_template_id?: string | null
   pricing_type?: string
@@ -83,8 +79,6 @@ export async function addPackage(form: {
       description:    form.description,
       base_price:     parseFloat(form.base_price),
       shoot_type:     form.shoot_type,
-      inclusions:     form.inclusions,
-      coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',
@@ -167,8 +161,6 @@ export async function updatePackage(packageId: string, form: {
   description: string
   base_price: string
   shoot_type: string
-  inclusions: string[]
-  coverage_hours?: string
   contract_template?: string
   contract_template_id?: string | null
   pricing_type?: string
@@ -208,8 +200,6 @@ export async function updatePackage(packageId: string, form: {
       description:    form.description,
       base_price:     parseFloat(form.base_price),
       shoot_type:     form.shoot_type,
-      inclusions:     form.inclusions,
-      coverage_hours: form.coverage_hours ? parseFloat(form.coverage_hours) : null,
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',

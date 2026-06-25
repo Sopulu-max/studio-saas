@@ -3,6 +3,7 @@ import Link from 'next/link'
 import ContractActions from './contract-actions'
 import { getStudioContext } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
+import { getContractDetail } from '@/lib/domains/contracts/repository'
 
 function parseContent(text: string | null | undefined): { title: string; body: string }[] {
   if (!text?.trim()) return []
@@ -18,36 +19,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  type ContractRecord = {
-    contract_id: string
-    status?: string | null
-    content?: string | null
-    signed_at?: string | null
-    signed_by?: string | null
-    bookings?: {
-      booking_id?: string | null
-      booking_ref?: number | null
-      session_date?: string | null
-      location_address?: string | null
-      studio_id?: string | null
-      clients?: { client_id?: string | null; full_name?: string | null; email?: string | null } | null
-      packages?: { name?: string | null } | null
-    } | null
-  }
-  const { data: contractRaw } = await context.admin
-    .from('contracts')
-    .select(`
-      *,
-      bookings!inner (
-        booking_id, booking_ref, session_date, location_address, studio_id,
-        clients ( client_id, full_name, email ),
-        packages ( name )
-      )
-    `)
-    .eq('contract_id', id)
-    .eq('bookings.studio_id', context.studioId)
-    .single()
-  const contract = contractRaw as unknown as ContractRecord | null
+  const contract = await getContractDetail(context.admin, context.studioId, id)
 
   if (!contract) redirect('/dashboard/contracts')
 
@@ -64,16 +36,16 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px' }}>
-            {contract.bookings?.clients?.client_id ? (
-              <Link href={`/dashboard/clients/${contract.bookings.clients.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                {contract.bookings.clients.full_name ?? '—'}
+            {contract.client_id ? (
+              <Link href={`/dashboard/clients/${contract.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {contract.client_name ?? '—'}
               </Link>
-            ) : (contract.bookings?.clients?.full_name ?? '—')}
+            ) : (contract.client_name ?? '—')}
           </h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(contract.bookings?.clients?.full_name, contract.bookings?.booking_ref, contract.bookings?.booking_id, contract.bookings?.session_date)}</span>
-            {contract.bookings?.session_date
-              ? ` · ${new Date(contract.bookings.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}`
+            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em' }}>{sessionName(contract.client_name, contract.booking_ref, contract.booking_id, contract.session_date)}</span>
+            {contract.session_date
+              ? ` · ${new Date(contract.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}`
               : ''}
           </p>
         </div>
@@ -94,26 +66,26 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
-        {contract.bookings?.clients?.client_id ? (
-          <Link href={`/dashboard/clients/${contract.bookings.clients.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
-            {contract.bookings.clients.full_name}
+        {contract.client_id ? (
+          <Link href={`/dashboard/clients/${contract.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
+            {contract.client_name}
           </Link>
         ) : (
-          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{contract.bookings?.clients?.full_name}</p>
+          <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{contract.client_name}</p>
         )}
-        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{contract.bookings?.clients?.email}</p>
+        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{contract.client_email}</p>
         <div style={{ display: 'flex', gap: '24px', marginTop: '12px' }}>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Session date</p>
             <p style={{ fontSize: '13px', margin: 0 }}>
-              {contract.bookings?.session_date
-                ? new Date(contract.bookings.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+              {contract.session_date
+                ? new Date(contract.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
                 : '—'}
             </p>
           </div>
           <div>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 2px' }}>Location</p>
-            <p style={{ fontSize: '13px', margin: 0 }}>{contract.bookings?.location_address || '—'}</p>
+            <p style={{ fontSize: '13px', margin: 0 }}>{contract.location_address || '—'}</p>
           </div>
           {contract.signed_at && (
             <div>
@@ -130,15 +102,15 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
             </div>
           )}
         </div>
-        {(contract.bookings?.booking_id || contract.bookings?.clients?.client_id) && (
+        {(contract.booking_id || contract.client_id) && (
           <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--line-inner)', display: 'flex', gap: '16px' }}>
-            {contract.bookings?.clients?.client_id && (
-              <Link href={`/dashboard/clients/${contract.bookings.clients.client_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+            {contract.client_id && (
+              <Link href={`/dashboard/clients/${contract.client_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
                 View client →
               </Link>
             )}
-            {contract.bookings?.booking_id && (
-              <Link href={`/dashboard/sessions/${contract.bookings.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+            {contract.booking_id && (
+              <Link href={`/dashboard/sessions/${contract.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
                 View session →
               </Link>
             )}
@@ -179,7 +151,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
       <ContractActions
         contractId={id}
         currentStatus={contract.status ?? ''}
-        clientName={contract.bookings?.clients?.full_name ?? ''}
+        clientName={contract.client_name ?? ''}
       />
     </div>
   )

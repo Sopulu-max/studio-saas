@@ -60,11 +60,6 @@ type PublicPackage = {
   description?:    string | null
   cover_url?:      string | null
   base_price?:     number | string | null
-  duration_mins?:  number | null
-  outfits_count?:  number | null
-  edited_photos?:  number | null
-  coverage_hours?: number | null
-  inclusions?:     string[] | null
   is_public?:      boolean | null
   package_sections?:   PublicSection[] | null
   package_inclusions?: PublicTypedInclusion[] | null
@@ -123,22 +118,25 @@ export default async function PublicPackageDetailPage({
   const { studioSlug, packageId } = await params
   const admin = createAdminClient()
 
-  const [{ data: studioRaw }, { data: pkgRaw }, { data: allServicesRaw }] = await Promise.all([
+  const [{ data: studioRaw }, { data: pkgRaw }] = await Promise.all([
     admin.from('studios').select('studio_id, name, slug, logo_url, theme, session_types, service_types, booking_statuses').eq('slug', studioSlug).maybeSingle(),
     admin
       .from('packages')
-      .select('package_id, name, tagline, description, cover_url, base_price, duration_mins, outfits_count, edited_photos, coverage_hours, inclusions, is_public, package_sections(section_id, title, body, image_url, video_url, layout, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields))')
+      .select('package_id, name, tagline, description, cover_url, base_price, is_public, package_sections(section_id, title, body, image_url, video_url, layout, display_order), package_inclusions(inclusion_id, label, type, display_order), package_addons(addon_id, name, description, price), package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields))')
       .eq('package_id', packageId)
       .maybeSingle(),
-    admin
-      .from('services')
-      .select('service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields')
-      .eq('is_active', true)
-      // We will filter by studio_id below after fetching studio
   ])
 
   const studio = studioRaw as unknown as StudioMeta | null
   if (!studio) notFound()
+
+  // Fetch all active services scoped to this studio only
+  // (done after studio fetch so we have the confirmed studio_id)
+  const { data: allServicesRaw } = await admin
+    .from('services')
+    .select('service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields')
+    .eq('studio_id', studio.studio_id)
+    .eq('is_active', true)
 
   const theme   = buildTheme(studio.theme)
   const cssVars = themeCssVars(theme)
@@ -158,14 +156,9 @@ export default async function PublicPackageDetailPage({
   const addonCatalog    = pkgServices.filter(s =>  s.is_addon && s.services)
   const price           = Number(pkg.base_price ?? 0)
 
-  const stats = [
-    pkg.duration_mins  != null ? { label: 'Duration',      value: `${pkg.duration_mins} mins` }  : null,
-    pkg.outfits_count  != null ? { label: 'Outfits',        value: String(pkg.outfits_count) }    : null,
-    pkg.edited_photos  != null ? { label: 'Edited photos',  value: String(pkg.edited_photos) }    : null,
-    pkg.coverage_hours != null ? { label: 'Coverage',       value: `${pkg.coverage_hours}h` }     : null,
-  ].filter(Boolean) as { label: string; value: string }[]
+  const stats: { label: string; value: string }[] = []
 
-  const hasInclusions  = (pkg.inclusions ?? []).length > 0 || typedInclusions.length > 0 || includedCatalog.length > 0
+  const hasInclusions  = typedInclusions.length > 0 || includedCatalog.length > 0
   const hasAddons      = textAddons.length > 0 || addonCatalog.length > 0
 
   return (
@@ -516,14 +509,7 @@ export default async function PublicPackageDetailPage({
           <div className="card">
             <p className="section-label">What&apos;s included</p>
 
-            {(pkg.inclusions ?? []).map((item, i) => (
-              <div key={i} className="inclusion-row">
-                <span className="inclusion-check">✦</span>
-                <span className="inclusion-text">{item}</span>
-              </div>
-            ))}
-
-            {typedInclusions.length > 0 && (pkg.inclusions ?? []).length > 0 && (
+            {typedInclusions.length > 0 && includedCatalog.length > 0 && (
               <div style={{ height: '12px' }} />
             )}
 
@@ -544,7 +530,7 @@ export default async function PublicPackageDetailPage({
             })}
 
             {includedCatalog.length > 0 && (
-              <div style={{ marginTop: typedInclusions.length > 0 || (pkg.inclusions ?? []).length > 0 ? '16px' : '0', paddingTop: '16px', borderTop: typedInclusions.length > 0 || (pkg.inclusions ?? []).length > 0 ? '1px solid #f5f2ec' : 'none' }}>
+              <div style={{ marginTop: typedInclusions.length > 0 ? '16px' : '0', paddingTop: '16px', borderTop: typedInclusions.length > 0 ? '1px solid #f5f2ec' : 'none' }}>
                 {includedCatalog.map(ps => {
                   const svc = ps.services!
                   const colors = svc.type === 'service'

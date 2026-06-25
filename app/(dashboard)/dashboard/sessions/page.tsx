@@ -11,21 +11,12 @@ import { sessionName } from '@/lib/session-title'
 import { ViewSwitcher } from '@/components/view-switcher'
 import { resolveLayout } from '@/lib/view-mode'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
+import { getBookingsList, getBookingStats } from '@/lib/domains/bookings/repository'
+import type { BookingListDTO } from '@/lib/domains/bookings/types'
 
 const PAGE_SIZE = 20
 
 // ─── Types ────────────────────────────────────────────────────────
-type SessionListRow = {
-  booking_id:    string
-  booking_ref?:  number | null
-  session_type?: string | null
-  shoot_type?:   string | null
-  session_date?: string | null
-  status:        string
-  clients?: { full_name?: string | null; email?: string | null } | null
-  packages?: { name?: string | null } | null
-}
-
 type StudioConfig = ReturnType<typeof buildStudioConfig>
 
 // ─── URL helpers ─────────────────────────────────────────────────
@@ -69,7 +60,7 @@ function TabNav({ active }: { active: string }) {
 }
 
 // compact row used in pipeline / by-category / needs-action
-function CompactRow({ s, right }: { s: SessionListRow; right: React.ReactNode }) {
+function CompactRow({ s, right }: { s: BookingListDTO; right: React.ReactNode }) {
   return (
     <Link href={`/dashboard/sessions/${s.booking_id}`} style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
@@ -77,10 +68,10 @@ function CompactRow({ s, right }: { s: SessionListRow; right: React.ReactNode })
     }}>
       <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {s.clients?.full_name ?? '—'}
+          {s.client_name ?? '—'}
         </p>
         <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-          {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+          {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
           {s.shoot_type ? ` · ${s.shoot_type}` : ''}
         </p>
       </div>
@@ -137,32 +128,16 @@ export default async function SessionsPage({
   const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`
 
   // ── Stats strip (always, parallel) ────────────────────────────
-  const [
-    { count: totalSessions },
-    { count: thisMonthCount },
-    { count: pipelineCount },
-    cancelledResult,
-  ] = await Promise.all([
-    context.admin.from('bookings').select('*', { count: 'exact', head: true })
-      .eq('studio_id', context.studioId).not('status', 'in', cancelIn),
-    context.admin.from('bookings').select('*', { count: 'exact', head: true })
-      .eq('studio_id', context.studioId).gte('session_date', monthStart).not('status', 'in', cancelIn),
-    context.admin.from('bookings').select('*', { count: 'exact', head: true })
-      .eq('studio_id', context.studioId).not('status', 'in', excludeIn),
-    cancelValues.length > 0
-      ? context.admin.from('bookings').select('*', { count: 'exact', head: true })
-          .eq('studio_id', context.studioId).gte('session_date', monthStart).in('status', cancelValues)
-      : Promise.resolve({ count: 0 }),
-  ])
-  const cancelledThisMonth = cancelledResult.count ?? 0
+  const stats = await getBookingStats(context.admin, context.studioId, cancelValues, excludeValues)
+  const { total: totalSessions, thisMonth: thisMonthCount, pipeline: pipelineCount, cancelledThisMonth } = stats
 
   // ── "All" view data ────────────────────────────────────────────
-  let allSessions: SessionListRow[] = []
+  let allSessions: BookingListDTO[] = []
   let allTotal = 0
   let pendingCount = 0
 
   if (view === 'all') {
-    let clientIds: string[] | null = null
+    let clientIds: string[] | undefined = undefined
     if (q) {
       const { data: matched } = await context.admin.from('clients').select('client_id')
         .eq('studio_id', context.studioId).ilike('full_name', `%${q}%`)
@@ -171,27 +146,13 @@ export default async function SessionsPage({
 
     // Get distinct shoot_types for the category filter dropdown
     const from = (pageNum - 1) * PAGE_SIZE
-    const to   = from + PAGE_SIZE - 1
 
-    let q2 = context.admin
-      .from('bookings')
-      .select('*, clients(full_name, email), packages(name)', { count: 'exact' })
-      .eq('studio_id', context.studioId)
-
-    if (status)   q2 = q2.eq('status', status)
-    if (type)     q2 = q2.eq('session_type', type)
-    if (category) q2 = q2.eq('shoot_type', category)
-    if (date_from) q2 = q2.gte('session_date', date_from)
-    if (date_to)   q2 = q2.lte('session_date', date_to + 'T23:59:59')
-
-    if (clientIds !== null && clientIds.length === 0) {
-      allTotal = 0
-    } else {
-      if (clientIds && clientIds.length > 0) q2 = q2.in('client_id', clientIds)
-      const { data, count } = await q2.order('session_date', { ascending: false }).range(from, to)
-      allSessions = (data ?? []) as unknown as SessionListRow[]
-      allTotal    = count ?? 0
-    }
+    const { data, count } = await getBookingsList(context.admin, context.studioId, {
+      status, type, category, date_from, date_to, clientIds, limit: PAGE_SIZE, offset: from
+    })
+    
+    allSessions = data
+    allTotal = count
 
     if (intakeStatus) {
       const { count } = await context.admin.from('bookings').select('*', { count: 'exact', head: true })
@@ -201,38 +162,29 @@ export default async function SessionsPage({
   }
 
   // ── "Pipeline" view data ───────────────────────────────────────
-  let pipelineSessions: SessionListRow[] = []
+  let pipelineSessions: BookingListDTO[] = []
   if (view === 'pipeline') {
-    const { data } = await context.admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_type, shoot_type, session_date, status, clients(full_name)')
-      .eq('studio_id', context.studioId)
-      .not('status', 'in', excludeIn)
-      .order('session_date', { ascending: true })
-      .limit(300)
-    pipelineSessions = (data ?? []) as unknown as SessionListRow[]
+    const { data } = await getBookingsList(context.admin, context.studioId, {
+      excludeStatuses: excludeValues, orderBy: 'session_date', ascending: true, limit: 300
+    })
+    pipelineSessions = data
   }
 
   // ── "By category" view data ────────────────────────────────────
-  let catSessions: SessionListRow[] = []
+  let catSessions: BookingListDTO[] = []
   if (view === 'by-category') {
-    let catQ = context.admin
-      .from('bookings')
-      .select('booking_id, booking_ref, session_type, shoot_type, session_date, status, clients(full_name), packages(name)')
-      .eq('studio_id', context.studioId)
-      .not('status', 'in', cancelIn)
-    if (date_from) catQ = catQ.gte('session_date', date_from)
-    if (date_to)   catQ = catQ.lte('session_date', date_to + 'T23:59:59')
-    const { data } = await catQ.order('session_date', { ascending: false }).limit(500)
-    catSessions = (data ?? []) as unknown as SessionListRow[]
+    const { data } = await getBookingsList(context.admin, context.studioId, {
+      excludeStatuses: cancelValues, date_from, date_to, limit: 500
+    })
+    catSessions = data
   }
 
   // ── "Needs action" view data ───────────────────────────────────
   let naData: {
-    pending: SessionListRow[]
-    noInvoice: SessionListRow[]
-    noContract: SessionListRow[]
-    selectionBacklog: SessionListRow[]
+    pending: BookingListDTO[]
+    noInvoice: BookingListDTO[]
+    noContract: BookingListDTO[]
+    selectionBacklog: BookingListDTO[]
   } | null = null
 
   if (view === 'needs-action') {
@@ -241,12 +193,9 @@ export default async function SessionsPage({
       { data: invoiceRows },
       { data: contractRows },
     ] = await Promise.all([
-      context.admin
-        .from('bookings')
-        .select('booking_id, booking_ref, session_type, shoot_type, session_date, status, clients(full_name)')
-        .eq('studio_id', context.studioId)
-        .not('status', 'in', excludeIn)
-        .order('session_date', { ascending: true }),
+      getBookingsList(context.admin, context.studioId, {
+        excludeStatuses: excludeValues, orderBy: 'session_date', ascending: true
+      }),
       context.admin
         .from('invoices')
         .select('booking_id, bookings!inner(studio_id)')
@@ -256,7 +205,7 @@ export default async function SessionsPage({
         .select('booking_id, bookings!inner(studio_id)')
         .eq('bookings.studio_id', context.studioId),
     ])
-    const active = (activeRaw ?? []) as unknown as SessionListRow[]
+    const active = activeRaw
     const invoicedIds  = new Set(((invoiceRows  ?? []) as unknown as { booking_id?: string | null }[]).map((r) => r.booking_id).filter(Boolean) as string[])
     const contractedIds = new Set(((contractRows ?? []) as unknown as { booking_id?: string | null }[]).map((r) => r.booking_id).filter(Boolean) as string[])
 
@@ -272,7 +221,7 @@ export default async function SessionsPage({
 
   // ── Fetch distinct shoot_types for "All" category filter ──────
   const { data: typeRows } = view === 'all'
-    ? await context.admin.from('bookings').select('shoot_type').eq('studio_id', context.studioId).not('shoot_type', 'is', null)
+    ? await context.admin.from('sessions').select('shoot_type, bookings!inner(studio_id)').eq('bookings.studio_id', context.studioId).not('shoot_type', 'is', null)
     : { data: null }
   const distinctCategories = [...new Set(((typeRows ?? []) as unknown as { shoot_type?: string | null }[]).map((r) => r.shoot_type).filter(Boolean) as string[])].sort()
 
@@ -372,14 +321,14 @@ export default async function SessionsPage({
                         <div style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
                             <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                              {s.clients?.full_name ?? '—'}
+                              {s.client_name ?? '—'}
                             </p>
                             <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: sc.color_bg, color: sc.color_fg, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
                               {sc.label}
                             </span>
                           </div>
                           <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 10px', fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-                            {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                            {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
                             {s.shoot_type ? ` · ${s.shoot_type}` : ''}
                           </p>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
@@ -434,7 +383,7 @@ export default async function SessionsPage({
           ) : (
             (() => {
               // Group by status
-              const byStatus = new Map<string, SessionListRow[]>()
+              const byStatus = new Map<string, BookingListDTO[]>()
               for (const s of pipelineSessions) {
                 const arr = byStatus.get(s.status) ?? []
                 arr.push(s)
@@ -485,10 +434,10 @@ export default async function SessionsPage({
                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < group.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                    {s.clients?.full_name ?? '—'}
+                                    {s.client_name ?? '—'}
                                   </p>
                                   <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-                                    {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                                    {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
                                     {s.shoot_type ? ` · ${s.shoot_type}` : ''}
                                   </p>
                                 </div>
@@ -549,8 +498,8 @@ export default async function SessionsPage({
           ) : (
             (() => {
               // Group by shoot_type
-              const byCat = new Map<string, SessionListRow[]>()
-              const noCat: SessionListRow[] = []
+              const byCat = new Map<string, BookingListDTO[]>()
+              const noCat: BookingListDTO[] = []
               for (const s of catSessions) {
                 if (!s.shoot_type) { noCat.push(s); continue }
                 const arr = byCat.get(s.shoot_type) ?? []
@@ -597,11 +546,11 @@ export default async function SessionsPage({
                                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < group.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
                                   <div style={{ minWidth: 0, flex: 1 }}>
                                     <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {s.clients?.full_name ?? '—'}
+                                      {s.client_name ?? '—'}
                                     </p>
                                     <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-                                      {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
-                                      {s.packages?.name ? ` · ${s.packages.name}` : ''}
+                                      {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
+                                      {s.package_name ? ` · ${s.package_name}` : ''}
                                     </p>
                                   </div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
@@ -730,9 +679,9 @@ function NeedsSection({
   icon: string
   title: string
   subtitle: string
-  items: SessionListRow[]
+  items: BookingListDTO[]
   config: StudioConfig
-  rightSlot: (s: SessionListRow) => React.ReactNode
+  rightSlot: (s: BookingListDTO) => React.ReactNode
   emptyText: string
 }) {
   return (
@@ -758,10 +707,10 @@ function NeedsSection({
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < items.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {s.clients?.full_name ?? '—'}
+                    {s.client_name ?? '—'}
                   </p>
                   <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-                    {sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)}
+                    {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
                     {s.shoot_type ? ` · ${s.shoot_type}` : ''}
                   </p>
                 </div>

@@ -10,36 +10,14 @@ import BarChart from '@/components/bar-chart'
 import DonutChart from '@/components/donut-chart'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
+import {
+  getInvoiceStats,
+  getInvoiceList,
+  getOutstandingInvoices,
+  getPaymentsList
+} from '@/lib/domains/invoices/repository'
+
 const PAGE_SIZE = 20
-
-type InvoiceListRow = {
-  invoice_id:  string
-  total?:      number | string | null
-  due_date?:   string | null
-  status:      string
-  bookings?: {
-    booking_id?:   string | null
-    booking_ref?:  number | null
-    session_date?: string | null
-    session_type?: string | null
-    clients?: { full_name?: string | null } | null
-  } | null
-}
-
-type PaymentRow = {
-  payment_id:   string
-  invoice_id:   string
-  amount?:      number | string | null
-  paid_at?:     string | null
-  method?:      string | null
-  reference?:   string | null
-  bookings?: {
-    booking_id?:   string | null
-    booking_ref?:  number | null
-    session_date?: string | null
-    clients?: { full_name?: string | null } | null
-  } | null
-}
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   draft:     { bg: '#f1efe8', color: '#5f5e5a' },
@@ -91,139 +69,28 @@ export default async function InvoicesPage({
   if ('error' in context) redirect('/login')
   const nowTime = new Date().getTime()
 
-  // ── Stats (always — full-table aggregates) ─────────────────────
-  const { data: allInvoicesRaw } = await context.admin
-    .from('invoices')
-    .select('invoice_id, total, status, bookings!inner(studio_id)')
-    .eq('bookings.studio_id', context.studioId)
-  const allInvoices = (allInvoicesRaw ?? []) as unknown as { invoice_id: string; total: number | string | null; status: string }[]
+  const { stats, chartData } = await getInvoiceStats(context.admin, context.studioId)
 
-  // We need to know payments to get true outstanding/overdue balances
-  const allInvoiceIds = allInvoices.map(i => i.invoice_id)
-  const { data: allPaymentsRaw } = allInvoiceIds.length > 0
-    ? await context.admin.from('payments').select('invoice_id, amount').in('invoice_id', allInvoiceIds)
-    : { data: [] }
-  const allPayments = (allPaymentsRaw ?? []) as unknown as { invoice_id: string; amount: number | string | null }[]
-
-  const paidMap: Record<string, number> = {}
-  for (const p of allPayments) {
-    paidMap[p.invoice_id] = (paidMap[p.invoice_id] ?? 0) + Number(p.amount)
-  }
-
-  function balance(inv: { invoice_id: string; total: number | string | null | undefined }) {
-    return Math.max(0, Number(inv.total ?? 0) - (paidMap[inv.invoice_id] ?? 0))
-  }
-
-  const totalInvoiced   = allInvoices.reduce((s, i) => s + Number(i.total ?? 0), 0)
-  const totalPaid       = allInvoices.filter(i => i.status === 'paid').reduce((s, i) => s + Number(i.total ?? 0), 0)
-  const totalOutstanding = allInvoices.filter(i => i.status === 'sent' || i.status === 'draft').reduce((s, i) => s + balance(i), 0)
-  const totalOverdue     = allInvoices.filter(i => i.status === 'overdue').reduce((s, i) => s + balance(i), 0)
-
-  // ── View data ──────────────────────────────────────────────────
-  let invoices: InvoiceListRow[] = []
+  let invoices: any[] = []
   let invoiceTotal = 0
-  let outstandingInvoices: Array<InvoiceListRow & { _balance: number; _daysOverdue?: number }> = []
-  let payments: PaymentRow[] = []
+  let outstandingInvoices: any[] = []
+  let payments: any[] = []
   let paymentTotal = 0
+  let distinctMethods: string[] = []
 
   if (view === 'all') {
-    if (allInvoices.length > 0) {
-      const from = (pageNum - 1) * PAGE_SIZE
-      const to   = from + PAGE_SIZE - 1
-
-      let q = context.admin
-        .from('invoices')
-        .select('*, bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)', { count: 'exact' })
-        .eq('bookings.studio_id', context.studioId)
-
-      if (status) q = q.eq('status', status)
-      const { data, count } = await q.order('created_at', { ascending: false }).range(from, to)
-      invoices      = (data ?? []) as unknown as InvoiceListRow[]
-      invoiceTotal  = count ?? 0
-    }
+    const res = await getInvoiceList(context.admin, context.studioId, pageNum, status, PAGE_SIZE)
+    invoices = res.invoices
+    invoiceTotal = res.total
+  } else if (view === 'outstanding') {
+    const res = await getOutstandingInvoices(context.admin, context.studioId)
+    outstandingInvoices = res.invoices
+  } else if (view === 'payments') {
+    const res = await getPaymentsList(context.admin, context.studioId, pageNum, method, PAGE_SIZE)
+    payments = res.payments
+    paymentTotal = res.total
+    distinctMethods = res.distinctMethods
   }
-
-  if (view === 'outstanding') {
-    // Sent + overdue invoices, sorted by due_date asc (most urgent first)
-    const { data } = await context.admin
-      .from('invoices')
-      .select('*, bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)')
-      .eq('bookings.studio_id', context.studioId)
-      .in('status', ['sent', 'overdue'])
-      .order('due_date', { ascending: true })
-    const raw = (data ?? []) as unknown as InvoiceListRow[]
-
-    outstandingInvoices = raw
-      .map(inv => ({
-        ...inv,
-        _balance: balance({ invoice_id: inv.invoice_id, total: inv.total }),
-        _daysOverdue: inv.due_date
-          ? Math.max(0, Math.floor((nowTime - new Date(inv.due_date).getTime()) / 86_400_000))
-          : undefined,
-      }))
-      .filter(inv => inv._balance > 0)
-      .sort((a, b) => (a._daysOverdue ?? -1) - (b._daysOverdue ?? -1) || 0)
-  }
-
-  if (view === 'payments') {
-    const from = (pageNum - 1) * PAGE_SIZE
-    const to   = from + PAGE_SIZE - 1
-
-    // We need payment_id, amount, paid_at, method, reference, and the invoice's booking info
-    // Approach: join payments → invoices → bookings
-    // Since payments has invoice_id, and invoices has booking_id, do a multi-step join
-    if (allInvoiceIds.length > 0) {
-      let q = context.admin
-        .from('payments')
-        .select('*, invoices!inner(booking_id, bookings!inner(booking_id, booking_ref, session_date, studio_id, clients(full_name)))', { count: 'exact' })
-        .eq('invoices.bookings.studio_id', context.studioId)
-
-      if (method) q = q.eq('method', method)
-      const { data, count } = await q.order('paid_at', { ascending: false }).range(from, to)
-      payments     = (data ?? []) as unknown as PaymentRow[]
-      paymentTotal = count ?? 0
-    }
-  }
-
-  // ── Monthly revenue (only when chart-bar is active) ──────────
-  let monthlyRevenue: { label: string; value: number }[] = []
-  if (view === 'all' && invoiceLayout === 'chart-bar' && allInvoiceIds.length > 0) {
-    const sixAgo = new Date()
-    sixAgo.setMonth(sixAgo.getMonth() - 5)
-    sixAgo.setDate(1)
-    const { data: revenueRaw } = await context.admin
-      .from('payments')
-      .select('paid_at, amount')
-      .in('invoice_id', allInvoiceIds)
-      .gte('paid_at', sixAgo.toISOString().slice(0, 10))
-    const revByMo = new Map<string, number>()
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(); d.setMonth(d.getMonth() - i)
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-      revByMo.set(key, 0)
-    }
-    for (const p of (revenueRaw ?? []) as unknown as { paid_at: string | null; amount: number | string | null }[]) {
-      if (!p.paid_at) continue
-      const key = p.paid_at.slice(0, 7)
-      if (revByMo.has(key)) revByMo.set(key, (revByMo.get(key) ?? 0) + Number(p.amount ?? 0))
-    }
-    monthlyRevenue = [...revByMo.entries()].map(([key, val]) => ({
-      label: new Date(key + '-01').toLocaleDateString('en-NG', { month: 'short' }),
-      value: Math.round(val / 1000),
-    }))
-  }
-
-  // ── Invoice status counts (for donut, derived from existing data) ─
-  const statusCountMap: Record<string, number> = {}
-  for (const inv of allInvoices) {
-    statusCountMap[inv.status] = (statusCountMap[inv.status] ?? 0) + 1
-  }
-
-  // Distinct payment methods for filter
-  const { data: methodRows } = view === 'payments'
-    ? await context.admin.from('payments').select('method').in('invoice_id', allInvoiceIds.slice(0, 1000))
-    : { data: null }
-  const distinctMethods = [...new Set(((methodRows ?? []) as unknown as { method?: string | null }[]).map((r) => r.method).filter(Boolean) as string[])].sort()
 
   // ═══════════════════════════════════════════════════════════════
   // RENDER
@@ -246,10 +113,10 @@ export default async function InvoicesPage({
       {/* ── Stats strip ─────────────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', marginBottom: '1.25rem' }}>
         {[
-          { label: 'Total invoiced', value: `₦${totalInvoiced.toLocaleString()}` },
-          { label: 'Collected',      value: `₦${totalPaid.toLocaleString()}` },
-          { label: 'Outstanding',    value: `₦${totalOutstanding.toLocaleString()}`, highlight: totalOutstanding > 0 },
-          { label: 'Overdue',        value: `₦${totalOverdue.toLocaleString()}`,    highlight: totalOverdue > 0 },
+          { label: 'Total invoiced', value: `₦${stats.total_invoiced.toLocaleString()}` },
+          { label: 'Collected',      value: `₦${stats.total_collected.toLocaleString()}` },
+          { label: 'Outstanding',    value: `₦${stats.total_outstanding.toLocaleString()}`, highlight: stats.total_outstanding > 0 },
+          { label: 'Overdue',        value: `₦${stats.total_overdue.toLocaleString()}`,    highlight: stats.total_overdue > 0 },
         ].map(s => (
           <div key={s.label} style={{ background: 'var(--surface)', border: `1px solid ${s.highlight ? '#e5c98a' : 'var(--line)'}`, borderRadius: '12px', padding: '1rem 1.25rem' }}>
             <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '600' }}>{s.label}</p>
@@ -279,12 +146,12 @@ export default async function InvoicesPage({
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
                 <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>Revenue collected — last 6 months (₦k)</p>
-                <BarChart data={monthlyRevenue} color="#c9a96e" valueSuffix="k" />
+                <BarChart data={chartData.monthly_revenue} color="#c9a96e" valueSuffix="k" />
               </div>
               <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
                 <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By status</p>
                 <DonutChart title="invoices" segments={
-                  Object.entries(statusCountMap).map(([st, cnt]) => ({
+                  Object.entries(chartData.status_counts).map(([st, cnt]) => ({
                     label: st.charAt(0).toUpperCase() + st.slice(1),
                     value: cnt,
                     color: STATUS_COLORS[st]?.color ?? '#888',
@@ -314,10 +181,7 @@ export default async function InvoicesPage({
                       </div>
                       {invoices.map((inv, i) => {
                         const s = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
-                        const paid    = paidMap[inv.invoice_id] ?? 0
-                        const total   = Number(inv.total ?? 0)
-                        const bal     = Math.max(0, total - paid)
-                        const partial = paid > 0 && bal > 0
+                        const partial = inv.paid > 0 && inv.balance > 0
                         return (
                           <AnimatedItem key={inv.invoice_id} delay={i * 0.05}>
                             <Link href={`/dashboard/invoices/${inv.invoice_id}`} style={{
@@ -326,24 +190,24 @@ export default async function InvoicesPage({
                               borderBottom: i < invoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
                             }}>
                             <div>
-                              <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
+                              <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.client_name}</p>
                               <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                                {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
+                                {inv.session_name}
                               </p>
                             </div>
                             <div>
-                              <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>₦{total.toLocaleString()}</p>
+                              <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>₦{inv.total.toLocaleString()}</p>
                               {partial && (
                                 <p style={{ fontSize: '11px', color: '#854f0b', margin: '0 0 4px', fontWeight: '500' }}>
-                                  ₦{paid.toLocaleString()} paid · ₦{bal.toLocaleString()} due
+                                  ₦{inv.paid.toLocaleString()} paid · ₦{inv.balance.toLocaleString()} due
                                 </p>
                               )}
-                              {inv.status === 'paid' && paid > 0 && (
+                              {inv.status === 'paid' && inv.paid > 0 && (
                                 <p style={{ fontSize: '11px', color: '#3b6d11', margin: '0 0 4px', fontWeight: '500' }}>✓ Paid in full</p>
                               )}
-                              {total > 0 && (
+                              {inv.total > 0 && (
                                 <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', width: '80px' }}>
-                                  <div style={{ height: '100%', width: `${Math.min(100, (paid / total) * 100).toFixed(0)}%`, background: paid >= total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
+                                  <div style={{ height: '100%', width: `${Math.min(100, (inv.paid / inv.total) * 100).toFixed(0)}%`, background: inv.paid >= inv.total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
                                 </div>
                               )}
                             </div>
@@ -365,9 +229,6 @@ export default async function InvoicesPage({
                     <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '12px' }}>
                       {invoices.map((inv, i) => {
                         const s     = STATUS_COLORS[inv.status] ?? STATUS_COLORS.draft
-                        const paid  = paidMap[inv.invoice_id] ?? 0
-                        const total = Number(inv.total ?? 0)
-                        const bal   = Math.max(0, total - paid)
                         return (
                           <AnimatedItem key={inv.invoice_id} delay={i * 0.05}>
                             <Link href={`/dashboard/invoices/${inv.invoice_id}`}
@@ -376,23 +237,23 @@ export default async function InvoicesPage({
                             <div style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
                                 <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {inv.bookings?.clients?.full_name ?? '—'}
+                                  {inv.client_name}
                                 </p>
                                 <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', whiteSpace: 'nowrap', flexShrink: 0 }}>
                                   {inv.status}
                                 </span>
                               </div>
                               <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: '0 0 10px', fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-                                {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
+                                {inv.session_name}
                               </p>
                               <div style={{ paddingTop: '10px', borderTop: '1px solid var(--line-inner)' }}>
-                                <p style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 2px' }}>₦{total.toLocaleString()}</p>
-                                {bal > 0 && bal < total && (
-                                  <p style={{ fontSize: '11px', color: '#854f0b', margin: '0 0 6px', fontWeight: '500' }}>₦{bal.toLocaleString()} remaining</p>
+                                <p style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 2px' }}>₦{inv.total.toLocaleString()}</p>
+                                {inv.balance > 0 && inv.balance < inv.total && (
+                                  <p style={{ fontSize: '11px', color: '#854f0b', margin: '0 0 6px', fontWeight: '500' }}>₦{inv.balance.toLocaleString()} remaining</p>
                                 )}
-                                {total > 0 && (
+                                {inv.total > 0 && (
                                   <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${Math.min(100, (paid / total) * 100).toFixed(0)}%`, background: paid >= total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
+                                    <div style={{ height: '100%', width: `${Math.min(100, (inv.paid / inv.total) * 100).toFixed(0)}%`, background: inv.paid >= inv.total ? '#3b6d11' : '#c9a96e', borderRadius: '2px' }} />
                                   </div>
                                 )}
                                 {inv.due_date && (
@@ -442,7 +303,7 @@ export default async function InvoicesPage({
               </div>
               {outstandingInvoices.map((inv, i) => {
                 const s = STATUS_COLORS[inv.status] ?? STATUS_COLORS.sent
-                const isOverdue = inv._daysOverdue !== undefined && inv._daysOverdue > 0
+                const isOverdue = inv.days_overdue > 0
                 return (
                   <AnimatedItem key={inv.invoice_id} delay={i * 0.05}>
                     <Link href={`/dashboard/invoices/${inv.invoice_id}`} style={{
@@ -451,21 +312,21 @@ export default async function InvoicesPage({
                       borderBottom: i < outstandingInvoices.length - 1 ? '1px solid var(--line-inner)' : 'none',
                     }}>
                     <div>
-                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.bookings?.clients?.full_name ?? '—'}</p>
+                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{inv.client_name}</p>
                       <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                        {sessionName(inv.bookings?.clients?.full_name, inv.bookings?.booking_ref, inv.bookings?.booking_id, inv.bookings?.session_date)}
+                        {inv.session_name}
                       </p>
                     </div>
                     <div>
-                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 4px' }}>₦{Number(inv.total ?? 0).toLocaleString()}</p>
-                      {Number(inv.total ?? 0) > 0 && (
+                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 4px' }}>₦{inv.total.toLocaleString()}</p>
+                      {inv.total > 0 && (
                         <div style={{ height: '3px', background: 'var(--line)', borderRadius: '2px', overflow: 'hidden', width: '64px' }}>
-                          <div style={{ height: '100%', width: `${Math.min(100, ((paidMap[inv.invoice_id] ?? 0) / Number(inv.total ?? 0)) * 100).toFixed(0)}%`, background: '#c9a96e', borderRadius: '2px' }} />
+                          <div style={{ height: '100%', width: `${Math.min(100, (inv.paid / inv.total) * 100).toFixed(0)}%`, background: '#c9a96e', borderRadius: '2px' }} />
                         </div>
                       )}
                     </div>
                     <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, color: isOverdue ? '#a32d2d' : 'var(--text)' }}>
-                      ₦{inv._balance.toLocaleString()}
+                      ₦{inv.balance.toLocaleString()}
                     </p>
                     <div>
                       <p style={{ fontSize: '13px', margin: '0 0 2px', color: isOverdue ? '#a32d2d' : 'var(--text-3)' }}>
@@ -473,7 +334,7 @@ export default async function InvoicesPage({
                       </p>
                       {isOverdue && (
                         <p style={{ fontSize: '11px', color: '#a32d2d', margin: 0, fontWeight: '500' }}>
-                          {inv._daysOverdue}d overdue
+                          {inv.days_overdue}d overdue
                         </p>
                       )}
                     </div>
@@ -515,7 +376,6 @@ export default async function InvoicesPage({
                   <span>DATE</span><span>CLIENT · SESSION</span><span>AMOUNT</span><span>METHOD</span><span>REFERENCE</span>
                 </div>
                 {payments.map((p, i) => {
-                  const bk = (p as { invoices?: { bookings?: { booking_id?: string | null; booking_ref?: number | null; session_date?: string | null; clients?: { full_name?: string | null } | null } | null } | null }).invoices?.bookings
                   return (
                     <div key={p.payment_id} style={{
                       display: 'grid', gridTemplateColumns: '120px 2fr 1fr 100px 1fr',
@@ -523,12 +383,12 @@ export default async function InvoicesPage({
                       borderBottom: i < payments.length - 1 ? '1px solid var(--line-inner)' : 'none',
                     }}>
                       <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0 }}>
-                        {p.paid_at ? new Date(p.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                        {p.date ? new Date(p.date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
                       </p>
                       <div>
-                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{bk?.clients?.full_name ?? '—'}</p>
+                        <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{p.client_name}</p>
                         <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.01em' }}>
-                          {sessionName(bk?.clients?.full_name, bk?.booking_ref, bk?.booking_id, bk?.session_date)}
+                          {p.session_name}
                         </p>
                       </div>
                       <p style={{ fontSize: '14px', fontWeight: '600', margin: 0, color: '#3b6d11' }}>

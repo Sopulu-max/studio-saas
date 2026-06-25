@@ -2,46 +2,13 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { getStudioContext } from '@/lib/studio'
 import AttendanceBoard from './attendance-board'
-
-const DAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday']
+import { getTodayAttendanceBoard } from '@/lib/domains/attendance/repository'
 
 export default async function AttendancePage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const today    = new Date()
-  const todayDay = DAY_NAMES[today.getDay()]   // e.g. 'wednesday'
-  const todayISO = today.toISOString().slice(0, 10)
-  const todayLabel = today.toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-
-  type StaffRow   = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
-  type CheckinRow = { checkin_id: string; staff_id: string; checked_in_at: string; checked_out_at: string | null }
-
-  // Fetch all staff
-  const { data: staffListRaw } = await context.admin
-    .from('staff')
-    .select('staff_id, full_name, role, roles, working_days')
-    .eq('studio_id', context.studioId)
-    .order('full_name')
-
-  // Fetch today's checkins for this studio
-  const { data: checkinsRaw } = await context.admin
-    .from('staff_checkins')
-    .select('checkin_id, staff_id, checked_in_at, checked_out_at')
-    .eq('studio_id', context.studioId)
-    .eq('date', todayISO)
-
-  const staffList = (staffListRaw ?? []) as unknown as StaffRow[]
-  const checkins  = (checkinsRaw  ?? []) as unknown as CheckinRow[]
-  const checkinMap: Record<string, CheckinRow> = {}
-  for (const c of checkins) {
-    checkinMap[c.staff_id] = c
-  }
-
-  const staff = staffList.map(m => ({
-    ...m,
-    checkin: checkinMap[m.staff_id] ?? null,
-  }))
+  const { staff, todayDay, todayLabel } = await getTodayAttendanceBoard(context.admin, context.studioId)
 
   return (
     <div style={{ maxWidth: '640px' }}>

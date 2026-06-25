@@ -3,23 +3,7 @@ import Link from 'next/link'
 import { getStudioContext } from '@/lib/studio'
 import ServiceActions from './service-actions'
 
-type ServiceRecord = {
-  service_id:    string
-  name:          string
-  type:          string
-  description?:  string | null
-  price?:        number | null
-  duration_mins?: number | null
-  is_active:     boolean
-  display_order: number
-  created_at:    string
-}
-
-type PackageServiceRow = {
-  is_addon:  boolean
-  addon_price?: number | null
-  packages?: { package_id?: string; name?: string | null } | null
-}
+import { getServiceDetail } from '@/lib/domains/services/repository'
 
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   service: { bg: '#eeedfe', color: '#534ab7' },
@@ -46,24 +30,10 @@ export default async function ServiceDetailPage({
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const [{ data: svcRaw }, { data: pkgServicesRaw }] = await Promise.all([
-    context.admin
-      .from('services')
-      .select('*')
-      .eq('service_id', id)
-      .eq('studio_id', context.studioId)
-      .single(),
-    context.admin
-      .from('package_services')
-      .select('is_addon, addon_price, packages(package_id, name)')
-      .eq('service_id', id)
-      .order('is_addon', { ascending: true }),
-  ])
-
-  const svc = svcRaw as unknown as ServiceRecord | null
+  const svc = await getServiceDetail(context.admin, context.studioId, id)
   if (!svc) redirect('/dashboard/services')
 
-  const pkgServices = (pkgServicesRaw ?? []) as unknown as PackageServiceRow[]
+  const pkgServices = svc.package_services ?? []
   const tc = TYPE_COLORS[svc.type] ?? TYPE_COLORS.service
 
   const included  = pkgServices.filter(ps => !ps.is_addon)

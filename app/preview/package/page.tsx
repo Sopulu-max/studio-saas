@@ -60,14 +60,9 @@ export default function PackagePreview() {
   const addonCatalog    = pkgServices.filter(s =>  s.is_addon)
   const price           = Number(pkg.base_price ?? 0)
 
-  const stats = [
-    pkg.duration_mins  ? { label: 'Duration',      value: `${pkg.duration_mins} mins` }  : null,
-    pkg.outfits_count  ? { label: 'Outfits',        value: String(pkg.outfits_count) }    : null,
-    pkg.edited_photos  ? { label: 'Edited photos',  value: String(pkg.edited_photos) }    : null,
-    pkg.coverage_hours ? { label: 'Coverage',       value: `${pkg.coverage_hours}h` }     : null,
-  ].filter(Boolean) as { label: string; value: string }[]
+  const stats: { label: string; value: string }[] = []
 
-  const hasInclusions  = (pkg.inclusions ?? []).length > 0 || typedInclusions.length > 0 || includedCatalog.length > 0
+  const hasInclusions  = typedInclusions.length > 0 || includedCatalog.length > 0
   const hasAddons      = textAddons.length > 0 || addonCatalog.length > 0
 
   return (
@@ -386,17 +381,6 @@ export default function PackagePreview() {
           <div className="card">
             <p className="section-label">What&apos;s included</p>
             
-            {(pkg.inclusions ?? []).length > 0 && (
-              <div className="inc-list" style={{ marginBottom: (typedInclusions.length > 0 || includedCatalog.length > 0) ? '20px' : '0' }}>
-                {pkg.inclusions.map((inc: string, i: number) => (
-                  <div className="inc-item" key={i}>
-                    <svg className="inc-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                    <span className="inc-text">{inc}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
             {typedInclusions.length > 0 && (
               <div className="inc-list" style={{ marginBottom: includedCatalog.length > 0 ? '20px' : '0' }}>
                 {typedInclusions.map((inc: any, i: number) => (

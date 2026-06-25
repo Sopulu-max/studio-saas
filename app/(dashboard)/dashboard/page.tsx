@@ -101,34 +101,34 @@ export default async function DashboardPage() {
       .eq('status', 'overdue'),
 
     // Today's sessions — include terminal (delivered) so completed jobs are still shown
-    admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, shoot_type, event_date, event_name, status, clients(full_name), packages(name)')
+    admin.from('sessions')
+      .select('session_id, session_date, session_type, shoot_type, event_date, event_name, bookings!inner(booking_id, booking_ref, status, clients(full_name), packages(name))')
       .eq('studio_id', studioId)
       .gte('session_date', todayStr)
       .lte('session_date', todayEnd)
-      .not('status', 'in', `(${excludeCancelIn})`)
+      .not('bookings.status', 'in', `(${excludeCancelIn})`)
       .order('session_date', { ascending: true }),
 
     // Next 3 days (tomorrow → +3)
-    admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, shoot_type, event_date, event_name, status, clients(full_name)')
+    admin.from('sessions')
+      .select('session_id, session_date, session_type, shoot_type, event_date, event_name, bookings!inner(booking_id, booking_ref, status, clients(full_name))')
       .eq('studio_id', studioId)
       .gt('session_date', todayEnd)
       .lte('session_date', in3DaysEnd)
-      .not('status', 'in', `(${excludeIn})`)
+      .not('bookings.status', 'in', `(${excludeIn})`)
       .order('session_date', { ascending: true }),
 
     // Full active pipeline — all non-terminal, non-cancelled (no date cap)
-    admin.from('bookings')
-      .select('booking_id, booking_ref, session_date, session_type, shoot_type, event_date, event_name, status, clients(full_name)')
+    admin.from('sessions')
+      .select('session_id, session_date, session_type, shoot_type, event_date, event_name, bookings!inner(booking_id, booking_ref, status, clients(full_name))')
       .eq('studio_id', studioId)
-      .not('status', 'in', `(${excludeIn})`)
+      .not('bookings.status', 'in', `(${excludeIn})`)
       .order('session_date', { ascending: false })
       .limit(80),
 
     // Staff list
     admin.from('staff')
-      .select('staff_id, full_name, role, roles, working_days')
+      .select('staff_id, full_name, roles, working_days')
       .eq('studio_id', studioId)
       .order('full_name'),
 
@@ -139,12 +139,12 @@ export default async function DashboardPage() {
       .eq('date', todayStr),
 
     // Sessions this week (Mon → today) — include terminal (delivered) for accurate counts
-    admin.from('bookings')
-      .select('booking_id, session_date, session_type, shoot_type, clients(client_id, full_name)')
+    admin.from('sessions')
+      .select('session_id, session_date, session_type, shoot_type, bookings!inner(booking_id, status, clients(client_id, full_name))')
       .eq('studio_id', studioId)
       .gte('session_date', mondayISO)
       .lte('session_date', todayEnd)
-      .not('status', 'in', `(${excludeCancelIn})`),
+      .not('bookings.status', 'in', `(${excludeCancelIn})`),
 
     // Payments this week / this month window — with method + client info for today's breakdown
     invoiceIds.length > 0
@@ -157,7 +157,7 @@ export default async function DashboardPage() {
 
     // Outstanding invoices (draft / sent / overdue) with session + client + payments detail
     admin.from('invoices')
-      .select('invoice_id, total, status, due_date, issued_at, payments(amount), bookings!inner(studio_id, booking_ref, session_date, clients(full_name))')
+      .select('invoice_id, total, status, due_date, issued_at, payments(amount), bookings!inner(studio_id, booking_ref, clients(full_name), sessions(session_date))')
       .eq('bookings.studio_id', studioId)
       .in('status', ['draft', 'sent', 'overdue'])
       .limit(20),
@@ -166,12 +166,12 @@ export default async function DashboardPage() {
     // falls in the next 14 days.  Include delivered sessions: the shoot is done
     // but the date still matters — you may want to send wishes or confirm delivery.
     // Only exclude cancellations.
-    admin.from('bookings')
-      .select('booking_id, booking_ref, event_date, event_name, shoot_type, session_type, session_date, status, clients(full_name)')
+    admin.from('sessions')
+      .select('session_id, session_date, session_type, shoot_type, event_date, event_name, bookings!inner(booking_id, booking_ref, status, clients(full_name))')
       .eq('studio_id', studioId)
       .gte('event_date', todayStr)
       .lte('event_date', in14DaysEnd)
-      .not('status', 'in', `(${excludeCancelIn})`)
+      .not('bookings.status', 'in', `(${excludeCancelIn})`)
       .not('shoot_type', 'is', null)
       .order('event_date', { ascending: true })
       .limit(20),
@@ -179,28 +179,38 @@ export default async function DashboardPage() {
 
   // ── Types ─────────────────────────────────────────────────────────────────────
   type SessionRow = {
-    booking_id: string; booking_ref?: number | null
+    session_id: string
     session_date?: string | null; session_type?: string | null
     shoot_type?: string | null; event_date?: string | null; event_name?: string | null
-    status: string
-    clients?: { full_name?: string | null } | null
-    packages?: { name?: string | null } | null
+    bookings: {
+      booking_id: string; booking_ref?: number | null
+      status: string
+      clients?: { full_name?: string | null } | null
+      packages?: { name?: string | null } | null
+    } | null
   }
   type OccasionRow = {
-    booking_id: string; booking_ref?: number | null
+    session_id: string
     event_date: string; event_name?: string | null
     shoot_type?: string | null; session_type?: string | null
-    session_date?: string | null; status: string
-    clients?: { full_name?: string | null } | null
+    session_date?: string | null
+    bookings: {
+      booking_id: string; booking_ref?: number | null
+      status: string
+      clients?: { full_name?: string | null } | null
+    } | null
   }
   type StaffRow    = { staff_id: string; full_name: string; role: string | null; roles: string[] | null; working_days: string[] | null }
   type CheckinRow  = { staff_id: string; checked_in_at: string; checked_out_at: string | null }
   type WeekBooking = {
-    booking_id: string
+    session_id: string
     session_date: string | null
     session_type: string | null
     shoot_type: string | null
-    clients: { client_id: string; full_name: string | null } | null
+    bookings: {
+      booking_id: string
+      clients: { client_id: string; full_name: string | null } | null
+    } | null
   }
   type RecentPayment = {
     amount:   number | string
@@ -212,7 +222,7 @@ export default async function DashboardPage() {
     invoice_id: string; total: number | string | null; status: string
     due_date: string | null; issued_at: string | null
     payments: { amount: number | string }[] | null
-    bookings: { booking_ref: number | null; session_date: string | null; clients: { full_name: string | null } | null } | null
+    bookings: { booking_ref: number | null; clients: { full_name: string | null } | null; sessions: { session_date: string | null }[] | null } | null
   }
 
   const todaySessions    = (todayRaw      ?? []) as unknown as SessionRow[]
@@ -285,7 +295,7 @@ export default async function DashboardPage() {
       const t = b.session_type ?? 'other'
       byType[t] = (byType[t] ?? 0) + 1
     }
-    const clientIds = new Set(dayBooks.map(b => b.clients?.client_id).filter(Boolean))
+    const clientIds = new Set(dayBooks.map(b => b.bookings?.clients?.client_id).filter(Boolean))
     weekDays.push({
       iso,
       label:         d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }),
@@ -299,10 +309,10 @@ export default async function DashboardPage() {
 
   // ── Client list for today ─────────────────────────────────────────────────────
   const todayClientList = weekBookingsList
-    .filter(b => b.session_date?.startsWith(todayStr) && b.clients?.full_name)
+    .filter(b => b.session_date?.startsWith(todayStr) && b.bookings?.clients?.full_name)
     .map(b => ({
-      clientId:    b.clients!.client_id,
-      clientName:  b.clients!.full_name!,
+      clientId:    b.bookings!.clients!.client_id,
+      clientName:  b.bookings!.clients!.full_name!,
       sessionType: b.session_type ?? null,
       shootType:   b.shoot_type   ?? null,
       sessionDate: b.session_date ?? null,

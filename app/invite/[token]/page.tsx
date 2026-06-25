@@ -11,7 +11,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
 
   const { data: staffMember } = await admin
     .from('staff')
-    .select('staff_id, full_name, email, role, invite_accepted_at, studios(name)')
+    .select('staff_id, full_name, email, roles, invite_accepted_at, studios(name)')
     .eq('invite_token', token)
     .maybeSingle()
 
@@ -43,7 +43,7 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
         fullName={staffMember.full_name as string}
         email={staffMember.email as string}
         studioName={studioName}
-        role={staffMember.role as string}
+        role={(staffMember.roles as string[] | null)?.[0] as string}
       />
     </div>
   )

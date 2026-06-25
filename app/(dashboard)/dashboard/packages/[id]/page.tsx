@@ -14,43 +14,7 @@ function parseVideo(url: string | null | undefined): { type: 'iframe' | 'video';
   return null
 }
 
-type PackageAddon = {
-  addon_id: string
-  name: string
-  description?: string | null
-  price?: number | string | null
-}
-
-type PackageSection = {
-  section_id:    string
-  title:         string
-  body?:         string | null
-  image_url?:    string | null
-  video_url?:    string | null
-  display_order: number
-}
-
-type PackageTypedInclusion = {
-  inclusion_id:  string
-  label:         string
-  type:          'service' | 'product' | 'digital'
-  display_order: number
-}
-
-type PackageRecord = {
-  name?:             string | null
-  shoot_type?:       string | null
-  base_price?:       number | string | null
-  coverage_hours?:   number | null
-  description?:      string | null
-  inclusions?:       string[] | null
-  tagline?:          string | null
-  cover_url?:        string | null
-  is_public?:        boolean | null
-  package_addons?:   PackageAddon[] | null
-  package_sections?: PackageSection[] | null
-  package_inclusions?: PackageTypedInclusion[] | null
-}
+import { getPackageDetail } from '@/lib/domains/packages/repository'
 
 const KNOWN_COLORS: Record<string, { bg: string; color: string }> = {
   portrait:   { bg: '#eeedfe', color: '#534ab7' },
@@ -95,40 +59,17 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  const [studioRow, { data: pkgRaw }, { data: pkgSvcRaw }] = await Promise.all([
-    fetchStudio(context.admin, context.studioId),
-    context.admin
-      .from('packages')
-      .select('*, package_addons(*), package_sections(section_id, title, body, image_url, video_url, display_order), package_inclusions(inclusion_id, label, type, display_order)')
-      .eq('package_id', id)
-      .eq('studio_id', context.studioId)
-      .single(),
-    context.admin
-      .from('package_services')
-      .select('is_addon, addon_price, display_order, services(service_id, name, type, price, description)')
-      .eq('package_id', id)
-      .order('display_order', { ascending: true }),
-  ])
-  const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
-  const pkg = pkgRaw as unknown as PackageRecord | null
-
+  const pkg = await getPackageDetail(context.admin, context.studioId, id)
   if (!pkg) redirect('/dashboard/packages')
 
-  type PkgServiceRow = {
-    is_addon:   boolean
-    addon_price?: number | null
-    display_order: number
-    services?:  { service_id?: string; name?: string | null; type?: string | null; price?: number | null; description?: string | null } | null
-  }
-  const pkgServices = (pkgSvcRaw ?? []) as unknown as PkgServiceRow[]
+  const pkgServices = pkg.package_services ?? []
   const includedCatalogSvcs = pkgServices.filter(ps => !ps.is_addon)
-  const addonCatalogSvcs    = pkgServices.filter(ps =>  ps.is_addon)
+  const addonCatalogSvcs    = pkgServices.filter(ps => ps.is_addon)
 
-  // Sort related rows
-  const sections         = [...(pkg.package_sections   ?? [])].sort((a, b) => a.display_order - b.display_order)
-  const typedInclusions  = [...(pkg.package_inclusions ?? [])].sort((a, b) => a.display_order - b.display_order)
+  const sections         = pkg.package_sections
+  const typedInclusions  = pkg.package_inclusions
 
-  const s          = shootTypeColor(pkg.shoot_type)
+  const s = shootTypeColor(pkg.shoot_type)
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -325,7 +266,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
         {!pkg.package_addons?.length ? (
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0, padding: '1rem 1.25rem' }}>No add-ons for this package</p>
         ) : (
-          (pkg.package_addons as PackageAddon[] ?? []).map((addon, i: number) => (
+          (pkg.package_addons ?? []).map((addon, i: number) => (
             <div key={addon.addon_id} style={{
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
               padding: '0.875rem 1.25rem',

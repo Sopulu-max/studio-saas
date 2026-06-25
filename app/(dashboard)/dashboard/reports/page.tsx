@@ -126,7 +126,7 @@ export default async function ReportsPage({
 
     // All invoices with booking join for session context
     admin.from('invoices')
-      .select('invoice_id, total, status, issued_at, due_date, booking_id, bookings!inner(studio_id, session_type, client_id, booking_services(services(category_value)))')
+      .select('invoice_id, total, status, issued_at, due_date, booking_id, bookings!inner(studio_id, sessions(session_type), client_id, booking_services(services(category_value)))')
       .eq('bookings.studio_id', studioId),
 
     // All payments (all-time) with method
@@ -153,13 +153,13 @@ export default async function ReportsPage({
 
     // All staff
     admin.from('staff')
-      .select('staff_id, full_name, role, roles, working_days')
+      .select('staff_id, full_name, roles, working_days')
       .eq('studio_id', studioId)
       .order('full_name'),
 
     // Booking staff — join through bookings to scope to this studio
     admin.from('booking_staff')
-      .select('staff_id, role, booking_id, bookings!inner(studio_id, session_date, status)')
+      .select('staff_id, role, booking_id, bookings!inner(studio_id, sessions(session_date), status)')
       .eq('bookings.studio_id', studioId),
 
     // Staff check-ins in range (or last 90 days if no range)
@@ -194,12 +194,12 @@ export default async function ReportsPage({
   type InvoiceRow = {
     invoice_id: string; total: number | string; status: string
     issued_at?: string | null; due_date?: string | null; booking_id?: string | null
-    bookings?: { studio_id: string; session_type?: string | null; client_id?: string | null; booking_services?: { services?: { category_value?: string | null } | null }[] | null } | null
+    bookings?: { studio_id: string; sessions?: { session_type?: string | null }[] | null; client_id?: string | null; booking_services?: { services?: { category_value?: string | null } | null }[] | null } | null
   }
   type PaymentRow = { amount: number | string; paid_at: string; method?: string; invoice_id?: string }
   type ClientRow  = { client_id: string; full_name: string; created_at?: string | null }
   type StaffRow   = { staff_id: string; full_name: string; role?: string | null; roles?: string[] | null; working_days?: string[] | null }
-  type BStaffRow  = { staff_id: string; role: string; booking_id: string; bookings?: { studio_id: string; session_date?: string | null; status?: string } | null }
+  type BStaffRow  = { staff_id: string; role: string; booking_id: string; bookings?: { studio_id: string; sessions?: { session_date?: string | null }[] | null; status?: string } | null }
   type CheckinRow = { staff_id: string; date: string; checked_in_at: string; checked_out_at?: string | null }
   type PackageRow = { package_id: string; name: string; base_price?: number | string | null }
 
@@ -277,7 +277,7 @@ export default async function ReportsPage({
   const bookingToServiceType: Record<string, string> = {}
   for (const inv of allInvoices) {
     if (inv.invoice_id && inv.booking_id) invoiceToBooking[inv.invoice_id] = inv.booking_id
-    if (inv.booking_id && inv.bookings?.session_type) bookingToSessionType[inv.booking_id] = inv.bookings.session_type
+    if (inv.booking_id && (inv.bookings?.sessions as any)?.[0]?.session_type) bookingToSessionType[inv.booking_id] = (inv.bookings?.sessions as any)[0].session_type
     if (inv.booking_id && inv.bookings?.booking_services?.[0]?.services?.category_value) {
       bookingToServiceType[inv.booking_id] = inv.bookings.booking_services[0].services.category_value
     }

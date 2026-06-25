@@ -12,6 +12,7 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
     .from('bookings')
     .select(`
       *,
+      sessions ( session_date, session_type, shoot_type, location_address, event_name, event_date ),
       booking_staff ( role, staff_id, staff ( full_name ) )
     `)
     .eq('booking_id', id)
@@ -19,17 +20,19 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
     .single()
   type SessionEditRecord = {
     client_id?: string | null
-    session_type?: string | null
-    service_type?: string | null
-    shoot_type?: string | null
-    session_date?: string | null
     package_id?: string | null
     base_price?: number | string | null
     outfits_count?: number | null
     edited_photos?: number | null
-    location_address?: string | null
-    event_name?: string | null
-    event_date?: string | null
+    sessions?: {
+      session_type?: string | null
+      service_type?: string | null
+      shoot_type?: string | null
+      session_date?: string | null
+      location_address?: string | null
+      event_name?: string | null
+      event_date?: string | null
+    }[] | null
     notes?: string | null
     custom_answers?: Record<string, any> | null
     booking_staff?: { role?: string | null; staff_id?: string | null }[] | null

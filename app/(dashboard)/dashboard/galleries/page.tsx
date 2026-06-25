@@ -7,25 +7,8 @@ import { getStudioContext } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
-// ─── Types ─────────────────────────────────────────────────────────────────
-
-type GalleryPhotoCount = { count?: number | null }
-
-type GalleryListRow = {
-  gallery_id:       string
-  title:            string
-  status:           string
-  cover_photo_url?: string | null
-  created_at?:      string | null
-  gallery_photos?:  GalleryPhotoCount[] | null
-  bookings?: {
-    booking_id?:   string | null
-    booking_ref?:  number | null
-    session_date?: string | null
-    session_type?: string | null
-    clients?: { full_name?: string | null } | null
-  } | null
-}
+import { getGalleryStats, getGalleryList } from '@/lib/domains/galleries/repository'
+import { GalleryListDTO } from '@/lib/domains/galleries/types'
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 
@@ -102,9 +85,9 @@ function EmptyState({ message, sub }: { message: string; sub: string }) {
 
 // ─── Gallery card (used in all views) ───────────────────────────────────────
 
-function GalleryCard({ g }: { g: GalleryListRow }) {
+function GalleryCard({ g }: { g: GalleryListDTO }) {
   const s          = STATUS_COLORS[g.status] ?? STATUS_COLORS.processing
-  const photoCount = g.gallery_photos?.[0]?.count ?? 0
+  const photoCount = g.photo_count
   return (
     <Link href={`/dashboard/galleries/${g.gallery_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
@@ -122,14 +105,14 @@ function GalleryCard({ g }: { g: GalleryListRow }) {
             </span>
           </div>
           <p style={{ fontSize: '12px', fontWeight: '600', margin: '0 0 2px', color: 'var(--text-2)' }}>
-            {g.bookings?.clients?.full_name ?? '—'}
+            {g.session?.client_name ?? '—'}
           </p>
           <p style={{ fontSize: '11px', color: 'var(--text-3)', margin: '0 0 8px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-            {sessionName(g.bookings?.clients?.full_name, g.bookings?.booking_ref, g.bookings?.booking_id, g.bookings?.session_date)}
+            {sessionName(g.session?.client_name, g.session?.booking_ref, g.session?.booking_id, g.session?.session_date)}
           </p>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: 'var(--text-4)' }}>
             <span>{photoCount} photo{photoCount !== 1 ? 's' : ''}</span>
-            <span>{sDate(g.bookings?.session_date)}</span>
+            <span>{sDate(g.session?.session_date)}</span>
           </div>
         </div>
       </div>
@@ -153,31 +136,13 @@ export default async function GalleriesPage({
   if ('error' in context) redirect('/login')
 
   // ── Stats (always) ───────────────────────────────────────────────
-  const [
-    { count: totalGalleries },
-    { count: deliveredCount },
-    { count: readyCount },
-    { count: processingCount },
-  ] = await Promise.all([
-    context.admin.from('galleries')
-      .select('gallery_id, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId),
-    context.admin.from('galleries')
-      .select('gallery_id, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId).eq('status', 'delivered'),
-    context.admin.from('galleries')
-      .select('gallery_id, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId).eq('status', 'ready'),
-    context.admin.from('galleries')
-      .select('gallery_id, bookings!inner(studio_id)', { count: 'exact', head: true })
-      .eq('bookings.studio_id', context.studioId).eq('status', 'processing'),
-  ])
+  const stats = await getGalleryStats(context.admin, context.studioId)
 
   const statsItems = [
-    { label: 'Total galleries', value: totalGalleries ?? 0 },
-    { label: 'Delivered',       value: deliveredCount ?? 0, accent: '#3b6d11' },
-    { label: 'Ready',           value: readyCount ?? 0,     accent: '#185fa5' },
-    { label: 'Processing',      value: processingCount ?? 0, accent: '#854f0b' },
+    { label: 'Total galleries', value: stats.total },
+    { label: 'Delivered',       value: stats.delivered, accent: '#3b6d11' },
+    { label: 'Ready',           value: stats.ready,     accent: '#185fa5' },
+    { label: 'Processing',      value: stats.processing, accent: '#854f0b' },
   ]
 
   // ── Header ───────────────────────────────────────────────────────
@@ -192,15 +157,7 @@ export default async function GalleriesPage({
 
   // ── Needs delivery view ──────────────────────────────────────────
   if (view === 'needs-delivery') {
-    const { data: raw } = await context.admin
-      .from('galleries')
-      .select('gallery_id, title, status, cover_photo_url, created_at, gallery_photos(count), bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)')
-      .eq('bookings.studio_id', context.studioId)
-      .in('status', ['processing', 'ready'])
-      .order('created_at', { ascending: true })
-      .limit(200)
-
-    const galleries = (raw ?? []) as unknown as GalleryListRow[]
+    const { items: galleries } = await getGalleryList(context.admin, context.studioId, { view: 'needs-delivery' })
 
     return (
       <div>
@@ -230,16 +187,11 @@ export default async function GalleriesPage({
 
   // ── Delivered view ───────────────────────────────────────────────
   if (view === 'delivered') {
-    const { data: raw, count: delCount } = await context.admin
-      .from('galleries')
-      .select('gallery_id, title, status, cover_photo_url, created_at, gallery_photos(count), bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)', { count: 'exact' })
-      .eq('bookings.studio_id', context.studioId)
-      .eq('status', 'delivered')
-      .order('created_at', { ascending: false })
-      .range(from, to)
-
-    const galleries  = (raw ?? []) as unknown as GalleryListRow[]
-    const listTotal  = delCount ?? 0
+    const { items: galleries, total: listTotal } = await getGalleryList(context.admin, context.studioId, {
+      view: 'delivered',
+      page: pageNum,
+      pageSize: PAGE_SIZE
+    })
     const totalPages = Math.ceil(listTotal / PAGE_SIZE)
     const prevUrl    = pageNum > 1          ? pageUrl({ view: 'delivered' }, pageNum - 1) : undefined
     const nextUrl    = pageNum < totalPages ? pageUrl({ view: 'delivered' }, pageNum + 1) : undefined
@@ -277,19 +229,12 @@ export default async function GalleriesPage({
   }
 
   // ── All view (default) — card grid preserved ─────────────────────
-  let query = context.admin
-    .from('galleries')
-    .select('gallery_id, title, status, cover_photo_url, created_at, gallery_photos(count), bookings!inner(booking_id, booking_ref, session_date, session_type, clients(full_name), studio_id)', { count: 'exact' })
-    .eq('bookings.studio_id', context.studioId)
-
-  if (q)      query = query.ilike('title', `%${q}%`)
-  if (status) query = query.eq('status', status)
-
-  const { data: galleriesRaw, count } = await query
-    .order('created_at', { ascending: false })
-    .range(from, to)
-  const galleries  = (galleriesRaw ?? []) as unknown as GalleryListRow[]
-  const listTotal  = count ?? 0
+  const { items: galleries, total: listTotal } = await getGalleryList(context.admin, context.studioId, {
+    q,
+    status,
+    page: pageNum,
+    pageSize: PAGE_SIZE
+  })
   const totalPages = Math.ceil(listTotal / PAGE_SIZE)
   const prevUrl    = pageNum > 1          ? pageUrl({ view: 'all', q, status }, pageNum - 1) : undefined
   const nextUrl    = pageNum < totalPages ? pageUrl({ view: 'all', q, status }, pageNum + 1) : undefined

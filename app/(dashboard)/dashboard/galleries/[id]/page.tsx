@@ -3,61 +3,19 @@ import Link from 'next/link'
 import { getStudioContext } from '@/lib/studio'
 import GalleryUploader from './gallery-uploader'
 
+import { getGalleryDetail } from '@/lib/domains/galleries/repository'
+
 export default async function GalleryDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  type GalleryBooking = {
-    booking_id: string
-    session_date: string | null
-    status: string | null
-    custom_answers: Record<string, any> | null
-    selections_count: number | null
-    clients: { client_id: string | null; full_name: string | null; phone: string | null } | null
-  }
+  const gallery = await getGalleryDetail(context.admin, context.studioId, id)
 
-  type GalleryRow = {
-    gallery_id: string
-    title: string | null
-    status: string | null
-    shared_link: string | null
-    bookings: GalleryBooking | null
-  }
+  if (!gallery) redirect('/dashboard/galleries')
 
-  type GalleryPhoto = { photo_id: string; file_url: string; thumbnail_url: string; is_favourite: boolean; is_edited: boolean; uploaded_at?: string | null }
-
-  const { data: galleryRaw } = await context.admin
-    .from('galleries')
-    .select(`
-      *,
-      bookings!inner(
-        booking_id,
-        studio_id,
-        session_date,
-        status,
-        custom_answers,
-        selections_count,
-        clients(client_id, full_name, phone)
-      )
-    `)
-    .eq('gallery_id', id)
-    .eq('bookings.studio_id', context.studioId)
-    .single()
-
-  if (!galleryRaw) redirect('/dashboard/galleries')
-
-  const gallery = galleryRaw as unknown as GalleryRow
-
-  const { data: photosRaw } = await context.admin
-    .from('gallery_photos')
-    .select('*')
-    .eq('gallery_id', id)
-    .order('uploaded_at', { ascending: false })
-
-  const photos = (photosRaw ?? []) as unknown as GalleryPhoto[]
-
-  const booking = gallery.bookings
+  const photos = gallery.photos
+  const session = gallery.session
 
   const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
     processing: { bg: '#faeeda', color: '#854f0b' },
@@ -69,7 +27,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   const clientLink = `${siteUrl}/gallery/${gallery.shared_link}`
-  const selectionOpen = booking?.status === 'selecting'
+  const selectionOpen = session?.status === 'selecting'
 
   return (
     <div>
@@ -77,14 +35,14 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{gallery.title}</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {booking?.clients?.client_id ? (
-              <Link href={`/dashboard/clients/${booking.clients.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
-                {booking.clients.full_name}
+            {session?.client?.client_id ? (
+              <Link href={`/dashboard/clients/${session.client.client_id}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                {session.client.full_name}
               </Link>
-            ) : booking?.clients?.full_name}
+            ) : session?.client?.full_name}
             {' · '}{photos?.length ?? 0} photo{photos?.length !== 1 ? 's' : ''}
-            {booking?.booking_id && (
-              <> · <Link href={`/dashboard/sessions/${booking.booking_id}`} style={{ color: 'var(--link)', textDecoration: 'none' }}>View session →</Link></>
+            {session?.booking_id && (
+              <> · <Link href={`/dashboard/sessions/${session.booking_id}`} style={{ color: 'var(--link)', textDecoration: 'none' }}>View session →</Link></>
             )}
           </p>
         </div>
@@ -108,19 +66,19 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
       )}
 
       {/* Selections received */}
-      {booking?.selections_count != null && booking.selections_count > 0 && (
+      {session?.selections_count != null && session.selections_count > 0 && (
         <div style={{ background: '#eaf3de', border: '0.5px solid #b5d98a', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px' }}>
           <p style={{ fontSize: '14px', fontWeight: '500', color: '#3b6d11', margin: '0 0 2px' }}>
-            ✓ Client selected {booking.selections_count} image{booking.selections_count !== 1 ? 's' : ''}
+            ✓ Client selected {session.selections_count} image{session.selections_count !== 1 ? 's' : ''}
           </p>
           {(() => {
-            const outfitsCount = booking.custom_answers?.legacy_outfits ? Number(booking.custom_answers.legacy_outfits) : null
+            const outfitsCount = session.base_outfits
             if (outfitsCount == null) return null
             return (
               <p style={{ fontSize: '13px', color: '#3b6d11', margin: 0, opacity: 0.8 }}>
                 Base: {outfitsCount * 2} images ({outfitsCount} outfit{outfitsCount !== 1 ? 's' : ''} × 2)
-                {booking.selections_count > outfitsCount * 2
-                  ? ` · ${booking.selections_count - outfitsCount * 2} extra`
+                {session.selections_count > outfitsCount * 2
+                  ? ` · ${session.selections_count - outfitsCount * 2} extra`
                   : ' · within base'}
               </p>
             )
@@ -135,7 +93,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
         clientLink={clientLink}
         selectionOpen={selectionOpen}
         galleryTitle={gallery.title ?? ''}
-        clientPhone={booking?.clients?.phone}
+        clientPhone={session?.client?.phone}
       />
     </div>
   )

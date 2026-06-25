@@ -54,6 +54,7 @@ export default async function PublicSummaryViewPage({
     .select(`
       *,
       clients ( full_name, email, phone ),
+      sessions ( session_date ),
       packages ( name, base_price, package_inclusions ( label, type ) ),
       studios ( name, email, phone, address, logo_url )
     `)
@@ -166,9 +167,9 @@ export default async function PublicSummaryViewPage({
           </div>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Session Details</p>
-            {booking.session_date && (
+            {((booking as any).sessions?.[0]?.session_date) && (
               <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>
-                {new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {new Date((booking as any).sessions[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
             {booking.location && <p style={{ fontSize: '13px', color: '#666' }}>{booking.location}</p>}

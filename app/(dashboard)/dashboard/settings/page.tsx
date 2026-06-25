@@ -18,7 +18,7 @@ export default async function SettingsPage() {
   const [{ data: teamMembers }, { data: rawTemplates }, { data: rawClauses }, { data: rawMessageTemplates }] = await Promise.all([
     context.admin
       .from('staff')
-      .select('staff_id, full_name, email, role, invite_sent_at, invite_accepted_at, user_id')
+      .select('staff_id, full_name, email, roles, invite_sent_at, invite_accepted_at, user_id')
       .eq('studio_id', context.studioId)
       .order('created_at', { ascending: true }),
     context.admin
@@ -70,7 +70,7 @@ export default async function SettingsPage() {
         equipmentCategories={config.equipmentCategories}
         staffRoles={config.staffRoles}
         contractTemplates={contractTemplates}
-        teamMembers={(teamMembers ?? []) as unknown as { staff_id: string; full_name: string; email: string; role: string; invite_sent_at: string | null; invite_accepted_at: string | null; user_id: string | null }[]}
+        teamMembers={(teamMembers ?? []) as unknown as { staff_id: string; full_name: string; email: string; roles: string[]; invite_sent_at: string | null; invite_accepted_at: string | null; user_id: string | null }[]}
         messageTemplates={messageTemplates}
         studioId={studio.studio_id}
         name={studio.name ?? ''}

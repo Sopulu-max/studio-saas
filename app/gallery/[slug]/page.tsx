@@ -5,8 +5,8 @@ import GalleryViewer from './gallery-viewer'
 type PublicGalleryBooking = {
   booking_id: string
   session_date?: string | null
-  outfits_count?: number | null
   selections_count?: number | null
+  custom_answers?: Record<string, any> | null
   status?: string | null
   clients?: { full_name?: string | null; phone?: string | null } | null
   packages?: { name?: string | null } | null
@@ -35,7 +35,7 @@ export default async function PublicGalleryPage({
     .select(`
       gallery_id, title, description, status, shared_link,
       bookings (
-        booking_id, session_date, outfits_count, selections_count, status,
+        booking_id, session_date, custom_answers, selections_count, status,
         clients ( full_name, phone ),
         packages ( name ),
         studios ( name, phone )
@@ -59,7 +59,7 @@ export default async function PublicGalleryPage({
   type GalleryPhoto = { photo_id: string; file_url: string; thumbnail_url: string; is_favourite: boolean; is_edited: boolean }
   const allPhotos      = (photos ?? []) as unknown as GalleryPhoto[]
   const selectionMode  = booking?.status === 'selecting'
-  const outfitsCount   = booking?.outfits_count ?? null
+  const outfitsCount   = booking?.custom_answers?.legacy_outfits ? Number(booking.custom_answers.legacy_outfits) : null
   const baseCount      = outfitsCount != null ? outfitsCount * 2 : null
   const alreadySubmitted = booking?.selections_count != null && booking.selections_count > 0
 
