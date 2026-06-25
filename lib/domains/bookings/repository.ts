@@ -158,7 +158,6 @@ export async function getBookingDetail(
 
   // Process data
   const b = rawBooking as any
-  const sess = b.sessions?.[0] ?? {}
   
   const amountPaid = (invoiceRaw?.payments ?? []).reduce((sum: number, p: any) => sum + Number(p.amount), 0)
   const balanceDue = invoiceRaw ? Math.max(0, Number(invoiceRaw.total) - amountPaid) : 0
@@ -174,13 +173,15 @@ export async function getBookingDetail(
     selections_count: b.selections_count,
     extra_outfits: b.extra_outfits,
     extra_pictures: b.extra_pictures,
-    
-    session_date: sess.session_date ?? null,
-    session_type: sess.session_type ?? null,
-    shoot_type: sess.shoot_type ?? null,
-    location_address: sess.location_address ?? null,
-    event_name: sess.event_name ?? null,
-    event_date: sess.event_date ?? null,
+
+    sessions: (b.sessions ?? []).map((s: any) => ({
+      session_date: s.session_date ?? null,
+      session_type: s.session_type ?? null,
+      shoot_type: s.shoot_type ?? null,
+      location_address: s.location_address ?? null,
+      event_name: s.event_name ?? null,
+      event_date: s.event_date ?? null,
+    })),
 
     client_id: b.client_id,
     client_name: b.clients?.full_name ?? null,

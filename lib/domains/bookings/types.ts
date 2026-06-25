@@ -67,6 +67,15 @@ export type BookedServiceDTO = {
   booking_fields: any[] | null
 }
 
+export type SessionDetailDTO = {
+  session_date: string | null
+  session_type: string | null
+  shoot_type: string | null
+  location_address: string | null
+  event_name: string | null
+  event_date: string | null
+}
+
 export type BookingDetailDTO = {
   booking_id: string
   booking_ref: number | null
@@ -76,13 +85,6 @@ export type BookingDetailDTO = {
   selections_count: number | null
   extra_outfits: number | null
   extra_pictures: number | null
-  
-  session_date: string | null
-  session_type: string | null
-  shoot_type: string | null
-  location_address: string | null
-  event_name: string | null
-  event_date: string | null
 
   client_id: string | null
   client_name: string | null
@@ -95,6 +97,7 @@ export type BookingDetailDTO = {
 
   custom_answers: Record<string, any> | null
 
+  sessions: SessionDetailDTO[]
   staff: StaffAssignmentDTO[]
   addons: AddonRelationDTO[]
   services: BookedServiceDTO[]
