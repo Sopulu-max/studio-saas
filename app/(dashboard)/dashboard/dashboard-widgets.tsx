@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { sessionName } from '@/lib/session-title'
 import InlineStatusSelect from '@/components/inline-status-select'
 import { cn } from '@/lib/utils'
+import { unwrapRow } from "@/lib/utils";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -333,7 +334,7 @@ export default function DashboardWidgets(props: DashboardProps) {
 
     // Pipeline shape: top 3 statuses by count
     const byStatus: Record<string, number> = {}
-    for (const s of props.pipelineSessions) byStatus[s.bookings?.status ?? ''] = (byStatus[s.bookings?.status ?? ''] ?? 0) + 1
+    for (const s of props.pipelineSessions) byStatus[unwrapRow(s.bookings)?.status ?? ''] = (byStatus[unwrapRow(s.bookings)?.status ?? ''] ?? 0) + 1
     const pipelineSub = props.activeStatuses
       .filter(s => byStatus[s.value])
       .slice(0, 3)
@@ -464,11 +465,11 @@ export default function DashboardWidgets(props: DashboardProps) {
           occs.map((occ, i) => {
             const days     = daysUntil(occ.event_date) ?? 0
             const urg      = urgency(days)
-            const stCfg    = props.activeStatuses.find(s => s.value === occ.bookings?.status)
+            const stCfg    = props.activeStatuses.find(s => s.value === unwrapRow(occ.bookings)?.status)
             const category = occ.shoot_type || null
             const isToday  = days === 0
             return (
-              <Link key={occ.session_id} href={`/dashboard/bookings/${occ.bookings?.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Link key={occ.session_id} href={`/dashboard/bookings/${unwrapRow(occ.bookings)?.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '14px',
                   padding: '0.875rem 1.25rem',
@@ -501,7 +502,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                         </span>
                       )}
                       <span style={{ fontSize: '13px', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {occ.bookings?.clients?.full_name ?? '—'}
+                        {unwrapRow(unwrapRow(occ.bookings)?.clients)?.full_name ?? '—'}
                       </span>
                     </div>
                     {/* Row 2: context — shot date + ref */}
@@ -513,7 +514,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                           : `${category ?? 'Category'} date: ${fmtDateMini(occ.event_date)}`
                       }
                       {occ.session_date ? ` · Shot ${fmtDateShort(occ.session_date)}` : ''}
-                      {occ.bookings?.booking_ref  ? ` · #${occ.bookings.booking_ref}` : ''}
+                      {unwrapRow(occ.bookings)?.booking_ref  ? ` · #${unwrapRow(occ.bookings).booking_ref}` : ''}
                     </p>
                   </div>
 
@@ -538,7 +539,7 @@ export default function DashboardWidgets(props: DashboardProps) {
     const todayByStatus: Record<string, number> = {}
     const todayByType:   Record<string, number> = {}
     for (const s of props.todaySessions) {
-      todayByStatus[s.bookings?.status ?? '']                  = (todayByStatus[s.bookings?.status ?? '']                  ?? 0) + 1
+      todayByStatus[unwrapRow(s.bookings)?.status ?? '']                  = (todayByStatus[unwrapRow(s.bookings)?.status ?? '']                  ?? 0) + 1
       todayByType[s.session_type ?? '__other'] = (todayByType[s.session_type ?? '__other'] ?? 0) + 1
     }
 
@@ -608,13 +609,13 @@ export default function DashboardWidgets(props: DashboardProps) {
                       <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-2)', flexShrink: 0, minWidth: '54px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
                         {s.session_date ? fmtTime(s.session_date) : '—'}
                       </span>
-                      <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                      <Link href={`/dashboard/bookings/${unwrapRow(s.bookings)?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
                         <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {s.bookings?.clients?.full_name ?? '—'}
+                          {unwrapRow(unwrapRow(s.bookings)?.clients)?.full_name ?? '—'}
                         </p>
                         <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-                          {sessionName(s.bookings?.clients?.full_name, s.bookings?.booking_ref, s.bookings?.booking_id, s.session_date)}
-                          {s.bookings?.packages?.name ? ` · ${s.bookings.packages.name}` : ''}
+                          {sessionName(unwrapRow(unwrapRow(s.bookings)?.clients)?.full_name, unwrapRow(s.bookings)?.booking_ref, unwrapRow(s.bookings)?.booking_id, s.session_date)}
+                          {unwrapRow(unwrapRow(s.bookings)?.packages)?.name ? ` · ${unwrapRow(unwrapRow(s.bookings).packages).name}` : ''}
                           {s.shoot_type ? ` · ${s.shoot_type}` : ''}
                         </p>
                       </Link>
@@ -626,7 +627,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                           : `${s.shoot_type}: ${fmtDateMini(s.event_date)}`
                         return <span style={{ fontSize: '10px', padding: '2px 8px', borderRadius: '20px', background: `${color}18`, color, fontWeight: 600, whiteSpace: 'nowrap', flexShrink: 0 }}>{txt}</span>
                       })()}
-                      <InlineStatusSelect sessionId={s.bookings?.booking_id!} currentStatus={s.bookings?.status!} />
+                      <InlineStatusSelect sessionId={unwrapRow(s.bookings)?.booking_id!} currentStatus={unwrapRow(s.bookings)?.status!} />
                     </div>
                   )
                 })}
@@ -790,9 +791,9 @@ export default function DashboardWidgets(props: DashboardProps) {
                     <span style={{ fontSize: '12px', color: 'var(--text-4)', flexShrink: 0, minWidth: '48px', fontFamily: 'monospace' }}>
                       {s.session_date ? fmtTime(s.session_date) : '—'}
                     </span>
-                    <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                    <Link href={`/dashboard/bookings/${unwrapRow(s.bookings)?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
                       <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {s.bookings?.clients?.full_name ?? '—'}
+                        {unwrapRow(unwrapRow(s.bookings)?.clients)?.full_name ?? '—'}
                       </p>
                       {s.shoot_type && <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{s.shoot_type}</p>}
                     </Link>
@@ -808,7 +809,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                       )
                     })()}
                     <span style={{ ...badge(ty.color_bg, ty.color_fg), flexShrink: 0 }}>{ty.label}</span>
-                    <InlineStatusSelect sessionId={s.bookings?.booking_id!} currentStatus={s.bookings?.status!} />
+                    <InlineStatusSelect sessionId={unwrapRow(s.bookings)?.booking_id!} currentStatus={unwrapRow(s.bookings)?.status!} />
                   </div>
                 )
               })}
@@ -824,8 +825,8 @@ export default function DashboardWidgets(props: DashboardProps) {
   function renderPipeline() {
     const byStatus: Record<string, Session[]> = {}
     for (const s of props.pipelineSessions) {
-      if (!byStatus[s.bookings?.status ?? '']) byStatus[s.bookings?.status ?? ''] = []
-      byStatus[s.bookings?.status ?? ''].push(s)
+      if (!byStatus[unwrapRow(s.bookings)?.status ?? '']) byStatus[unwrapRow(s.bookings)?.status ?? ''] = []
+      byStatus[unwrapRow(s.bookings)?.status ?? ''].push(s)
     }
     const groups = props.activeStatuses
       .map(st => ({ ...st, sessions: byStatus[st.value] ?? [] }))
@@ -887,9 +888,9 @@ export default function DashboardWidgets(props: DashboardProps) {
                       display: 'flex', alignItems: 'center', gap: '10px', padding: '0.7rem 1.25rem',
                       borderBottom: (i < shown.length - 1 || extras > 0) ? '1px solid var(--line-inner)' : 'none',
                     }}>
-                      <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                      <Link href={`/dashboard/bookings/${unwrapRow(s.bookings)?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
                         <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {s.bookings?.clients?.full_name ?? '—'}
+                          {unwrapRow(unwrapRow(s.bookings)?.clients)?.full_name ?? '—'}
                         </p>
                         <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>
                           {s.session_date ? fmtDateShort(s.session_date) : 'No date'}
@@ -910,7 +911,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                       })()}
                       <span style={{ ...badge(ty.color_bg, ty.color_fg), flexShrink: 0 }}>{ty.label}</span>
                       <div style={{ display: 'flex', flexShrink: 0 }}>
-                        <InlineStatusSelect sessionId={s.bookings?.booking_id!} currentStatus={s.bookings?.status!} />
+                        <InlineStatusSelect sessionId={unwrapRow(s.bookings)?.booking_id!} currentStatus={unwrapRow(s.bookings)?.status!} />
                       </div>
                     </div>
                   )
@@ -972,9 +973,9 @@ export default function DashboardWidgets(props: DashboardProps) {
             const isPartial   = paid > 0
             const st          = INV_STATUS[inv.status] ?? { bg: '#f0f0f0', fg: '#555', label: inv.status }
             const overdueDays = inv.status === 'overdue' ? daysOverdue(inv.due_date) : null
-            const clientName  = inv.bookings?.clients?.full_name ?? '—'
-            const sessionDate = inv.bookings?.sessions?.[0]?.session_date
-            const ref         = inv.bookings?.booking_ref
+            const clientName  = unwrapRow(unwrapRow(inv.bookings)?.clients)?.full_name ?? '—'
+            const sessionDate = unwrapRow(inv.bookings)?.sessions?.[0]?.session_date
+            const ref         = unwrapRow(inv.bookings)?.booking_ref
             return (
               <Link key={inv.invoice_id} href={`/dashboard/invoices/${inv.invoice_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
@@ -1327,14 +1328,14 @@ export default function DashboardWidgets(props: DashboardProps) {
                   return (
                     <Link
                       key={o.session_id}
-                      href={`/dashboard/bookings/${o.bookings?.booking_id}`}
+                      href={`/dashboard/bookings/${unwrapRow(o.bookings)?.booking_id}`}
                       style={{
                         fontSize: '12px', padding: '2px 8px', borderRadius: '6px',
                         background: '#fde68a', color: '#78350f',
                         textDecoration: 'none', fontWeight: '500', whiteSpace: 'nowrap' as const,
                       }}
                     >
-                      {o.shoot_type ?? 'Occasion'} — {o.bookings?.clients?.full_name ?? '?'} ({label})
+                      {o.shoot_type ?? 'Occasion'} — {unwrapRow(unwrapRow(o.bookings)?.clients)?.full_name ?? '?'} ({label})
                     </Link>
                   )
                 })}

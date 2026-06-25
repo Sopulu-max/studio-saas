@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { unwrapRow } from "@/lib/utils";
 
 const ROLE_LABELS: Record<string, string> = {
   photographer:   'Photographer',

@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import OrderActions from './order-actions'
 import Link from 'next/link'
 import { getStudioContext } from '@/lib/studio'
+import { unwrapRow } from "@/lib/utils";
 
 type PrintOrderItem = {
   item_id: string
@@ -67,8 +68,8 @@ export default async function PrintOrderDetailPage({
         <div>
           <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Print order</h1>
           <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>
-            {booking?.clients?.full_name ?? 'No session linked'}
-            {booking?.packages?.name ? ` · ${booking.packages.name}` : ''}
+            {unwrapRow(booking?.clients)?.full_name ?? 'No session linked'}
+            {unwrapRow(booking?.packages)?.name ? ` · ${unwrapRow(booking?.packages)?.name}` : ''}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -90,18 +91,18 @@ export default async function PrintOrderDetailPage({
       {booking && (
         <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
-          {booking.clients?.client_id ? (
-            <Link href={`/dashboard/clients/${booking.clients.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
-              {booking.clients.full_name}
+          {unwrapRow(booking.clients)?.client_id ? (
+            <Link href={`/dashboard/clients/${unwrapRow(booking.clients).client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
+              {unwrapRow(booking.clients).full_name}
             </Link>
           ) : (
-            <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{booking.clients?.full_name}</p>
+            <p style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>{unwrapRow(booking.clients)?.full_name}</p>
           )}
-          {booking.clients?.phone && (
-            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{booking.clients.phone}</p>
+          {unwrapRow(booking.clients)?.phone && (
+            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 2px' }}>{unwrapRow(booking.clients).phone}</p>
           )}
-          {booking.clients?.email && (
-            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 10px' }}>{booking.clients.email}</p>
+          {unwrapRow(booking.clients)?.email && (
+            <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 10px' }}>{unwrapRow(booking.clients).email}</p>
           )}
           {booking.session_date && (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>

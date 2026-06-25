@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { addGallery } from '@/app/actions/galleries'
 import SearchableSelect from '@/components/searchable-select'
 import { sessionName } from '@/lib/session-title'
+import { unwrapRow } from "@/lib/utils";
 
 type GalleryBooking = {
   booking_id: string
@@ -59,8 +60,8 @@ export default function NewGalleryForm({ bookings, preselectedSessionId = '' }: 
             <SearchableSelect
               options={bookings.map((b) => ({
                 value: b.booking_id,
-                label: sessionName(b.clients?.full_name, b.booking_ref, b.booking_id, b.session_date),
-                sublabel: b.clients?.phone ?? '',
+                label: sessionName(unwrapRow(b.clients)?.full_name, b.booking_ref, b.booking_id, b.session_date),
+                sublabel: unwrapRow(b.clients)?.phone ?? '',
               }))}
               value={form.booking_id}
               onChange={v => update('booking_id', v)}

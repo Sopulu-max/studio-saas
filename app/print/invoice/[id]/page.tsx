@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import PrintButton from './print-button'
+import { unwrapRow } from "@/lib/utils";
 
 type AddonRow = {
   quantity: number
@@ -64,7 +65,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
   const { data: addons } = await context.admin
     .from('booking_addons')
     .select('quantity, package_addons(name, price)')
-    .eq('booking_id', invoice.bookings?.booking_id ?? '')
+    .eq('booking_id', unwrapRow(invoice.bookings)?.booking_id ?? '')
 
   const addonRows = (addons ?? []) as unknown as AddonRow[]
   const addonsTotal = addonRows.reduce((sum, addon) => sum + Number(addon.package_addons?.price ?? 0) * addon.quantity, 0)
@@ -142,19 +143,19 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '36px' }}>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Bill To</p>
-            <p style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{invoice.bookings?.clients?.full_name}</p>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{invoice.bookings?.clients?.email}</p>
-            <p style={{ fontSize: '13px', color: '#666' }}>{invoice.bookings?.clients?.phone}</p>
+            <p style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{unwrapRow(unwrapRow(invoice.bookings)?.clients)?.full_name}</p>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{unwrapRow(unwrapRow(invoice.bookings)?.clients)?.email}</p>
+            <p style={{ fontSize: '13px', color: '#666' }}>{unwrapRow(unwrapRow(invoice.bookings)?.clients)?.phone}</p>
           </div>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Session</p>
-            {((invoice.bookings?.sessions as any)?.[0]?.session_date) && (
+            {((unwrapRow(invoice.bookings)?.sessions as any)?.[0]?.session_date) && (
               <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>
-                {new Date((invoice.bookings?.sessions as any)[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                {new Date((unwrapRow(invoice.bookings)?.sessions as any)[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
               </p>
             )}
-            {invoice.bookings?.location && (
-              <p style={{ fontSize: '13px', color: '#666' }}>{invoice.bookings.location}</p>
+            {unwrapRow(invoice.bookings)?.location && (
+              <p style={{ fontSize: '13px', color: '#666' }}>{unwrapRow(invoice.bookings).location}</p>
             )}
           </div>
         </div>
@@ -169,7 +170,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
           </thead>
           <tbody>
             <tr>
-              <td>{invoice.bookings?.packages?.name ?? 'Agreed amount'}</td>
+              <td>{unwrapRow(unwrapRow(invoice.bookings)?.packages)?.name ?? 'Agreed amount'}</td>
               <td style={{ textAlign: 'right' }}>1</td>
               <td style={{ textAlign: 'right' }}>{fmt(Number(invoice.subtotal) - addonsTotal)}</td>
             </tr>

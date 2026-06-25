@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
+import { unwrapRow } from "@/lib/utils";
 
 function csvCell(v: string | number | null | undefined): string {
   const s = String(v ?? '')
@@ -49,9 +50,9 @@ export async function GET() {
     const date     = r.session_date ? new Date(r.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : ''
     return csvRow([
       ref,
-      r.clients?.full_name,
-      r.clients?.email,
-      r.clients?.phone,
+      unwrapRow(r.clients)?.full_name,
+      unwrapRow(r.clients)?.email,
+      unwrapRow(r.clients)?.phone,
       typeCfg.label,
       r.shoot_type,
       date,

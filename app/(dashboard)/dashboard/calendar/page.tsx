@@ -4,6 +4,7 @@ import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig, getSessionTypeConfig } from '@/lib/studio-config'
 import { sessionName } from '@/lib/session-title'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
+import { unwrapRow } from "@/lib/utils";
 
 const DAY_NAMES         = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MONTH_NAMES       = ['January','February','March','April','May','June','July','August','September','October','November','December']
@@ -232,15 +233,15 @@ export default async function CalendarPage({
                     ? <span style={{ fontSize: '11px', color: 'var(--text-4)', margin: 'auto', textAlign: 'center', opacity: 0.4 }}>—</span>
                     : <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                         {daySessions.map((s: CalendarSessionRow, idx) => {
-                          const status     = s.bookings?.status || 'draft'
+                          const status     = unwrapRow(s.bookings)?.status || 'draft'
                           const sc         = getStatusConfig(config, status)
                           const typeCfg    = getSessionTypeConfig(config, s.session_type)
-                          const clientsArr = s.bookings?.clients
+                          const clientsArr = unwrapRow(s.bookings)?.clients
                           const clientName = (Array.isArray(clientsArr) ? clientsArr[0]?.full_name : clientsArr?.full_name) ?? null
-                          const sName      = sessionName(clientName, s.bookings?.booking_ref, s.bookings?.booking_id, s.session_date)
+                          const sName      = sessionName(clientName, unwrapRow(s.bookings)?.booking_ref, unwrapRow(s.bookings)?.booking_id, s.session_date)
                           return (
                             <AnimatedItem key={s.session_id} delay={idx * 0.05}>
-                              <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`}
+                              <Link href={`/dashboard/bookings/${unwrapRow(s.bookings)?.booking_id}`}
                                 style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: sc.color_bg, textDecoration: 'none', border: `1px solid ${sc.color_fg}22` }}>
                                 <p style={{ fontSize: '12px', fontWeight: '600', color: sc.color_fg, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {clientName ?? sName}
@@ -266,12 +267,12 @@ export default async function CalendarPage({
                           )
                         })}
                         {(weekEventByDate[dayStr] ?? []).map((o: CalendarOccasionRow, idx) => {
-                          const clientsArr = o.bookings?.clients
+                          const clientsArr = unwrapRow(o.bookings)?.clients
                           const clientName = (Array.isArray(clientsArr) ? clientsArr[0]?.full_name : clientsArr?.full_name) ?? null
                           const emoji = occasionEmoji(o.event_name)
                           return (
                             <AnimatedItem key={`occ-${o.session_id}`} delay={(daySessions.length + idx) * 0.05}>
-                              <Link href={`/dashboard/bookings/${o.bookings?.booking_id}`}
+                              <Link href={`/dashboard/bookings/${unwrapRow(o.bookings)?.booking_id}`}
                                 style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: '#fff8e6', textDecoration: 'none', border: '1px dashed #c9980055' }}>
                                 <p style={{ fontSize: '12px', fontWeight: '600', color: '#8a6a00', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {emoji} {clientName ?? '—'}
@@ -442,15 +443,15 @@ export default async function CalendarPage({
                       </p>
                       <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         {daySessions.slice(0, 3).map((s: CalendarSessionRow, idx) => {
-                          const status     = s.bookings?.status || 'draft'
+                          const status     = unwrapRow(s.bookings)?.status || 'draft'
                           const sc         = getStatusConfig(config, status)
-                          const clientsArr = s.bookings?.clients
+                          const clientsArr = unwrapRow(s.bookings)?.clients
                           const clientName = (Array.isArray(clientsArr) ? clientsArr[0]?.full_name : clientsArr?.full_name) ?? null
-                          const sName      = sessionName(clientName, s.bookings?.booking_ref, s.bookings?.booking_id, s.session_date)
+                          const sName      = sessionName(clientName, unwrapRow(s.bookings)?.booking_ref, unwrapRow(s.bookings)?.booking_id, s.session_date)
                           return (
                             <AnimatedItem key={s.session_id} delay={idx * 0.05}>
                               <Link
-                                href={`/dashboard/bookings/${s.bookings?.booking_id}`}
+                                href={`/dashboard/bookings/${unwrapRow(s.bookings)?.booking_id}`}
                                 title={`${sName} · ${clientName ?? 'Unknown'}${s.shoot_type ? ` · ${s.shoot_type}` : ''} — ${sc.label}`}
                                 style={{
                                   display: 'flex', alignItems: 'flex-start', gap: '5px',
@@ -478,13 +479,13 @@ export default async function CalendarPage({
                           </p>
                         )}
                         {(dateKey ? (eventByDate[dateKey] ?? []) : []).map((o: CalendarOccasionRow, idx) => {
-                          const clientsArr = o.bookings?.clients
+                          const clientsArr = unwrapRow(o.bookings)?.clients
                           const clientName = (Array.isArray(clientsArr) ? clientsArr[0]?.full_name : clientsArr?.full_name) ?? null
                           const emoji = occasionEmoji(o.event_name)
                           return (
                             <AnimatedItem key={`occ-${o.session_id}`} delay={(Math.min(3, daySessions.length) + idx) * 0.05}>
                               <Link
-                                href={`/dashboard/bookings/${o.bookings?.booking_id}`}
+                                href={`/dashboard/bookings/${unwrapRow(o.bookings)?.booking_id}`}
                                 title={`${clientName ?? '—'} — ${o.event_name ?? 'Occasion'}`}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: '4px',

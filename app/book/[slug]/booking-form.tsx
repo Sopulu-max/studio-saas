@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect } from 'react'
 import { submitBookingRequest } from '@/app/actions/public'
 import { motion, AnimatePresence } from 'framer-motion'
 import DynamicIntakeForm from '@/components/dynamic-intake-form'
+import { unwrapRow } from "@/lib/utils";
 
 const CATEGORY_SUGGESTIONS = [
   'Birthday','Anniversary','Maternity','Newborn','Graduation',

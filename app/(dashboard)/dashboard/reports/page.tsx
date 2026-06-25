@@ -3,6 +3,7 @@ import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
 import ReportsView from './reports-view'
 import type { ReportsViewProps } from './reports-view'
+import { unwrapRow } from "@/lib/utils";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -277,9 +278,9 @@ export default async function ReportsPage({
   const bookingToServiceType: Record<string, string> = {}
   for (const inv of allInvoices) {
     if (inv.invoice_id && inv.booking_id) invoiceToBooking[inv.invoice_id] = inv.booking_id
-    if (inv.booking_id && (inv.bookings?.sessions as any)?.[0]?.session_type) bookingToSessionType[inv.booking_id] = (inv.bookings?.sessions as any)[0].session_type
-    if (inv.booking_id && inv.bookings?.booking_services?.[0]?.services?.category_value) {
-      bookingToServiceType[inv.booking_id] = inv.bookings.booking_services[0].services.category_value
+    if (inv.booking_id && (unwrapRow(inv.bookings)?.sessions as any)?.[0]?.session_type) bookingToSessionType[inv.booking_id] = (unwrapRow(inv.bookings)?.sessions as any)[0].session_type
+    if (inv.booking_id && unwrapRow(inv.bookings)?.booking_services?.[0]?.services?.category_value) {
+      bookingToServiceType[inv.booking_id] = unwrapRow(inv.bookings)?.booking_services?.[0]?.services?.category_value || ''
     }
   }
 
@@ -403,7 +404,7 @@ export default async function ReportsPage({
         booking_id: b.booking_id, booking_ref: b.booking_ref ?? null,
         session_date: b.session_date ?? null, status: b.status,
         session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
-        client_name: b.clients?.full_name ?? null,
+        client_name: unwrapRow(b.clients)?.full_name ?? null,
       })),
   })).filter(s => s.sessions.length > 0)
 
@@ -534,7 +535,7 @@ export default async function ReportsPage({
       session_date: b.session_date ?? null, status: b.status,
       session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
       service_type: b.booking_services?.[0]?.services?.category_value ?? null,
-      client_name: b.clients?.full_name ?? null, package_name: b.packages?.name ?? null,
+      client_name: unwrapRow(b.clients)?.full_name ?? null, package_name: unwrapRow(b.packages)?.name ?? null,
     })),
     sessionsThisWeek: weekBookings.length,
     cancelledInRange, completedInRange,
@@ -545,7 +546,7 @@ export default async function ReportsPage({
       session_date: b.session_date ?? null, status: b.status,
       session_type: b.session_type ?? null, shoot_type: b.shoot_type ?? null,
       service_type: b.booking_services?.[0]?.services?.category_value ?? null,
-      client_name: b.clients?.full_name ?? null, package_name: b.packages?.name ?? null,
+      client_name: unwrapRow(b.clients)?.full_name ?? null, package_name: unwrapRow(b.packages)?.name ?? null,
     })),
     weekStrip,
     // Pipeline

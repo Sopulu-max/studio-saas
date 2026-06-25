@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getStudioContext } from '@/lib/studio'
+import { unwrapRow } from "@/lib/utils";
 
 function csvCell(v: string | number | null | undefined): string {
   const s = String(v ?? '')
@@ -46,13 +47,13 @@ export async function GET() {
     const total       = Number(r.total ?? 0)
     const paid        = (r.payments ?? []).reduce((s, p) => s + Number(p.amount ?? 0), 0)
     const outstanding = r.status === 'cancelled' ? 0 : Math.max(0, total - paid)
-    const sessionRef  = r.bookings?.booking_ref != null ? `#${String(r.bookings.booking_ref).padStart(4, '0')}` : ''
+    const sessionRef  = unwrapRow(r.bookings)?.booking_ref != null ? `#${String(unwrapRow(r.bookings).booking_ref).padStart(4, '0')}` : ''
     return csvRow([
       r.invoice_id.slice(0, 8),
-      r.bookings?.clients?.full_name,
-      r.bookings?.clients?.email,
+      unwrapRow(unwrapRow(r.bookings)?.clients)?.full_name,
+      unwrapRow(unwrapRow(r.bookings)?.clients)?.email,
       sessionRef,
-      fmtDate((r.bookings?.sessions as any)?.[0]?.session_date),
+      fmtDate((unwrapRow(r.bookings)?.sessions as any)?.[0]?.session_date),
       total,
       paid,
       outstanding,

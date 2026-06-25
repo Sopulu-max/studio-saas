@@ -10,6 +10,7 @@ import { bulkUpdateSessionStatus } from '@/app/actions/sessions'
 import { sessionName } from '@/lib/session-title'
 import InlineStatusSelect from '@/components/inline-status-select'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
+import { unwrapRow } from "@/lib/utils";
 
 type SessionRow = {
   booking_id:    string
@@ -78,7 +79,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
           const typeCfg    = getSessionTypeConfig(config, s.session_type)
           const statusCfg  = getStatusConfig(config, s.status)
           const isSelected = selected.has(s.booking_id)
-          const name       = sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date)
+          const name       = sessionName(unwrapRow(s.clients)?.full_name, s.booking_ref, s.booking_id, s.session_date)
           return (
             <AnimatedItem key={s.booking_id} delay={i * 0.05} style={{
               display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr 1fr',
@@ -94,7 +95,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               {/* Client — ref as sub-line */}
               <Link href={`/dashboard/bookings/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
                 <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  {s.clients?.full_name ?? '—'}
+                  {unwrapRow(s.clients)?.full_name ?? '—'}
                 </p>
                 <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'var(--font-mono, monospace)', letterSpacing: '0.01em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {name}
@@ -114,7 +115,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
               <p style={{ fontSize: '13px', margin: 0 }}>
                 {s.session_date ? new Date(s.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
               </p>
-              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.packages?.name ?? '—'}</p>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{unwrapRow(s.packages)?.name ?? '—'}</p>
               <div style={{ display: 'flex' }}>
                 <InlineStatusSelect sessionId={s.booking_id} currentStatus={s.status} />
               </div>

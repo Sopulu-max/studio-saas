@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { addPrintOrder } from '@/app/actions/print-orders'
 import SearchableSelect from '@/components/searchable-select'
 import { sessionName } from '@/lib/session-title'
+import { unwrapRow } from "@/lib/utils";
 
 type Item = { product_name: string; size: string; quantity: string; unit_price: string }
 type Session = {
@@ -96,8 +97,8 @@ export default function NewOrderForm({
               { value: '', label: 'No session — standalone order' },
               ...sessions.map((s: Session) => ({
                 value: s.booking_id,
-                label: sessionName(s.clients?.full_name, s.booking_ref, s.booking_id, s.session_date),
-                sublabel: [s.clients?.phone, s.packages?.name].filter(Boolean).join(' · '),
+                label: sessionName(unwrapRow(s.clients)?.full_name, s.booking_ref, s.booking_id, s.session_date),
+                sublabel: [unwrapRow(s.clients)?.phone, unwrapRow(s.packages)?.name].filter(Boolean).join(' · '),
               })),
             ]}
             value={bookingId}

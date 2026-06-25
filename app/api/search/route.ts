@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig, getStatusConfig } from '@/lib/studio-config'
+import { unwrapRow } from "@/lib/utils";
 
 type SearchInvoiceRow = {
   invoice_id: string
@@ -74,7 +75,7 @@ export async function GET(req: NextRequest) {
     clients:  clients ?? [],
     sessions: annotatedSessions,
     invoices: ((invoices ?? []) as SearchInvoiceRow[]).filter((inv) => {
-      const name: string = inv.bookings?.clients?.full_name ?? ''
+      const name: string = unwrapRow(unwrapRow(inv.bookings)?.clients)?.full_name ?? ''
       return name.toLowerCase().includes(q.toLowerCase())
     }),
   })

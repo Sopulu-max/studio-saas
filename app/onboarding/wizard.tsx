@@ -6,6 +6,7 @@ import { completeOnboarding } from '@/app/actions/onboarding'
 import type { SessionTypeConfig } from '@/lib/studio-config'
 import { COLOR_PRESETS } from '@/lib/color-presets'
 import { TIMEZONES } from '@/lib/timezones'
+import { unwrapRow } from "@/lib/utils";
 
 function slugify(s: string) {
   return s.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').replace(/-+/g, '-').replace(/^-|-$/g, '')

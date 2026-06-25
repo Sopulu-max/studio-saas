@@ -1,4 +1,5 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { fetchStorefront, fetchBookingCatalog } from '@/lib/domains/public/services'
+import { PublicServiceDTO } from '@/lib/domains/public/types'
 import { notFound } from 'next/navigation'
 import { buildStudioConfig } from '@/lib/studio-config'
 import type { StudioRow } from '@/lib/studio'
@@ -11,13 +12,8 @@ export async function generateMetadata(
   { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
   const { slug } = await params
-  const admin = createAdminClient()
-  const { data: studioMeta } = await admin
-    .from('studios')
-    .select('name')
-    .eq('slug', slug)
-    .maybeSingle()
-  const name = (studioMeta as unknown as { name?: string | null } | null)?.name ?? 'Studio'
+  const studio = await fetchStorefront(slug)
+  const name = studio?.name ?? 'Studio'
   const title = `Book a session — ${name}`
   const description = `Request a photography session with ${name}. Pick your session type and preferred date.`
   return {
@@ -60,103 +56,17 @@ export default async function PublicBookingPage({
 }) {
   const [{ slug }, search] = await Promise.all([params, searchParams])
   const initialPackageId = search.package
-  const admin = createAdminClient()
 
-  const { data: studioRaw } = await admin
-    .from('studios')
-    .select('studio_id, name, email, slug, session_types, service_types, booking_statuses, logo_url, theme')
-    .eq('slug', slug)
-    .maybeSingle()
-  const studio = studioRaw as unknown as StudioRow | null
-  if (!studio) notFound()
+  const catalog = await fetchBookingCatalog(slug)
+  if (!catalog) notFound()
 
+  const studio = catalog.studio as unknown as StudioRow
   const config   = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types)
   const theme    = buildTheme(studio.theme)
   const cssVars  = themeCssVars(theme)
 
-  type PublicService = {
-    service_id:   string
-    name:         string
-    type:         string
-    description?: string | null
-    price?:       number | null
-    category_value?: string | null
-    session_type?: string | null
-    outfits_count?: number | null
-    duration_mins?: number | null
-    booking_fields?: any[]
-  }
-
-  type RawPkgService = {
-    service_id:    string
-    is_addon:      boolean
-    addon_price:   number | null
-    display_order: number
-    services: {
-      service_id:   string
-      name:         string
-      type:         string
-      description?: string | null
-      price?:       number | null
-      category_value?: string | null
-      session_type?: string | null
-      outfits_count?: number | null
-      duration_mins?: number | null
-      booking_fields?: any[]
-    } | null
-  }
-
-  type RawPackage = PreselectedPackage & {
-    package_services?: RawPkgService[] | null
-  }
-
-  const [{ data: servicesRaw }, { data: packagesRaw }] = await Promise.all([
-    admin
-      .from('services')
-      .select('service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields')
-      .eq('studio_id', studio.studio_id)
-      .eq('is_active', true)
-      .order('display_order', { ascending: true })
-      .order('name',          { ascending: true }),
-    admin
-      .from('packages')
-      .select('package_id, name, tagline, base_price, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields))')
-      .eq('studio_id',  studio.studio_id)
-      .eq('is_public',  true)
-      .order('display_order', { ascending: true })
-  ])
-
-  const catalogServices = (servicesRaw ?? []) as unknown as PublicService[]
-  const rawPackages     = (packagesRaw ?? []) as unknown as RawPackage[]
-
-  const publicPackages: PublicPackage[] = rawPackages.map(rawPkg => {
-    const linkedServices: PackageLinkedService[] = rawPkg.package_services
-      ? rawPkg.package_services
-          .filter(ps => ps.services != null)
-          .sort((a, b) => a.display_order - b.display_order)
-          .map(ps => ({
-            service_id:  ps.services!.service_id,
-            name:        ps.services!.name,
-            type:        ps.services!.type,
-            description: ps.services!.description,
-            price:       ps.services!.price,
-            category_value: ps.services!.category_value,
-            session_type: ps.services!.session_type,
-            duration_mins: ps.services!.duration_mins,
-            booking_fields: ps.services!.booking_fields,
-            is_addon:    ps.is_addon,
-            addon_price: ps.addon_price,
-          }))
-      : []
-
-    return {
-      package_id:    rawPkg.package_id,
-      name:          rawPkg.name,
-      tagline:       rawPkg.tagline,
-      base_price:    rawPkg.base_price,
-      services:      linkedServices,
-    }
-  })
+  const catalogServices = catalog.services as unknown as PublicServiceDTO[]
+  const publicPackages = catalog.packages as unknown as PublicPackage[]
 
   return (
     <>

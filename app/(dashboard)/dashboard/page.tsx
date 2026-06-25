@@ -3,6 +3,7 @@ import { getStudioContext, fetchStudio } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
 import DashboardWidgets from './dashboard-widgets'
 import type { DashboardProps } from './dashboard-widgets'
+import { unwrapRow } from "@/lib/utils";
 
 const DAY_NAMES = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday']
 
@@ -267,8 +268,8 @@ export default async function DashboardPage() {
     .map(p => ({
       amount:     Number(p.amount),
       method:     p.method ?? 'other',
-      clientName: p.invoices?.bookings?.clients?.full_name ?? null,
-      bookingRef: p.invoices?.bookings?.booking_ref ?? null,
+      clientName: unwrapRow(unwrapRow(p.invoices?.bookings)?.clients)?.full_name ?? null,
+      bookingRef: unwrapRow(p.invoices?.bookings)?.booking_ref ?? null,
       paid_at:    p.paid_at,
     }))
 
@@ -295,7 +296,7 @@ export default async function DashboardPage() {
       const t = b.session_type ?? 'other'
       byType[t] = (byType[t] ?? 0) + 1
     }
-    const clientIds = new Set(dayBooks.map(b => b.bookings?.clients?.client_id).filter(Boolean))
+    const clientIds = new Set(dayBooks.map(b => unwrapRow(unwrapRow(b.bookings)?.clients)?.client_id).filter(Boolean))
     weekDays.push({
       iso,
       label:         d.toLocaleDateString('en-NG', { weekday: 'short', day: 'numeric', month: 'short' }),
@@ -309,7 +310,7 @@ export default async function DashboardPage() {
 
   // ── Client list for today ─────────────────────────────────────────────────────
   const todayClientList = weekBookingsList
-    .filter(b => b.session_date?.startsWith(todayStr) && b.bookings?.clients?.full_name)
+    .filter(b => b.session_date?.startsWith(todayStr) && unwrapRow(unwrapRow(b.bookings)?.clients)?.full_name)
     .map(b => ({
       clientId:    b.bookings!.clients!.client_id,
       clientName:  b.bookings!.clients!.full_name!,

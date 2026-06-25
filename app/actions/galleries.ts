@@ -4,6 +4,7 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { getStudioContext, ownsBooking, ownsGallery, ownsGalleryPhoto } from '@/lib/studio'
 import { sendGalleryEmail } from '@/lib/email'
+import { unwrapRow } from "@/lib/utils";
 
 const addGallerySchema = z.object({
   booking_id: z.string().min(1, 'Booking is required'),
@@ -103,7 +104,7 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
 
   if (!gallery) return { error: 'Gallery not found' }
 
-  const clientEmail = gallery.bookings?.clients?.email
+  const clientEmail = unwrapRow(unwrapRow(gallery.bookings)?.clients)?.email
   if (!clientEmail) return { error: 'Client has no email address' }
 
   const { data: studio } = await context.admin
@@ -117,11 +118,11 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
 
   const { error: emailError } = await sendGalleryEmail({
     to: clientEmail,
-    clientName: gallery.bookings?.clients?.full_name ?? 'Client',
+    clientName: unwrapRow(unwrapRow(gallery.bookings)?.clients)?.full_name ?? 'Client',
     studioName: (studio?.name as string | null | undefined) ?? '',
     galleryUrl,
-    driveLink: driveLink || gallery.bookings?.drive_link || undefined,
-    sessionDate: gallery.bookings?.session_date ?? undefined,
+    driveLink: driveLink || unwrapRow(gallery.bookings)?.drive_link || undefined,
+    sessionDate: unwrapRow(gallery.bookings)?.session_date ?? undefined,
   })
 
   if (emailError) return { error: emailError }

@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { sendInvoiceEmail } from '@/lib/email'
 import { getStudioContext, fetchStudio, ownsBooking, ownsInvoice, ownsPackage } from '@/lib/studio'
 import { buildStudioConfig } from '@/lib/studio-config'
+import { unwrapRow } from "@/lib/utils";
 
 const addInvoiceSchema = z.object({
   booking_id:    z.string().min(1, 'Session is required'),
@@ -208,17 +209,17 @@ export async function sendInvoiceToClient(invoiceId: string) {
 
   if (!invoice) return { error: 'Invoice not found' }
 
-  const clientEmail = invoice.bookings?.clients?.email
+  const clientEmail = unwrapRow(unwrapRow(invoice.bookings)?.clients)?.email
   if (!clientEmail) return { error: 'Client has no email address' }
 
   const { error: emailError } = await sendInvoiceEmail({
     to: clientEmail,
-    clientName: invoice.bookings?.clients?.full_name ?? 'Client',
+    clientName: unwrapRow(unwrapRow(invoice.bookings)?.clients)?.full_name ?? 'Client',
     studioName: (studio?.name as string | null | undefined) ?? '',
     invoiceId,
     total: Number(invoice.total),
     dueDate: invoice.due_date ?? undefined,
-    sessionDate: invoice.bookings?.session_date ?? undefined,
+    sessionDate: unwrapRow(invoice.bookings)?.session_date ?? undefined,
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
   })
 

@@ -1,26 +1,8 @@
-import { createAdminClient } from '@/lib/supabase/admin'
+import { fetchPublicGallery } from '@/lib/domains/public/services'
 import { notFound } from 'next/navigation'
 import GalleryViewer from './gallery-viewer'
 
-type PublicGalleryBooking = {
-  booking_id: string
-  session_date?: string | null
-  selections_count?: number | null
-  custom_answers?: Record<string, any> | null
-  status?: string | null
-  clients?: { full_name?: string | null; phone?: string | null } | null
-  packages?: { name?: string | null } | null
-  studios?: { name?: string | null; phone?: string | null } | null
-}
 
-type PublicGalleryRow = {
-  gallery_id: string
-  title: string | null
-  description: string | null
-  status: string | null
-  shared_link: string | null
-  bookings: PublicGalleryBooking | null
-}
 
 export default async function PublicGalleryPage({
   params,
@@ -28,36 +10,12 @@ export default async function PublicGalleryPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const admin = createAdminClient()
+  const gallery = await fetchPublicGallery(slug)
+  if (!gallery) notFound()
 
-  const { data: galleryRaw } = await admin
-    .from('galleries')
-    .select(`
-      gallery_id, title, description, status, shared_link,
-      bookings (
-        booking_id, session_date, custom_answers, selections_count, status,
-        clients ( full_name, phone ),
-        packages ( name ),
-        studios ( name, phone )
-      )
-    `)
-    .eq('shared_link', slug)
-    .maybeSingle()
-
-  if (!galleryRaw) notFound()
-  const gallery = galleryRaw as unknown as PublicGalleryRow
-  if (gallery.status === 'expired') notFound()
-
-  const { data: photos } = await admin
-    .from('gallery_photos')
-    .select('photo_id, file_url, thumbnail_url, is_favourite, is_edited, uploaded_at')
-    .eq('gallery_id', gallery.gallery_id)
-    .order('is_favourite', { ascending: false })
-    .order('uploaded_at', { ascending: true })
-
-  const booking        = gallery.bookings
+  const booking = gallery.booking
   type GalleryPhoto = { photo_id: string; file_url: string; thumbnail_url: string; is_favourite: boolean; is_edited: boolean }
-  const allPhotos      = (photos ?? []) as unknown as GalleryPhoto[]
+  const allPhotos = gallery.photos as GalleryPhoto[]
   const selectionMode  = booking?.status === 'selecting'
   const outfitsCount   = booking?.custom_answers?.legacy_outfits ? Number(booking.custom_answers.legacy_outfits) : null
   const baseCount      = outfitsCount != null ? outfitsCount * 2 : null
@@ -79,8 +37,8 @@ export default async function PublicGalleryPage({
         <div>
           <h1 style={{ fontSize: '18px', fontWeight: '500', margin: '0 0 2px' }}>{gallery.title}</h1>
           <p style={{ fontSize: '13px', color: '#888', margin: 0 }}>
-            {booking?.clients?.full_name}
-            {booking?.packages?.name ? ` · ${booking.packages.name}` : ''}
+            {booking?.client_name}
+            {booking?.package_name ? ` · ${booking.package_name}` : ''}
             {booking?.session_date
               ? ` · ${new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}`
               : ''}
@@ -109,8 +67,8 @@ export default async function PublicGalleryPage({
         baseCount={baseCount}
         alreadySubmitted={alreadySubmitted}
         previousCount={booking?.selections_count ?? null}
-        studioPhone={booking?.studios?.phone ?? null}
-        studioName={booking?.studios?.name ?? null}
+        studioPhone={booking?.studio_phone ?? null}
+        studioName={booking?.studio_name ?? null}
       />
     </div>
   )

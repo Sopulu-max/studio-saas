@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import EditContractForm from './edit-contract-form'
+import { unwrapRow } from "@/lib/utils";
 
 type EditContractRow = {
   contract_id: string
@@ -27,7 +28,7 @@ export default async function EditContractPage({ params }: { params: Promise<{ i
 
   if (contract.status !== 'draft') redirect(`/dashboard/contracts/${id}`)
 
-  const clientName = contract.bookings?.clients?.full_name ?? ''
+  const clientName = unwrapRow(unwrapRow(contract.bookings)?.clients)?.full_name ?? ''
 
   return <EditContractForm contractId={id} content={contract.content ?? ''} clientName={clientName} />
 }

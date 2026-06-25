@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
 import { sessionName } from '@/lib/session-title'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
+import { unwrapRow } from "@/lib/utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
 
@@ -132,11 +133,11 @@ function OrderRow({ o, i, isLast }: { o: PrintOrderRow; i: number; isLast: boole
     }}>
       <div>
         <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {booking?.clients?.full_name ?? 'No session linked'}
+          {unwrapRow(booking?.clients)?.full_name ?? 'No session linked'}
         </p>
         {booking && (
           <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontFamily: 'monospace', letterSpacing: '0.02em' }}>
-            {sessionName(booking.clients?.full_name, booking.booking_ref, booking.booking_id, booking.session_date)}
+            {sessionName(unwrapRow(booking.clients)?.full_name, booking.booking_ref, booking.booking_id, booking.session_date)}
           </p>
         )}
       </div>

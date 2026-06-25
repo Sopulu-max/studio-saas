@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import PrintButton from './print-button'
+import { unwrapRow } from "@/lib/utils";
 
 function parseContent(text: string | null | undefined): { title: string; body: string }[] {
   if (!text?.trim()) return []
@@ -54,7 +55,7 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
   if (!contract) redirect('/dashboard/contracts')
 
   const clauses    = parseContent(contract.content)
-  const rawSessionDate = (contract.bookings?.sessions as any)?.[0]?.session_date
+  const rawSessionDate = (unwrapRow(contract.bookings)?.sessions as any)?.[0]?.session_date
   const sessionDate = rawSessionDate
     ? new Date(rawSessionDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
     : null
@@ -165,24 +166,24 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
           <div className="party-grid">
             <div>
               <p className="party-label">Client</p>
-              <p className="party-name">{contract.bookings?.clients?.full_name ?? '—'}</p>
-              {contract.bookings?.clients?.email && (
-                <p className="party-detail">{contract.bookings.clients.email}</p>
+              <p className="party-name">{unwrapRow(unwrapRow(contract.bookings)?.clients)?.full_name ?? '—'}</p>
+              {unwrapRow(unwrapRow(contract.bookings)?.clients)?.email && (
+                <p className="party-detail">{unwrapRow(unwrapRow(contract.bookings).clients).email}</p>
               )}
-              {contract.bookings?.clients?.phone && (
-                <p className="party-detail">{contract.bookings.clients.phone}</p>
+              {unwrapRow(unwrapRow(contract.bookings)?.clients)?.phone && (
+                <p className="party-detail">{unwrapRow(unwrapRow(contract.bookings).clients).phone}</p>
               )}
             </div>
             <div>
               <p className="party-label">Session details</p>
-              {contract.bookings?.packages?.name && (
-                <p className="party-name">{contract.bookings.packages.name}</p>
+              {unwrapRow(unwrapRow(contract.bookings)?.packages)?.name && (
+                <p className="party-name">{unwrapRow(unwrapRow(contract.bookings).packages).name}</p>
               )}
               {sessionDate && (
                 <p className="party-detail">{sessionDate}</p>
               )}
-              {contract.bookings?.location && (
-                <p className="party-detail">{contract.bookings.location}</p>
+              {unwrapRow(contract.bookings)?.location && (
+                <p className="party-detail">{unwrapRow(contract.bookings).location}</p>
               )}
             </div>
           </div>
@@ -210,7 +211,7 @@ export default async function ContractPrintPage({ params }: { params: Promise<{ 
               <div>
                 <p className="sig-party-label">Client signature</p>
                 <div className="sig-line" />
-                <p className="sig-name">{contract.signed_by ?? contract.bookings?.clients?.full_name}</p>
+                <p className="sig-name">{contract.signed_by ?? unwrapRow(unwrapRow(contract.bookings)?.clients)?.full_name}</p>
                 {contract.signed_at ? (
                   <>
                     <p className="sig-date">

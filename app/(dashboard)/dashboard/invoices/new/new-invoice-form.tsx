@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { addInvoice } from '@/app/actions/invoices'
 import SearchableSelect from '@/components/searchable-select'
 import { sessionName } from '@/lib/session-title'
+import { unwrapRow } from "@/lib/utils";
 
 type Addon = {
   addon_id: string
@@ -86,7 +87,7 @@ function getBookingSelectionState(
   }
 
   // No package match — fall back to the package attached directly to the booking if any
-  const fallbackPrice = booking.packages?.base_price ? String(booking.packages.base_price) : ''
+  const fallbackPrice = unwrapRow(booking.packages)?.base_price ? String(unwrapRow(booking.packages).base_price) : ''
   return {
     agreedAmount: fallbackPrice,
     selectedPackageId: '',
@@ -287,10 +288,10 @@ export default function NewInvoiceForm({
             <SearchableSelect
               options={bookings.map((booking) => ({
                 value: booking.booking_id,
-                label: sessionName(booking.clients?.full_name, booking.booking_ref, booking.booking_id, booking.session_date),
+                label: sessionName(unwrapRow(booking.clients)?.full_name, booking.booking_ref, booking.booking_id, booking.session_date),
                 sublabel: [
-                  booking.clients?.phone,
-                  booking.packages?.name,
+                  unwrapRow(booking.clients)?.phone,
+                  unwrapRow(booking.packages)?.name,
                 ].filter(Boolean).join(' · '),
               }))}
               value={form.booking_id}

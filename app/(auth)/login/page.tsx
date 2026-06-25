@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
 import { createClient } from '@/lib/supabase/client'
+import { unwrapRow } from "@/lib/utils";
 
 const REDIRECT_MESSAGES: Record<string, string> = {
   'not-authenticated': 'Your session expired. Please sign in again.',

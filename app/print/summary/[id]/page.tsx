@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
 import PrintButton from '@/app/print/invoice/[id]/print-button'
+import { unwrapRow } from "@/lib/utils";
 
 type AddonRow = {
   quantity: number
@@ -65,7 +66,7 @@ export default async function SummaryPrintPage({ params }: { params: Promise<{ i
   const addonRows = (addons ?? []) as unknown as AddonRow[]
   const serviceRows = (services ?? []) as unknown as ServiceRow[]
   
-  const pkgBase = Number(booking.packages?.base_price ?? 0)
+  const pkgBase = Number(unwrapRow(booking.packages)?.base_price ?? 0)
   const addonsTotal = addonRows.reduce((sum, addon) => sum + Number(addon.package_addons?.price ?? 0) * addon.quantity, 0)
   const servicesTotal = serviceRows.reduce((sum, svc) => sum + Number(svc.price_at_booking ?? 0) * svc.quantity, 0)
   
@@ -75,7 +76,7 @@ export default async function SummaryPrintPage({ params }: { params: Promise<{ i
   const shortId = id.slice(-8).toUpperCase()
   
   // The user requested: "The name of the package plus Booking summary"
-  const documentTitle = booking.packages?.name ? `${booking.packages.name} - Booking Summary` : 'Booking Summary'
+  const documentTitle = unwrapRow(booking.packages)?.name ? `${unwrapRow(booking.packages).name} - Booking Summary` : 'Booking Summary'
 
   return (
     <>
@@ -142,9 +143,9 @@ export default async function SummaryPrintPage({ params }: { params: Promise<{ i
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '36px' }}>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Prepared For</p>
-            <p style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{booking.clients?.full_name}</p>
-            <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{booking.clients?.email}</p>
-            <p style={{ fontSize: '13px', color: '#666' }}>{booking.clients?.phone}</p>
+            <p style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{unwrapRow(booking.clients)?.full_name}</p>
+            <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{unwrapRow(booking.clients)?.email}</p>
+            <p style={{ fontSize: '13px', color: '#666' }}>{unwrapRow(booking.clients)?.phone}</p>
           </div>
           <div>
             <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Session Details</p>
@@ -171,10 +172,10 @@ export default async function SummaryPrintPage({ params }: { params: Promise<{ i
             {booking.packages && (
               <tr>
                 <td style={{ paddingBottom: '16px' }}>
-                  <p style={{ fontWeight: '600', marginBottom: '6px', color: '#111' }}>{booking.packages.name}</p>
-                  {booking.packages.package_inclusions && booking.packages.package_inclusions.length > 0 && (
+                  <p style={{ fontWeight: '600', marginBottom: '6px', color: '#111' }}>{unwrapRow(booking.packages)?.name}</p>
+                  {unwrapRow(booking.packages)?.package_inclusions && (unwrapRow(booking.packages)?.package_inclusions?.length ?? 0) > 0 && (
                     <ul style={{ paddingLeft: '16px', fontSize: '12px', color: '#555', lineHeight: '1.6' }}>
-                      {booking.packages.package_inclusions.map((inc, i) => (
+                      {unwrapRow(booking.packages)?.package_inclusions?.map((inc, i) => (
                         <li key={i}>{inc.label}</li>
                       ))}
                     </ul>

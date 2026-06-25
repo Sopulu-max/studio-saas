@@ -72,3 +72,9 @@ The server must send the UI exactly the data it needs to render the screen, and 
 The core business logic should be isolated from infrastructure decisions.
 * Supabase is merely an implementation detail. The UI and Service Layer should not contain Supabase-specific code (like `.eq()` or `.single()`).
 * If the underlying database or BaaS provider changes, you should only have to rewrite the `repository.ts` files, leaving the rest of the application completely untouched.
+
+## 15. Safely Unwrapping Supabase PostgREST Relations
+When fetching relational data via Supabase (e.g., `bookings( clients(full_name) )`), PostgREST may return a single joined record as an array if the relationship cardinality isn't strictly inferred.
+* **Always defensively check if a joined entity is an array** before accessing its properties in your DTO mappers.
+* Example: `const clientName = (Array.isArray(booking.clients) ? booking.clients[0]?.full_name : booking.clients?.full_name) ?? null`
+* Failing to do this causes "silent nulls" in the Presentation Layer, where valid data is thrown away because the bouncer mapped `booking.clients.full_name` on an array.

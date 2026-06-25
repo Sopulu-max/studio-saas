@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { signUpWithStudio } from '@/app/actions/auth'
+import { unwrapRow } from "@/lib/utils";
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
