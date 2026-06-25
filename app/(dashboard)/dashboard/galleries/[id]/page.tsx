@@ -42,7 +42,7 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
             ) : session?.client?.full_name}
             {' · '}{photos?.length ?? 0} photo{photos?.length !== 1 ? 's' : ''}
             {session?.booking_id && (
-              <> · <Link href={`/dashboard/sessions/${session.booking_id}`} style={{ color: 'var(--link)', textDecoration: 'none' }}>View session →</Link></>
+              <> · <Link href={`/dashboard/bookings/${session.booking_id}`} style={{ color: 'var(--link)', textDecoration: 'none' }}>View session →</Link></>
             )}
           </p>
         </div>

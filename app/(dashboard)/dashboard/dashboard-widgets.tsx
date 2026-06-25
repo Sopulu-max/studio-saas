@@ -350,7 +350,7 @@ export default function DashboardWidgets(props: DashboardProps) {
         unit:    props.todaySessions.length === 1 ? 'session' : 'sessions',
         sub:     props.revenueToday > 0 ? `${fmt(props.revenueToday)} collected` : 'No payments yet',
         subColor: props.revenueToday > 0 ? '#3b6d11' : undefined,
-        href:    '/dashboard/sessions',
+        href:    '/dashboard/bookings',
       },
       {
         label:   'This week',
@@ -368,14 +368,14 @@ export default function DashboardWidgets(props: DashboardProps) {
           return parts.length ? parts.join(' · ') : (props.revenueWeek > 0 ? `${fmt(props.revenueWeek)} collected` : 'No sessions yet')
         })(),
         subColor: undefined,
-        href:    '/dashboard/sessions',
+        href:    '/dashboard/bookings',
       },
       {
         label:   'Active pipeline',
         primary: String(props.pipelineSessions.length),
         unit:    props.pipelineSessions.length === 1 ? 'session' : 'sessions',
         sub:     pipelineSub,
-        href:    '/dashboard/sessions',
+        href:    '/dashboard/bookings',
       },
       {
         label:   'Outstanding',
@@ -467,7 +467,7 @@ export default function DashboardWidgets(props: DashboardProps) {
             const category = occ.shoot_type || null
             const isToday  = days === 0
             return (
-              <Link key={occ.session_id} href={`/dashboard/sessions/${occ.bookings?.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+              <Link key={occ.session_id} href={`/dashboard/bookings/${occ.bookings?.booking_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div style={{
                   display: 'flex', alignItems: 'center', gap: '14px',
                   padding: '0.875rem 1.25rem',
@@ -573,7 +573,7 @@ export default function DashboardWidgets(props: DashboardProps) {
         {!props.todaySessions.length ? (
           <div style={{ padding: '1.5rem 1.25rem', textAlign: 'center' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 10px' }}>Nothing scheduled today</p>
-            <Link href="/dashboard/sessions/new" style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>+ New session</Link>
+            <Link href="/dashboard/bookings/new" style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>+ New session</Link>
           </div>
         ) : (
           <>
@@ -607,7 +607,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                       <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-2)', flexShrink: 0, minWidth: '54px', fontFamily: 'monospace', letterSpacing: '0.02em' }}>
                         {s.session_date ? fmtTime(s.session_date) : '—'}
                       </span>
-                      <Link href={`/dashboard/sessions/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                      <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
                         <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {s.bookings?.clients?.full_name ?? '—'}
                         </p>
@@ -764,7 +764,7 @@ export default function DashboardWidgets(props: DashboardProps) {
       <div style={{ ...card, overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>Next 3 days</p>
-          <Link href="/dashboard/sessions" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>All sessions →</Link>
+          <Link href="/dashboard/bookings" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>All sessions →</Link>
         </div>
         {!props.next3Sessions.length ? (
           <div style={{ padding: '1.5rem 1.25rem', textAlign: 'center' }}>
@@ -789,7 +789,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                     <span style={{ fontSize: '12px', color: 'var(--text-4)', flexShrink: 0, minWidth: '48px', fontFamily: 'monospace' }}>
                       {s.session_date ? fmtTime(s.session_date) : '—'}
                     </span>
-                    <Link href={`/dashboard/sessions/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                    <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
                       <p style={{ fontSize: '13px', fontWeight: 600, margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {s.bookings?.clients?.full_name ?? '—'}
                       </p>
@@ -886,7 +886,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                       display: 'flex', alignItems: 'center', gap: '10px', padding: '0.7rem 1.25rem',
                       borderBottom: (i < shown.length - 1 || extras > 0) ? '1px solid var(--line-inner)' : 'none',
                     }}>
-                      <Link href={`/dashboard/sessions/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                      <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
                         <p style={{ fontSize: '13px', fontWeight: 600, margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                           {s.bookings?.clients?.full_name ?? '—'}
                         </p>
@@ -916,7 +916,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                 })}
                 {extras > 0 && (
                   <div style={{ padding: '0.6rem 1.25rem' }}>
-                    <Link href={`/dashboard/sessions?status=${g.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>+{extras} more →</Link>
+                    <Link href={`/dashboard/bookings?status=${g.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>+{extras} more →</Link>
                   </div>
                 )}
               </div>
@@ -1326,7 +1326,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                   return (
                     <Link
                       key={o.session_id}
-                      href={`/dashboard/sessions/${o.bookings?.booking_id}`}
+                      href={`/dashboard/bookings/${o.bookings?.booking_id}`}
                       style={{
                         fontSize: '12px', padding: '2px 8px', borderRadius: '6px',
                         background: '#fde68a', color: '#78350f',
@@ -1361,7 +1361,7 @@ export default function DashboardWidgets(props: DashboardProps) {
       {(props.pendingCount > 0 || props.overdueCount > 0 || props.draftCount > 0) && (
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
           {props.pendingCount > 0 && (
-            <Link href={`/dashboard/sessions?status=${props.pendingStatus}`} style={{ textDecoration: 'none', flex: '1 1 auto' }}>
+            <Link href={`/dashboard/bookings?status=${props.pendingStatus}`} style={{ textDecoration: 'none', flex: '1 1 auto' }}>
               <div style={{ background: props.pendingStyle.color_bg, border: `1px solid ${props.pendingStyle.color_fg}35`, borderRadius: '10px', padding: '10px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontSize: '13px', fontWeight: 500, color: props.pendingStyle.color_fg }}>
                   🔔 {props.pendingCount} booking request{props.pendingCount !== 1 ? 's' : ''} need{props.pendingCount === 1 ? 's' : ''} a response
@@ -1426,3 +1426,4 @@ export default function DashboardWidgets(props: DashboardProps) {
     </div>
   )
 }
+

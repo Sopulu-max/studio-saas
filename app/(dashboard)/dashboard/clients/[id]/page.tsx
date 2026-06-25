@@ -104,7 +104,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
       <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>SESSIONS</p>
-          <Link href={`/dashboard/sessions/new`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
+          <Link href={`/dashboard/bookings/new`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
             New session →
           </Link>
         </div>
@@ -114,7 +114,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
           bookings.map((b, i) => {
             const s = getStatusConfig(config, b.status)
             return (
-              <Link key={b.session_id} href={`/dashboard/sessions/${b.booking_id}`} style={{
+              <Link key={b.session_id} href={`/dashboard/bookings/${b.booking_id}`} style={{
                 display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                 padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit',
                 borderBottom: i < bookings.length - 1 ? '1px solid var(--line-inner)' : 'none',

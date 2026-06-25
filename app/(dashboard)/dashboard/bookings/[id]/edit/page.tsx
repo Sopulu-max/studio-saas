@@ -39,7 +39,7 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
   }
   const session = sessionRaw as unknown as SessionEditRecord | null
 
-  if (!session) redirect('/dashboard/sessions')
+  if (!session) redirect('/dashboard/bookings')
 
   const { clients, packages, staff, services } = await getSessionFormData()
 

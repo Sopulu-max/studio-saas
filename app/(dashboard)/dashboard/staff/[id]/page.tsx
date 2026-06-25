@@ -198,7 +198,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
                   const session = a.session
                   const s = BOOKING_STATUS_COLORS[session?.status ?? ''] ?? BOOKING_STATUS_COLORS.confirmed
                   return (
-                    <Link key={session?.booking_id} href={`/dashboard/sessions/${session?.booking_id}`} style={{
+                    <Link key={session?.booking_id} href={`/dashboard/bookings/${session?.booking_id}`} style={{
                       display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                       padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit',
                       borderBottom: i < grouped[role].length - 1 ? '1px solid var(--line-inner)' : 'none',

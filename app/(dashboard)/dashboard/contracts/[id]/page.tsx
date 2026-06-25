@@ -110,7 +110,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
               </Link>
             )}
             {contract.booking_id && (
-              <Link href={`/dashboard/sessions/${contract.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+              <Link href={`/dashboard/bookings/${contract.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
                 View session →
               </Link>
             )}

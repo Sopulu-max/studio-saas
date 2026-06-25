@@ -176,7 +176,7 @@ export default async function CalendarPage({
             <Link href={prevWeekUrl}  style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>←</Link>
             <Link href={todayWeekUrl} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '13px', background: 'var(--surface)' }}>Today</Link>
             <Link href={nextWeekUrl}  style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>→</Link>
-            <Link href="/dashboard/sessions/new" style={{ padding: '7px 16px', borderRadius: '8px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}>New session</Link>
+            <Link href="/dashboard/bookings/new" style={{ padding: '7px 16px', borderRadius: '8px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}>New session</Link>
           </div>
         </div>
 
@@ -240,7 +240,7 @@ export default async function CalendarPage({
                           const sName      = sessionName(clientName, s.bookings?.booking_ref, s.bookings?.booking_id, s.session_date)
                           return (
                             <AnimatedItem key={s.session_id} delay={idx * 0.05}>
-                              <Link href={`/dashboard/sessions/${s.bookings?.booking_id}`}
+                              <Link href={`/dashboard/bookings/${s.bookings?.booking_id}`}
                                 style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: sc.color_bg, textDecoration: 'none', border: `1px solid ${sc.color_fg}22` }}>
                                 <p style={{ fontSize: '12px', fontWeight: '600', color: sc.color_fg, margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {clientName ?? sName}
@@ -271,7 +271,7 @@ export default async function CalendarPage({
                           const emoji = occasionEmoji(o.event_name)
                           return (
                             <AnimatedItem key={`occ-${o.session_id}`} delay={(daySessions.length + idx) * 0.05}>
-                              <Link href={`/dashboard/sessions/${o.bookings?.booking_id}`}
+                              <Link href={`/dashboard/bookings/${o.bookings?.booking_id}`}
                                 style={{ display: 'block', padding: '6px 8px', borderRadius: '7px', background: '#fff8e6', textDecoration: 'none', border: '1px dashed #c9980055' }}>
                                 <p style={{ fontSize: '12px', fontWeight: '600', color: '#8a6a00', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                   {emoji} {clientName ?? '—'}
@@ -397,7 +397,7 @@ export default async function CalendarPage({
           <Link href={prevUrl} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>←</Link>
           <Link href={monthUrl(now.getFullYear(), now.getMonth() + 1)} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '13px', background: 'var(--surface)' }}>Today</Link>
           <Link href={nextUrl} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>→</Link>
-          <Link href="/dashboard/sessions/new" style={{ padding: '7px 16px', borderRadius: '8px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}>New session</Link>
+          <Link href="/dashboard/bookings/new" style={{ padding: '7px 16px', borderRadius: '8px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}>New session</Link>
         </div>
       </div>
 
@@ -450,7 +450,7 @@ export default async function CalendarPage({
                           return (
                             <AnimatedItem key={s.session_id} delay={idx * 0.05}>
                               <Link
-                                href={`/dashboard/sessions/${s.bookings?.booking_id}`}
+                                href={`/dashboard/bookings/${s.bookings?.booking_id}`}
                                 title={`${sName} · ${clientName ?? 'Unknown'}${s.shoot_type ? ` · ${s.shoot_type}` : ''} — ${sc.label}`}
                                 style={{
                                   display: 'flex', alignItems: 'flex-start', gap: '5px',
@@ -484,7 +484,7 @@ export default async function CalendarPage({
                           return (
                             <AnimatedItem key={`occ-${o.session_id}`} delay={(Math.min(3, daySessions.length) + idx) * 0.05}>
                               <Link
-                                href={`/dashboard/sessions/${o.bookings?.booking_id}`}
+                                href={`/dashboard/bookings/${o.bookings?.booking_id}`}
                                 title={`${clientName ?? '—'} — ${o.event_name ?? 'Occasion'}`}
                                 style={{
                                   display: 'flex', alignItems: 'center', gap: '4px',
@@ -528,3 +528,4 @@ export default async function CalendarPage({
     </div>
   )
 }
+

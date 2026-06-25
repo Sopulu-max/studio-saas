@@ -40,7 +40,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
   return (
     <StudioConfigProvider config={config}>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-        <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} initialNavOrder={initialNavOrder} />
+        <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} />
         <main style={{
           flex: 1,
           padding: '2rem 2.5rem',

@@ -285,7 +285,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
       setLoading(false)
     } else {
       const sessionId = (result as { sessionId?: string }).sessionId
-      router.push(sessionId ? `/dashboard/sessions/${sessionId}` : '/dashboard/sessions')
+      router.push(sessionId ? `/dashboard/bookings/${sessionId}` : '/dashboard/bookings')
     }
   }
 
@@ -319,7 +319,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
       setLoading(false)
     } else {
       const sessionId = (result as { sessionId?: string }).sessionId
-      router.push(sessionId ? `/dashboard/sessions/${sessionId}` : '/dashboard/sessions')
+      router.push(sessionId ? `/dashboard/bookings/${sessionId}` : '/dashboard/bookings')
     }
   }
 
@@ -624,7 +624,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
           </p>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             {dupSessionId && (
-              <a href={`/dashboard/sessions/${dupSessionId}`}
+              <a href={`/dashboard/bookings/${dupSessionId}`}
                 style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: '1px solid #c89040', color: '#854f0b', textDecoration: 'none', background: 'transparent' }}>
                 View existing session →
               </a>
@@ -650,3 +650,4 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
     </div>
   )
 }
+

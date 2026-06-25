@@ -384,7 +384,7 @@ export default function ReportsView(props: ReportsViewProps) {
                 {props.todayBookings.map((s, i) => (
                   <AnimatedItem key={s.booking_id} delay={i * 0.05}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.875rem 1.25rem', borderBottom: i < props.todayBookings.length - 1 ? '1px solid var(--line-inner)' : 'none', gap: '12px' }}>
-                      <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
+                      <Link href={`/dashboard/bookings/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
                         <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
                           {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
@@ -409,7 +409,7 @@ export default function ReportsView(props: ReportsViewProps) {
                 {props.upcomingBookings.slice(0, 15).map((s, i) => (
                   <AnimatedItem key={s.booking_id} delay={i * 0.05}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem 1.25rem', borderBottom: i < Math.min(props.upcomingBookings.length, 15) - 1 ? '1px solid var(--line-inner)' : 'none', gap: '12px' }}>
-                      <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
+                      <Link href={`/dashboard/bookings/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
                         <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
                         <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0 }}>{fmtShort(s.session_date)}{s.shoot_type ? ` · ${s.shoot_type}` : ''}</p>
                       </Link>
@@ -420,7 +420,7 @@ export default function ReportsView(props: ReportsViewProps) {
               </AnimatedList>
               {props.upcomingBookings.length > 15 && (
                 <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
-                  <Link href="/dashboard/sessions" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
+                  <Link href="/dashboard/bookings" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
                     +{props.upcomingBookings.length - 15} more →
                   </Link>
                 </div>
@@ -484,7 +484,7 @@ export default function ReportsView(props: ReportsViewProps) {
                   {g.sessions.slice(0, 5).map((s, i) => (
                     <AnimatedItem key={s.booking_id} delay={i * 0.05}>
                       <div style={{ padding: '0.75rem 1.25rem', borderBottom: i < Math.min(g.sessions.length, 5) - 1 ? '1px solid var(--line-inner)' : 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
-                        <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
+                        <Link href={`/dashboard/bookings/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', flex: 1, minWidth: 0 }}>
                           <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' as const }}>{s.client_name ?? '—'}</p>
                           <p style={{ fontSize: '11px', color: 'var(--text-4)', margin: 0, fontFamily: 'monospace' }}>
                             {sessionName(s.client_name, s.booking_ref, s.booking_id, s.session_date)}
@@ -497,7 +497,7 @@ export default function ReportsView(props: ReportsViewProps) {
                 </AnimatedList>
                 {g.sessions.length > 5 && (
                   <div style={{ padding: '0.75rem 1.25rem', borderTop: '1px solid var(--line-inner)' }}>
-                    <Link href={`/dashboard/sessions?status=${g.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
+                    <Link href={`/dashboard/bookings?status=${g.value}`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>
                       +{g.sessions.length - 5} more →
                     </Link>
                   </div>
@@ -790,3 +790,4 @@ export default function ReportsView(props: ReportsViewProps) {
     </div>
   )
 }
+

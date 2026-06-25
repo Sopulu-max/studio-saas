@@ -92,7 +92,7 @@ export default async function ClientsPage({
           { label: 'Returning (2+)', value: stats.returning_count },
           { label: 'Dormant (90d+)', value: stats.dormant_count },
         ].map(s => (
-          <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+          <div key={s.label} className="glass-panel" style={{ borderRadius: '12px', padding: '1rem 1.25rem' }}>
             <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '600' }}>{s.label}</p>
             <p style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>{s.value}</p>
           </div>
@@ -117,11 +117,11 @@ export default async function ClientsPage({
           {/* ── Chart view ── */}
           {clientLayout === 'chart-bar' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+              <div className="glass-panel" style={{ borderRadius: '12px', padding: '1.25rem' }}>
                 <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>New clients — last 6 months</p>
                 <BarChart data={chartData.monthly_new_clients} color="#c9a96e" />
               </div>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+              <div className="glass-panel" style={{ borderRadius: '12px', padding: '1.25rem' }}>
                 <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>Client tiers</p>
                 <DonutChart title="clients" segments={[
                   { label: 'New',       value: chartData.tier_distribution.New,       color: '#888' },
@@ -154,8 +154,8 @@ export default async function ClientsPage({
                         const ref  = client.client_ref != null ? `#${String(client.client_ref).padStart(4, '0')}` : `#${client.client_id.slice(0, 6).toUpperCase()}`
                         return (
                           <AnimatedItem key={client.client_id} delay={i * 0.05}>
-                            <Link href={`/dashboard/clients/${client.client_id}`} style={{
-                              background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
+                            <Link href={`/dashboard/clients/${client.client_id}`} className="glass-panel hover-lift" style={{
+                              borderRadius: '12px',
                               padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
                             }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
@@ -200,7 +200,7 @@ export default async function ClientsPage({
 
                   {/* ── List view ── */}
                   {clientLayout === 'list' && (
-                    <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '2fr 70px 100px 100px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                         <span>Client</span><span>Sessions</span><span>Last session</span><span>Tier</span>
                       </div>
@@ -261,7 +261,7 @@ export default async function ClientsPage({
               <p style={{ fontSize: '15px', margin: 0 }}>No clients with sessions yet</p>
             </div>
           ) : (
-            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '32px 1fr 80px 120px 120px', padding: '8px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', letterSpacing: '0.04em', alignItems: 'center' }}>
                 <span>#</span><span>CLIENT</span><span>SESSIONS</span><span>LAST BOOKING</span><span>LAST CATEGORY</span>
               </div>
@@ -307,7 +307,7 @@ export default async function ClientsPage({
               <p style={{ fontSize: '15px', margin: 0 }}>No sessions in the last 30 days</p>
             </div>
           ) : (
-            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
               {displayClients.map((c, i) => (
                 <AnimatedItem key={c.client_id} delay={i * 0.05}>
                   <Link href={`/dashboard/clients/${c.client_id}`} style={{
@@ -354,7 +354,7 @@ export default async function ClientsPage({
               <p style={{ fontSize: '13px', margin: 0 }}>All your clients have had a recent session</p>
             </div>
           ) : (
-            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 100px 120px 80px', padding: '8px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', letterSpacing: '0.04em' }}>
                 <span>CLIENT</span><span>LAST SESSION</span><span>DORMANT FOR</span><span>SESSIONS</span>
               </div>

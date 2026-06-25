@@ -115,7 +115,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
         {invoice.session.booking_id && (
           <div style={{ borderTop: '1px solid var(--line-inner)', marginTop: '12px', paddingTop: '12px' }}>
-            <Link href={`/dashboard/sessions/${invoice.session.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
+            <Link href={`/dashboard/bookings/${invoice.session.booking_id}`} style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
               View session →
             </Link>
           </div>

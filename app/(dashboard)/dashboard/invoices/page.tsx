@@ -118,7 +118,7 @@ export default async function InvoicesPage({
           { label: 'Outstanding',    value: `₦${stats.total_outstanding.toLocaleString()}`, highlight: stats.total_outstanding > 0 },
           { label: 'Overdue',        value: `₦${stats.total_overdue.toLocaleString()}`,    highlight: stats.total_overdue > 0 },
         ].map(s => (
-          <div key={s.label} style={{ background: 'var(--surface)', border: `1px solid ${s.highlight ? '#e5c98a' : 'var(--line)'}`, borderRadius: '12px', padding: '1rem 1.25rem' }}>
+          <div key={s.label} className="glass-panel" style={{ border: s.highlight ? '1px solid #e5c98a' : undefined, borderRadius: '12px', padding: '1rem 1.25rem' }}>
             <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '600' }}>{s.label}</p>
             <p style={{ fontSize: '20px', fontWeight: '500', margin: 0, color: s.highlight ? '#854f0b' : 'var(--text)' }}>{s.value}</p>
           </div>
@@ -144,11 +144,11 @@ export default async function InvoicesPage({
           {/* ── Chart view ── */}
           {invoiceLayout === 'chart-bar' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+              <div className="glass-panel" style={{ borderRadius: '12px', padding: '1.25rem' }}>
                 <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>Revenue collected — last 6 months (₦k)</p>
                 <BarChart data={chartData.monthly_revenue} color="#c9a96e" valueSuffix="k" />
               </div>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+              <div className="glass-panel" style={{ borderRadius: '12px', padding: '1.25rem' }}>
                 <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By status</p>
                 <DonutChart title="invoices" segments={
                   Object.entries(chartData.status_counts).map(([st, cnt]) => ({
@@ -175,7 +175,7 @@ export default async function InvoicesPage({
                 <>
                   {/* ── List view ── */}
                   {invoiceLayout === 'list' && (
-                    <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                    <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                         <span>Session</span><span>Total / paid</span><span>Due date</span><span>Status</span>
                       </div>
@@ -232,7 +232,8 @@ export default async function InvoicesPage({
                         return (
                           <AnimatedItem key={inv.invoice_id} delay={i * 0.05}>
                             <Link href={`/dashboard/invoices/${inv.invoice_id}`}
-                              style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                              className="glass-panel hover-lift"
+                              style={{ borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
                             <div style={{ height: '4px', background: s.color }} />
                             <div style={{ padding: '1rem' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
@@ -297,7 +298,7 @@ export default async function InvoicesPage({
               <p style={{ fontSize: '13px', margin: 0 }}>All sent invoices have been settled</p>
             </div>
           ) : (
-            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 90px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', letterSpacing: '0.04em' }}>
                 <span>SESSION</span><span>INVOICE</span><span>BALANCE DUE</span><span>DUE DATE</span><span>STATUS</span>
               </div>
@@ -371,7 +372,7 @@ export default async function InvoicesPage({
             </div>
           ) : (
             <>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+              <div className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '120px 2fr 1fr 100px 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '11px', color: 'var(--text-4)', fontWeight: '600', letterSpacing: '0.04em' }}>
                   <span>DATE</span><span>CLIENT · SESSION</span><span>AMOUNT</span><span>METHOD</span><span>REFERENCE</span>
                 </div>

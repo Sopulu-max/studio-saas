@@ -90,7 +90,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
               <p style={{ fontSize: '12px', color: '#4a7fa5', margin: 0 }}>Since {fmt(item.checked_out_at)}</p>
             )}
             {item.booking_id && (
-              <Link href={`/dashboard/sessions/${item.booking_id}`} style={{ fontSize: '12px', color: '#185fa5', textDecoration: 'underline' }}>
+              <Link href={`/dashboard/bookings/${item.booking_id}`} style={{ fontSize: '12px', color: '#185fa5', textDecoration: 'underline' }}>
                 View session →
               </Link>
             )}
@@ -161,7 +161,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
                   {c.notes && <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{c.notes}</p>}
                   {c.session && (
                     <div style={{ fontSize: '12px', marginTop: '4px' }}>
-                      <Link href={`/dashboard/sessions/${c.booking_id}`} style={{ color: 'var(--text-3)', textDecoration: 'none' }}>
+                      <Link href={`/dashboard/bookings/${c.booking_id}`} style={{ color: 'var(--text-3)', textDecoration: 'none' }}>
                         Session {c.session.booking_ref ? `#${c.session.booking_ref}` : ''}
                         {c.session.session_date ? ` (${fmtDate(c.session.session_date)})` : ''}
                       </Link>

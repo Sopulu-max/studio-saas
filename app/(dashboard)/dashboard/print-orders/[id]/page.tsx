@@ -106,7 +106,7 @@ export default async function PrintOrderDetailPage({
           {booking.session_date && (
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>Session:</span>
-              <Link href={`/dashboard/sessions/${booking.booking_id}`}
+              <Link href={`/dashboard/bookings/${booking.booking_id}`}
                 style={{ fontSize: '13px', color: 'var(--link)', textDecoration: 'none' }}>
                 {new Date(booking.session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })} →
               </Link>

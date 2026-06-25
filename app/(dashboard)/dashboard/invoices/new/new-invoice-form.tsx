@@ -281,7 +281,7 @@ export default function NewInvoiceForm({
           <label style={labelStyle}>Session <span style={{ color: '#e24b4a' }}>*</span></label>
           {bookings.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
-              No sessions yet - <Link href="/dashboard/sessions/new" style={{ color: 'var(--link)' }}>create one first</Link>
+              No sessions yet - <Link href="/dashboard/bookings/new" style={{ color: 'var(--link)' }}>create one first</Link>
             </p>
           ) : (
             <SearchableSelect
@@ -492,3 +492,4 @@ export default function NewInvoiceForm({
     </div>
   )
 }
+

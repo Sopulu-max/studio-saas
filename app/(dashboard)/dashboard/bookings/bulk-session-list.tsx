@@ -92,7 +92,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
                 style={{ width: '15px', height: '15px', cursor: 'pointer', accentColor: 'var(--text)' }} />
 
               {/* Client — ref as sub-line */}
-              <Link href={`/dashboard/sessions/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
+              <Link href={`/dashboard/bookings/${s.booking_id}`} style={{ textDecoration: 'none', color: 'inherit', minWidth: 0 }}>
                 <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                   {s.clients?.full_name ?? '—'}
                 </p>
@@ -151,3 +151,4 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
     </div>
   )
 }
+

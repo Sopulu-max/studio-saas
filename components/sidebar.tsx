@@ -10,119 +10,64 @@ import GlobalSearch from './global-search'
 import { buildBookingShareLink, buildPackagesShareLink, buildCustomShareLink } from '@/lib/whatsapp-links'
 
 type NavItem = { label: string; href: string }
+type NavGroup = { title: string; items: NavItem[] }
 
-const OWNER_NAV_DEFAULT: NavItem[] = [
-  { label: 'Dashboard',    href: '/dashboard' },
-  { label: 'Website',      href: '/dashboard/storefront' },
-  { label: 'Sessions',     href: '/dashboard/sessions' },
-  { label: 'Calendar',     href: '/dashboard/calendar' },
-  { label: 'Clients',      href: '/dashboard/clients' },
-  { label: 'Packages & Offerings',     href: '/dashboard/packages' },
-  { label: 'Products',     href: '/dashboard/products' },
-  { label: 'Services, Catalog & Add-ons',     href: '/dashboard/services' },
-  { label: 'Staff',        href: '/dashboard/staff' },
-  { label: 'Attendance',   href: '/dashboard/attendance' },
-  { label: 'Galleries',    href: '/dashboard/galleries' },
-  { label: 'Invoices',     href: '/dashboard/invoices' },
-  { label: 'Contracts',    href: '/dashboard/contracts' },
-  { label: 'Print orders', href: '/dashboard/print-orders' },
-  { label: 'Equipment',    href: '/dashboard/equipment' },
-  { label: 'Reports',      href: '/dashboard/reports' },
-]
-
-const STAFF_NAV: NavItem[] = [
-  { label: 'My sessions', href: '/dashboard/sessions' },
-  { label: 'Calendar',    href: '/dashboard/calendar' },
-  { label: 'Clients',     href: '/dashboard/clients' },
-]
-
-const NAV_STORAGE_KEY = 'sidebar-nav-order'
-
-function moveItem<T>(arr: T[], from: number, to: number): T[] {
-  const r = [...arr]; const [x] = r.splice(from, 1); r.splice(to, 0, x); return r
-}
-
-function GripDots() {
-  return (
-    <svg width="10" height="14" viewBox="0 0 10 14" fill="none" style={{ flexShrink: 0, opacity: 0.45 }}>
-      {[0,5,10].map(y => (
-        <g key={y}>
-          <circle cx="2" cy={y+2} r="1.5" fill="currentColor" />
-          <circle cx="8" cy={y+2} r="1.5" fill="currentColor" />
-        </g>
-      ))}
-    </svg>
-  )
-}
-
-function getInitialNavItems(isOwner: boolean, initialOrder?: string[] | null): NavItem[] {
-  if (!isOwner) return OWNER_NAV_DEFAULT // Wait, fallback
-  
-  let savedHrefs = initialOrder
-  if (!savedHrefs && typeof window !== 'undefined') {
-    try {
-      const saved = localStorage.getItem(NAV_STORAGE_KEY)
-      if (saved) {
-        const parsed = JSON.parse(saved)
-        if (parsed.length > 0) {
-          savedHrefs = typeof parsed[0] === 'string' ? parsed : parsed.map((n: any) => n.href)
-        }
-      }
-    } catch {}
+const OWNER_NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'COMMERCIAL',
+    items: [
+      { label: 'Bookings',     href: '/dashboard/bookings' },
+      { label: 'Clients',      href: '/dashboard/clients' },
+      { label: 'Invoices',     href: '/dashboard/invoices' },
+      { label: 'Contracts',    href: '/dashboard/contracts' },
+    ]
+  },
+  {
+    title: 'FULFILLMENT',
+    items: [
+      { label: 'Services & Catalog', href: '/dashboard/services' },
+      { label: 'Galleries',    href: '/dashboard/galleries' },
+      { label: 'Print orders', href: '/dashboard/print-orders' },
+      { label: 'Packages (Legacy)', href: '/dashboard/packages' },
+      { label: 'Products',     href: '/dashboard/products' },
+    ]
+  },
+  {
+    title: 'LOGISTICS & TEAM',
+    items: [
+      { label: 'Calendar',     href: '/dashboard/calendar' },
+      { label: 'Staff',        href: '/dashboard/staff' },
+      { label: 'Attendance',   href: '/dashboard/attendance' },
+      { label: 'Equipment',    href: '/dashboard/equipment' },
+    ]
+  },
+  {
+    title: 'SYSTEM',
+    items: [
+      { label: 'Dashboard',    href: '/dashboard' },
+      { label: 'Website',      href: '/dashboard/storefront' },
+      { label: 'Reports',      href: '/dashboard/reports' },
+    ]
   }
+]
 
-  if (!savedHrefs) return OWNER_NAV_DEFAULT
+const STAFF_NAV_GROUPS: NavGroup[] = [
+  {
+    title: 'MY WORKSPACE',
+    items: [
+      { label: 'My bookings',  href: '/dashboard/bookings' },
+      { label: 'Calendar',     href: '/dashboard/calendar' },
+      { label: 'Clients',      href: '/dashboard/clients' },
+    ]
+  }
+]
 
-  const defaultHrefs = OWNER_NAV_DEFAULT.map((n) => n.href)
-  const valid = savedHrefs
-    .filter((href) => defaultHrefs.includes(href))
-    .map((href) => OWNER_NAV_DEFAULT.find(d => d.href === href)!)
-    
-  const newOnes = OWNER_NAV_DEFAULT.filter((n) => !savedHrefs.includes(n.href))
-  
-  return valid.length > 0 ? [...valid, ...newOnes] : OWNER_NAV_DEFAULT
-}
-
-export default function Sidebar({ studioName, studioSlug, isOwner = true, messageTemplates = [], initialNavOrder = null }: { studioName: string; studioSlug?: string; isOwner?: boolean; messageTemplates?: { template_id: string; title: string; content: string }[]; initialNavOrder?: string[] | null }) {
+export default function Sidebar({ studioName, studioSlug, isOwner = true, messageTemplates = [] }: { studioName: string; studioSlug?: string; isOwner?: boolean; messageTemplates?: { template_id: string; title: string; content: string }[] }) {
   const pathname  = usePathname()
   const router    = useRouter()
   const supabase  = createClient()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [quickShareOpen, setQuickShareOpen] = useState(false)
-  const [editNav,    setEditNav]    = useState(false)
-  const [navItems,   setNavItems]   = useState<NavItem[]>(() => getInitialNavItems(isOwner, initialNavOrder))
-  const [dragging,   setDragging]   = useState<string | null>(null)
-  const [dragOver,   setDragOver]   = useState<string | null>(null)
-
-  function saveNav(items: NavItem[]) {
-    setNavItems(items)
-    const hrefs = items.map(n => n.href)
-    try { 
-      localStorage.setItem(NAV_STORAGE_KEY, JSON.stringify(hrefs)) 
-      document.cookie = `sidebar-nav-order=${encodeURIComponent(JSON.stringify(hrefs))}; path=/; max-age=31536000; SameSite=Lax`
-    } catch {}
-  }
-
-  function onDragStart(href: string) { setDragging(href) }
-  function onDragOver(e: React.DragEvent, href: string) { e.preventDefault(); setDragOver(href) }
-  function onDrop(href: string) {
-    if (dragging && dragging !== href) {
-      const from = navItems.findIndex(n => n.href === dragging)
-      const to   = navItems.findIndex(n => n.href === href)
-      if (from !== -1 && to !== -1) saveNav(moveItem(navItems, from, to))
-    }
-    setDragging(null); setDragOver(null)
-  }
-  function onDragEnd() { setDragging(null); setDragOver(null) }
-
-  function moveUp(href: string) {
-    const idx = navItems.findIndex(n => n.href === href)
-    if (idx > 0) saveNav(moveItem(navItems, idx, idx - 1))
-  }
-  function moveDown(href: string) {
-    const idx = navItems.findIndex(n => n.href === href)
-    if (idx < navItems.length - 1) saveNav(moveItem(navItems, idx, idx + 1))
-  }
 
   useEffect(() => {
     if (typeof document !== 'undefined')
@@ -135,7 +80,7 @@ export default function Sidebar({ studioName, studioSlug, isOwner = true, messag
     router.push('/login')
   }
 
-  const activeNav = isOwner ? navItems : STAFF_NAV
+  const activeGroups = isOwner ? OWNER_NAV_GROUPS : STAFF_NAV_GROUPS
 
   function handleNavClick() {
     setMobileOpen(false)
@@ -169,78 +114,40 @@ export default function Sidebar({ studioName, studioSlug, isOwner = true, messag
       </div>
 
       {/* Nav */}
-      <nav style={{ flex: 1, padding: '6px 8px', overflowY: 'auto' }}>
-        {activeNav.map((item, idx) => {
-          const active = pathname === item.href ||
-            (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
-          const isGhost   = dragging === item.href
-          const isDropTarget = dragOver === item.href && dragging !== item.href
+      <nav style={{ flex: 1, padding: '12px 8px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {activeGroups.map((group) => (
+          <div key={group.title}>
+            <p style={{ fontSize: '10px', fontWeight: '600', color: 'var(--text-4)', margin: '0 0 6px 8px', letterSpacing: '0.05em' }}>
+              {group.title}
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              {group.items.map((item) => {
+                const active = pathname === item.href ||
+                  (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'))
 
-          return (
-            <div
-              key={item.href}
-              draggable={editNav && isOwner}
-              onDragStart={() => onDragStart(item.href)}
-              onDragOver={e  => onDragOver(e, item.href)}
-              onDrop={()     => onDrop(item.href)}
-              onDragEnd={onDragEnd}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '4px',
-                opacity:     isGhost ? 0.35 : 1,
-                borderTop:   isDropTarget ? '2px solid var(--btn)' : '2px solid transparent',
-                cursor:      editNav ? 'grab' : 'default',
-                marginBottom: '1px',
-              }}
-            >
-              {editNav && isOwner && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', flexShrink: 0 }}>
-                  <button onClick={() => moveUp(item.href)} disabled={idx === 0}
-                    style={{ background: 'none', border: 'none', padding: '1px 3px', cursor: 'pointer', color: 'var(--text-4)', fontSize: '10px', lineHeight: 1, opacity: idx === 0 ? 0.2 : 0.7 }}>▲</button>
-                  <button onClick={() => moveDown(item.href)} disabled={idx === activeNav.length - 1}
-                    style={{ background: 'none', border: 'none', padding: '1px 3px', cursor: 'pointer', color: 'var(--text-4)', fontSize: '10px', lineHeight: 1, opacity: idx === activeNav.length - 1 ? 0.2 : 0.7 }}>▼</button>
-                </div>
-              )}
-
-              {editNav && isOwner && (
-                <div style={{ display: 'flex', alignItems: 'center', padding: '2px 0' }}>
-                  <GripDots />
-                </div>
-              )}
-
-              <Link
-                href={editNav ? '#' : item.href}
-                onClick={editNav ? e => e.preventDefault() : handleNavClick}
-                style={{
-                  flex: 1, display: 'block', padding: '7px 10px', borderRadius: '7px',
-                  fontSize: '13.5px',
-                  fontWeight: active ? '500' : '400',
-                  color: active ? 'var(--text)' : 'var(--text-3)',
-                  background: active ? 'var(--active)' : 'transparent',
-                  textDecoration: 'none',
-                  transition: 'background 0.12s, color 0.12s',
-                  pointerEvents: editNav ? 'none' : 'auto',
-                }}
-              >
-                {item.label}
-              </Link>
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={handleNavClick}
+                    className="hover-lift"
+                    style={{
+                      display: 'block', padding: '7px 10px', borderRadius: '7px',
+                      fontSize: '13.5px',
+                      fontWeight: active ? '500' : '400',
+                      color: active ? 'var(--text)' : 'var(--text-3)',
+                      background: active ? 'var(--active)' : 'transparent',
+                      textDecoration: 'none',
+                      transition: 'background 0.12s, color 0.12s',
+                    }}
+                  >
+                    {item.label}
+                  </Link>
+                )
+              })}
             </div>
-          )
-        })}
-
-        {/* Edit nav toggle */}
-        {isOwner && (
-          <button
-            onClick={() => setEditNav(e => !e)}
-            style={{
-              width: '100%', marginTop: '8px', padding: '5px 10px', textAlign: 'left',
-              fontSize: '11px', color: editNav ? 'var(--btn)' : 'var(--text-4)',
-              background: 'transparent', border: 'none', cursor: 'pointer', borderRadius: '6px',
-              fontWeight: editNav ? '600' : '400',
-            }}
-          >
-            {editNav ? '✓ Done reordering' : '⋮⋮ Reorder nav'}
-          </button>
-        )}
+          </div>
+        ))}
       </nav>
 
       {/* Quick Share Hub */}

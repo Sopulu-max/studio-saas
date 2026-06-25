@@ -29,6 +29,7 @@ export async function updateBookingServiceStatus(bookingServiceId: string, statu
     return { error: 'Database error' }
   }
 
-  revalidatePath(`/dashboard/sessions/${bs.booking_id}`)
+  revalidatePath(`/dashboard/bookings/${bs.booking_id}`)
   return { success: true }
 }
+

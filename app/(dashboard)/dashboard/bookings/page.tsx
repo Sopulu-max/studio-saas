@@ -21,7 +21,7 @@ type StudioConfig = ReturnType<typeof buildStudioConfig>
 
 // ─── URL helpers ─────────────────────────────────────────────────
 function tabUrl(viewKey: string) {
-  return `/dashboard/sessions?view=${viewKey}`
+  return `/dashboard/bookings?view=${viewKey}`
 }
 
 function allPageUrl(params: Record<string, string>, pg: number) {
@@ -29,7 +29,7 @@ function allPageUrl(params: Record<string, string>, pg: number) {
   p.set('view', 'all')
   Object.entries(params).forEach(([k, v]) => { if (v && k !== 'page') p.set(k, v) })
   p.set('page', String(pg))
-  return `/dashboard/sessions?${p}`
+  return `/dashboard/bookings?${p}`
 }
 
 // ─── Component helpers ────────────────────────────────────────────
@@ -62,7 +62,7 @@ function TabNav({ active }: { active: string }) {
 // compact row used in pipeline / by-category / needs-action
 function CompactRow({ s, right }: { s: BookingListDTO; right: React.ReactNode }) {
   return (
-    <Link href={`/dashboard/sessions/${s.booking_id}`} style={{
+    <Link href={`/dashboard/bookings/${s.booking_id}`} style={{
       display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px',
       padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit',
     }}>
@@ -84,7 +84,7 @@ function CompactRow({ s, right }: { s: BookingListDTO; right: React.ReactNode })
 
 function GroupCard({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+    <div className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
       {children}
     </div>
   )
@@ -237,7 +237,7 @@ export default async function SessionsPage({
           <a href="/api/export/sessions" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)', fontWeight: '500' }}>
             Export CSV
           </a>
-          <Link href="/dashboard/sessions/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
+          <Link href="/dashboard/bookings/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
             New session
           </Link>
         </div>
@@ -251,7 +251,7 @@ export default async function SessionsPage({
           { label: 'Active pipeline', value: pipelineCount   ?? 0 },
           { label: 'Cancelled / mo', value: cancelledThisMonth },
         ].map(s => (
-          <div key={s.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1rem 1.25rem' }}>
+          <div key={s.label} className="glass-panel" style={{ borderRadius: '12px', padding: '1rem 1.25rem' }}>
             <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '600' }}>{s.label}</p>
             <p style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>{s.value}</p>
           </div>
@@ -268,7 +268,7 @@ export default async function SessionsPage({
         <>
           {/* Pending banner */}
           {pendingCount > 0 && status !== intakeStatus && (
-            <Link href={`/dashboard/sessions?view=all&status=${intakeStatus}`}
+            <Link href={`/dashboard/bookings?view=all&status=${intakeStatus}`}
               style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#faeeda', border: '0.5px solid #e5c98a', borderRadius: '10px', padding: '12px 16px', marginBottom: '12px', textDecoration: 'none', color: '#854f0b' }}>
               <span style={{ fontSize: '14px', fontWeight: '500' }}>
                 🔔 {pendingCount} pending booking request{pendingCount !== 1 ? 's' : ''} waiting for review
@@ -315,8 +315,9 @@ export default async function SessionsPage({
                   const tc = s.session_type ? getSessionTypeConfig(config, s.session_type) : null
                   return (
                     <AnimatedItem key={s.booking_id} delay={i * 0.05}>
-                      <Link href={`/dashboard/sessions/${s.booking_id}`}
-                        style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                      <Link href={`/dashboard/bookings/${s.booking_id}`}
+                        className="glass-panel hover-lift"
+                        style={{ borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
                         <div style={{ height: '4px', background: sc.color_fg }} />
                         <div style={{ padding: '1rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '6px' }}>
@@ -427,10 +428,10 @@ export default async function SessionsPage({
                           </span>
                           <span style={{ fontSize: '13px', color: 'var(--text-3)', fontWeight: '500' }}>{group.length}</span>
                         </div>
-                        <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                        <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
                           {group.map((s, i) => (
                             <AnimatedItem key={s.booking_id} delay={i * 0.05}>
-                              <Link href={`/dashboard/sessions/${s.booking_id}`}
+                              <Link href={`/dashboard/bookings/${s.booking_id}`}
                                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < group.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
                                 <div style={{ minWidth: 0, flex: 1 }}>
                                   <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -536,13 +537,13 @@ export default async function SessionsPage({
                             {catSessions.length > 0 ? Math.round((group.length / catSessions.length) * 100) : 0}%
                           </span>
                         </div>
-                        <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                        <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
                           {group.map((s, i) => {
                             const sc = getStatusConfig(config, s.status)
                             const tc = s.session_type ? getSessionTypeConfig(config, s.session_type) : null
                             return (
                               <AnimatedItem key={s.booking_id} delay={i * 0.05}>
-                                <Link href={`/dashboard/sessions/${s.booking_id}`}
+                                <Link href={`/dashboard/bookings/${s.booking_id}`}
                                   style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < group.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
                                   <div style={{ minWidth: 0, flex: 1 }}>
                                     <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -696,14 +697,14 @@ function NeedsSection({
       <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: '0 0 10px' }}>{subtitle}</p>
 
       {items.length === 0 ? (
-        <div style={{ padding: '1rem 1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px' }}>
+        <div className="glass-panel" style={{ padding: '1rem 1.25rem', borderRadius: '10px' }}>
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>✓ {emptyText}</p>
         </div>
       ) : (
-        <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+        <AnimatedList className="glass-panel" style={{ borderRadius: '12px', overflow: 'hidden' }}>
           {items.map((s, i) => (
             <AnimatedItem key={s.booking_id} delay={i * 0.05}>
-              <Link href={`/dashboard/sessions/${s.booking_id}`}
+              <Link href={`/dashboard/bookings/${s.booking_id}`}
                 style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', borderBottom: i < items.length - 1 ? '1px solid var(--line-inner)' : 'none' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 1px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -725,3 +726,4 @@ function NeedsSection({
     </div>
   )
 }
+

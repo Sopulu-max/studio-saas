@@ -73,7 +73,7 @@ export default function GlobalSearch() {
   const allLinks: { href: string; label: string }[] = []
   if (results) {
     for (const c of results.clients)  allLinks.push({ href: `/dashboard/clients/${c.client_id}`,   label: c.full_name })
-    for (const s of results.sessions) allLinks.push({ href: `/dashboard/sessions/${s.booking_id}`, label: s.clients?.full_name ?? '' })
+    for (const s of results.sessions) allLinks.push({ href: `/dashboard/bookings/${s.booking_id}`, label: s.clients?.full_name ?? '' })
     for (const i of results.invoices) allLinks.push({ href: `/dashboard/invoices/${i.invoice_id}`, label: i.bookings?.clients?.full_name ?? '' })
   }
 
@@ -187,10 +187,10 @@ export default function GlobalSearch() {
                 {results.sessions.length > 0 && (
                   <Section label="Sessions">
                     {results.sessions.map((s) => {
-                      const idx = allLinks.findIndex(l => l.href === `/dashboard/sessions/${s.booking_id}`)
+                      const idx = allLinks.findIndex(l => l.href === `/dashboard/bookings/${s.booking_id}`)
                       return (
                         <ResultRow key={s.booking_id} active={idx === cursor}
-                          onClick={() => navigate(`/dashboard/sessions/${s.booking_id}`)}>
+                          onClick={() => navigate(`/dashboard/bookings/${s.booking_id}`)}>
                           <span style={{ fontWeight: '500', fontSize: '14px' }}>{s.clients?.full_name}</span>
                           <span style={{ fontSize: '12px', color: s.color_fg ?? 'var(--text-4)' }}>
                             {s.status.replace(/_/g, ' ')}
@@ -256,3 +256,4 @@ function ResultRow({ children, active, onClick }: { children: React.ReactNode; a
     </button>
   )
 }
+

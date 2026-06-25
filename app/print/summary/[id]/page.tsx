@@ -50,7 +50,7 @@ export default async function SummaryPrintPage({ params }: { params: Promise<{ i
     
   const booking = bookingRaw as unknown as BookingRecord | null
 
-  if (!booking) redirect('/dashboard/sessions')
+  if (!booking) redirect('/dashboard/bookings')
 
   const { data: addons } = await context.admin
     .from('booking_addons')
@@ -102,7 +102,7 @@ export default async function SummaryPrintPage({ params }: { params: Promise<{ i
       <div className="page">
         <div className="no-print">
           <PrintButton />
-          <Link href={`/dashboard/sessions/${id}`} style={{ fontSize: '13px', color: '#888', textDecoration: 'none' }}>
+          <Link href={`/dashboard/bookings/${id}`} style={{ fontSize: '13px', color: '#888', textDecoration: 'none' }}>
             Back to session
           </Link>
         </div>

@@ -22,7 +22,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   if ('error' in context) redirect('/login')
 
   const booking = await getBookingDetail(context.admin, context.studioId, id)
-  if (!booking) redirect('/dashboard/sessions')
+  if (!booking) redirect('/dashboard/bookings')
 
   const studioRow = await fetchStudio(context.admin, context.studioId)
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
@@ -65,7 +65,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             {statusCfg.label}
           </span>
           <Link
-            href={`/dashboard/sessions/${id}/edit`}
+            href={`/dashboard/bookings/${id}/edit`}
             className="hover-lift"
             style={{ fontSize: '13px', padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
           >

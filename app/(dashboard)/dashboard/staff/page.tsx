@@ -138,7 +138,7 @@ export default async function StaffPage({
               const staffList = b.assigned_staff ?? []
               return (
                 <AnimatedItem key={b.booking_id} delay={i * 0.05}>
-                  <Link href={`/dashboard/sessions/${b.booking_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                  <Link href={`/dashboard/bookings/${b.booking_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                       <div>
                         <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 3px' }}>{b.client_name ?? '—'}</p>
@@ -208,7 +208,7 @@ export default async function StaffPage({
               const rc = getStaffRoleConfig(config, a.role)
               return (
                 <AnimatedItem key={`${a.booking_id}-${a.staff_id}-${i}`} delay={i * 0.05}>
-                  <Link href={`/dashboard/sessions/${a.booking_id}`} style={{
+                  <Link href={`/dashboard/bookings/${a.booking_id}`} style={{
                     display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr',
                     padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                     borderBottom: i < assignments.length - 1 ? '1px solid var(--line-inner)' : 'none',
@@ -385,3 +385,4 @@ export default async function StaffPage({
     </div>
   )
 }
+

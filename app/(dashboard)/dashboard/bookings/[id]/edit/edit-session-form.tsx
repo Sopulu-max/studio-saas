@@ -242,7 +242,7 @@ export default function EditSessionForm({
       setError(error)
       setLoading(false)
     } else {
-      router.push(`/dashboard/sessions/${sessionId}`)
+      router.push(`/dashboard/bookings/${sessionId}`)
     }
   }
 
@@ -526,7 +526,7 @@ export default function EditSessionForm({
         </button>
         <button
           type="button"
-          onClick={() => router.push(`/dashboard/sessions/${sessionId}`)}
+          onClick={() => router.push(`/dashboard/bookings/${sessionId}`)}
           style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}
         >
           Cancel

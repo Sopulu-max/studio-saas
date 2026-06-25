@@ -18,7 +18,7 @@ export default function DeleteSessionButton({ sessionId }: { sessionId: string }
       setLoading(false)
     } else {
       toast.success('Session deleted')
-      router.push('/dashboard/sessions')
+      router.push('/dashboard/bookings')
     }
   }
 

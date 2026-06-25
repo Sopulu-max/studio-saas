@@ -123,7 +123,7 @@ export async function addSession(form: {
     }
   }
 
-  revalidatePath('/dashboard/sessions')
+  revalidatePath('/dashboard/bookings')
 
   // Fire-and-forget booking confirmation email — failures must never block the response
   ;(async () => {
@@ -158,8 +158,8 @@ export async function updateSessionStatus(sessionId: string, status: string) {
 
   if (error) return { error: error.message }
 
-  revalidatePath(`/dashboard/sessions/${sessionId}`)
-  revalidatePath('/dashboard/sessions')
+  revalidatePath(`/dashboard/bookings/${sessionId}`)
+  revalidatePath('/dashboard/bookings')
 
   // Fire-and-forget status update email — failures must never block the response
   ;(async () => {
@@ -204,7 +204,7 @@ export async function bulkUpdateSessionStatus(sessionIds: string[], status: stri
 
   if (error) return { error: error.message }
 
-  revalidatePath('/dashboard/sessions')
+  revalidatePath('/dashboard/bookings')
   return { error: null, updated: ownedIds.length }
 }
 
@@ -313,7 +313,7 @@ export async function deleteSession(sessionId: string) {
     .delete()
     .eq('booking_id', sessionId)
 
-  if (!error) revalidatePath('/dashboard/sessions')
+  if (!error) revalidatePath('/dashboard/bookings')
   return { error: error?.message ?? null }
 }
 
@@ -414,7 +414,7 @@ export async function updateSessionScope(sessionId: string, data: {
     })
     .eq('booking_id', sessionId)
 
-  if (!error) revalidatePath(`/dashboard/sessions/${sessionId}`)
+  if (!error) revalidatePath(`/dashboard/bookings/${sessionId}`)
   return { error: error?.message ?? null }
 }
 
@@ -543,8 +543,8 @@ export async function updateSession(sessionId: string, form: {
     await context.admin.from('booking_services').delete().eq('booking_id', sessionId)
   }
 
-  revalidatePath(`/dashboard/sessions/${sessionId}`)
-  revalidatePath('/dashboard/sessions')
+  revalidatePath(`/dashboard/bookings/${sessionId}`)
+  revalidatePath('/dashboard/bookings')
   return { error: null }
 }
 
@@ -588,3 +588,4 @@ export async function sendEventDateReminder(sessionId: string) {
   if (emailError) return { error: emailError }
   return { error: null }
 }
+
