@@ -49,7 +49,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             href={clientViewUrl}
             target="_blank"
             rel="noreferrer"
-            style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '4px 10px', border: '1px solid var(--line)', borderRadius: '8px', background: 'var(--surface)' }}
+            className="glass-panel hover-lift" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '4px 10px' }}
           >
             Client view
           </Link>
@@ -59,7 +59,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 12px', color: 'var(--text-3)' }}>CLIENT</p>
         {invoice.client.client_id ? (
           <Link href={`/dashboard/clients/${invoice.client.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
@@ -79,7 +79,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         )}
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 12px', color: 'var(--text-3)' }}>SESSION</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
           <div>
@@ -122,7 +122,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         )}
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 12px', color: 'var(--text-3)' }}>BREAKDOWN</p>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', marginBottom: '8px' }}>
@@ -155,7 +155,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 12px', color: 'var(--text-3)' }}>PAYMENTS</p>
 
         {!invoice.payments?.length ? (

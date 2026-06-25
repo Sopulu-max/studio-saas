@@ -276,7 +276,7 @@ export default function NewInvoiceForm({
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Generate an invoice for a session</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Session <span style={{ color: '#e24b4a' }}>*</span></label>
           {bookings.length === 0 ? (
@@ -428,7 +428,7 @@ export default function NewInvoiceForm({
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 12px' }}>Preview</p>
         {[
           { label: 'Agreed amount', value: baseAmount },

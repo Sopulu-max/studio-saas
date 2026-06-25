@@ -44,7 +44,7 @@ function TabNav({ active }: { active: string }) {
     { key: 'sessions', label: 'Sessions' },
   ]
   return (
-    <div style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '3px', width: 'fit-content' }}>
+    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
       {tabs.map(t => (
         <Link key={t.key} href={tabUrl(t.key)} style={{
           padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
@@ -61,7 +61,7 @@ function StatsStrip({ items }: { items: { label: string; value: string | number 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: '12px', marginBottom: '1.5rem' }}>
       {items.map(item => (
-        <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+        <div key={item.label} className="glass-panel" style={{ padding: '1.1rem 1.25rem' }}>
           <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '500' }}>{item.label}</p>
           <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, lineHeight: 1.1 }}>{item.value}</p>
         </div>
@@ -138,7 +138,7 @@ export default async function StaffPage({
               const staffList = b.assigned_staff ?? []
               return (
                 <AnimatedItem key={b.booking_id} delay={i * 0.05}>
-                  <Link href={`/dashboard/bookings/${b.booking_id}`} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                  <Link href={`/dashboard/bookings/${b.booking_id}`} className="glass-panel hover-lift" style={{ padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
                       <div>
                         <p style={{ fontSize: '14px', fontWeight: '600', margin: '0 0 3px' }}>{b.client_name ?? '—'}</p>
@@ -199,7 +199,7 @@ export default async function StaffPage({
           <EmptyState message="No staff assignments yet" sub="Assign staff to sessions from the session detail page" />
         ) : (
           <div>
-            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Staff</span><span>Session</span><span>Date</span><span>Role</span>
             </div>
@@ -208,7 +208,7 @@ export default async function StaffPage({
               const rc = getStaffRoleConfig(config, a.role)
               return (
                 <AnimatedItem key={`${a.booking_id}-${a.staff_id}-${i}`} delay={i * 0.05}>
-                  <Link href={`/dashboard/bookings/${a.booking_id}`} style={{
+                  <Link href={`/dashboard/bookings/${a.booking_id}`} className="hover-lift" style={{
                     display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr',
                     padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                     borderBottom: i < assignments.length - 1 ? '1px solid var(--line-inner)' : 'none',
@@ -282,8 +282,7 @@ export default async function StaffPage({
                 const effectiveRoles = member.roles
                 return (
                   <AnimatedItem key={member.staff_id} delay={i * 0.05}>
-                    <Link href={`/dashboard/staff/${member.staff_id}`} style={{
-                      background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px',
+                    <Link href={`/dashboard/staff/${member.staff_id}`} className="glass-panel hover-lift" style={{
                       padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'block',
                     }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
@@ -335,7 +334,7 @@ export default async function StaffPage({
 
           {/* ── List view ── */}
           {teamLayout === 'list' && (
-            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                 <span>Name</span><span>Roles</span><span>Hire date</span><span>Days / wk</span>
               </div>
@@ -343,7 +342,7 @@ export default async function StaffPage({
                 const effectiveRoles = member.roles
                 return (
                   <AnimatedItem key={member.staff_id} delay={i * 0.05}>
-                    <Link href={`/dashboard/staff/${member.staff_id}`} style={{
+                    <Link href={`/dashboard/staff/${member.staff_id}`} className="hover-lift" style={{
                       display: 'grid', gridTemplateColumns: '2fr 2fr 1fr 1fr',
                       padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                       borderBottom: i < staff.length - 1 ? '1px solid var(--line-inner)' : 'none',

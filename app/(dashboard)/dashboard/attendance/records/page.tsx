@@ -40,7 +40,7 @@ function TabNav({ active, from, to }: { active: string; from: string; to: string
     { key: 'by-person', label: 'By person' },
   ]
   return (
-    <div style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '3px', width: 'fit-content' }}>
+    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
       {tabs.map(t => (
         <Link key={t.key} href={tabUrl(t.key, from, to)} style={{
           padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
@@ -57,7 +57,7 @@ function StatsStrip({ items }: { items: { label: string; value: string | number 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: '12px', marginBottom: '1.5rem' }}>
       {items.map(item => (
-        <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+        <div key={item.label} className="glass-panel" style={{ padding: '1.1rem 1.25rem' }}>
           <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '500' }}>{item.label}</p>
           <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, lineHeight: 1.1 }}>{item.value}</p>
         </div>
@@ -166,7 +166,7 @@ export default async function AttendanceRecordsPage({
             <p style={{ fontSize: '13px', margin: 0 }}>Adjust the date range in the Records tab to widen the window</p>
           </div>
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div className="glass-panel" style={{ overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Staff member</span>
               <span>Days in range</span>

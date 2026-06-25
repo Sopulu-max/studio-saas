@@ -50,7 +50,7 @@ export default function NewGalleryForm({ bookings, preselectedSessionId = '' }: 
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Create a photo gallery for a completed shoot</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Booking <span style={{ color: '#e24b4a' }}>*</span></label>
           {bookings.length === 0 ? (

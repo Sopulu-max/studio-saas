@@ -89,8 +89,7 @@ function RecordModal({
       background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(3px)',
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px',
     }}>
-      <div style={{
-        background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '16px',
+      <div className="glass-panel" style={{
         padding: '1.5rem', width: '100%', maxWidth: '400px',
         boxShadow: '0 8px 40px rgba(0,0,0,.18)',
       }}>
@@ -232,7 +231,7 @@ export default function RecordsTable({
         </button>
         <div style={{ flex: 1 }} />
         <button onClick={() => setModal('add')}
-          style={{ padding: '7px 16px', fontSize: '13px', background: 'var(--surface)', color: 'var(--text-2)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer' }}>
+          className="glass-panel" style={{ padding: '7px 16px', fontSize: '13px', color: 'var(--text-2)', cursor: 'pointer' }}>
           + Add record
         </button>
       </div>
@@ -256,11 +255,11 @@ export default function RecordsTable({
 
       {/* Table */}
       {total === 0 ? (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '2rem', textAlign: 'center' }}>
+        <div className="glass-panel" style={{ padding: '2rem', textAlign: 'center' }}>
           <p style={{ fontSize: '14px', color: 'var(--text-4)', margin: 0 }}>No records found for this period.</p>
         </div>
       ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+        <div className="glass-panel" style={{ overflow: 'hidden' }}>
           {/* Table header */}
           <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1.2fr 1fr 1fr 0.7fr 0.8fr 80px', gap: '0', borderBottom: '1px solid var(--line)', padding: '10px 16px' }} className="att-row">
             {['Staff', 'Date', 'Check-in', 'Check-out', 'Duration', 'Status', ''].map(h => (

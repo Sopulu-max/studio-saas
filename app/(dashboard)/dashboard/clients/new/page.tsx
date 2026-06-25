@@ -71,7 +71,7 @@ export default function NewClientPage() {
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Create a new client record</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
 
         {/* Name */}
         <div style={{ marginBottom: '16px', position: 'relative' }}>
@@ -124,9 +124,8 @@ export default function NewClientPage() {
 
         {/* Live match suggestions */}
         {(searchQuery.length >= 2 && (matches.length > 0 || searching)) && !error && (
-          <div style={{
-            marginBottom: '16px', border: '1px solid var(--line)', borderRadius: '10px', overflow: 'hidden',
-            background: 'var(--surface)',
+          <div className="glass-panel" style={{
+            marginBottom: '16px', overflow: 'hidden',
           }}>
             <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--line-inner)', display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)' }}>
@@ -175,7 +174,7 @@ export default function NewClientPage() {
           <button onClick={handleSubmit} disabled={loading} style={{ flex: 1, padding: '10px' }}>
             {loading ? 'Saving…' : 'Save client'}
           </button>
-          <button onClick={() => router.back()} style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer', fontSize: '14px' }}>
+          <button onClick={() => router.back()} className="glass-panel hover-lift" style={{ padding: '10px 16px', color: 'var(--text-2)', cursor: 'pointer', fontSize: '14px' }}>
             Cancel
           </button>
         </div>

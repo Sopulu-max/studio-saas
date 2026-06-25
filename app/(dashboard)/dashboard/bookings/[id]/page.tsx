@@ -66,16 +66,16 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
           </span>
           <Link
             href={`/dashboard/bookings/${id}/edit`}
-            className="hover-lift"
-            style={{ fontSize: '13px', padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+            className="glass-panel hover-lift"
+            style={{ fontSize: '13px', padding: '6px 16px', color: 'var(--text-2)', textDecoration: 'none' }}
           >
             Edit Booking
           </Link>
           <Link
             href={buildSignedPublicLink('summary', id)}
             target="_blank"
-            className="hover-lift"
-            style={{ fontSize: '13px', padding: '6px 16px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+            className="glass-panel hover-lift"
+            style={{ fontSize: '13px', padding: '6px 16px', color: 'var(--text-2)', textDecoration: 'none' }}
           >
             Client Portal ↗
           </Link>

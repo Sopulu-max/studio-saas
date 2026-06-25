@@ -110,7 +110,7 @@ export default function SettingsForm({
     <div style={{ maxWidth: '500px' }}>
 
       {/* Logo */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>STUDIO LOGO</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div
@@ -157,7 +157,7 @@ export default function SettingsForm({
       </div>
 
       {/* Studio info */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>STUDIO INFO</p>
 
         <div style={{ marginBottom: '14px' }}>
@@ -197,7 +197,7 @@ export default function SettingsForm({
       </div>
 
       {/* Booking link / slug */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 4px' }}>BOOKING PAGE</p>
         <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 16px' }}>
           Your public URL — share this with clients so they can request sessions.
@@ -239,7 +239,7 @@ export default function SettingsForm({
       </div>
 
       {/* Timezone */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '16px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '16px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>TIMEZONE</p>
         <div>
           <label style={labelStyle}>Studio timezone</label>

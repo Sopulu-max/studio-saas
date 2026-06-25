@@ -46,7 +46,7 @@ function TabNav({ active }: { active: string }) {
     { key: 'needs-action', label: 'Needs action' },
   ]
   return (
-    <div style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '3px', width: 'fit-content' }}>
+    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
       {tabs.map(t => (
         <Link key={t.key} href={tabUrl(t.key)} style={{
           padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
@@ -234,7 +234,7 @@ export default async function SessionsPage({
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
         <h1 style={{ fontSize: '22px', fontWeight: '500', margin: 0 }}>Sessions</h1>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <a href="/api/export/sessions" style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)', fontWeight: '500' }}>
+          <a href="/api/export/sessions" className="glass-panel hover-lift" style={{ padding: '8px 14px', fontSize: '13px', color: 'var(--text-2)', textDecoration: 'none', fontWeight: '500' }}>
             Export CSV
           </a>
           <Link href="/dashboard/bookings/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
@@ -619,7 +619,7 @@ export default async function SessionsPage({
                 <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{sDate(s.session_date)}</span>
                 <Link href={`/dashboard/invoices/new?session=${s.booking_id}`}
                   onClick={e => e.stopPropagation()}
-                  style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '3px 10px', border: '1px solid var(--line)', borderRadius: '6px', background: 'var(--surface)', whiteSpace: 'nowrap' }}>
+                  className="glass-panel hover-lift" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '3px 10px', whiteSpace: 'nowrap' }}>
                   Create →
                 </Link>
               </>
@@ -639,7 +639,7 @@ export default async function SessionsPage({
                 <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>{sDate(s.session_date)}</span>
                 <Link href={`/dashboard/contracts/new?session=${s.booking_id}`}
                   onClick={e => e.stopPropagation()}
-                  style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '3px 10px', border: '1px solid var(--line)', borderRadius: '6px', background: 'var(--surface)', whiteSpace: 'nowrap' }}>
+                  className="glass-panel hover-lift" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '3px 10px', whiteSpace: 'nowrap' }}>
                   Create →
                 </Link>
               </>

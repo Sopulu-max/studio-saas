@@ -47,7 +47,7 @@ export default function SessionIntake({ sessionId }: { sessionId: string }) {
   const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+    <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
       <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 4px' }}>QUICK INTAKE</p>
       <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 16px' }}>Create invoice and record payment in one step</p>
 

@@ -42,7 +42,7 @@ export default function SessionServices({ services }: { services: BookedService[
   }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+    <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
       <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>SERVICE FULFILLMENT</p>
         <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{items.length} item{items.length !== 1 ? 's' : ''}</p>

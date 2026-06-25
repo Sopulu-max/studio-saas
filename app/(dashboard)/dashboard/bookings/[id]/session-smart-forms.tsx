@@ -43,7 +43,7 @@ export default function SessionSmartForms({
   if (fieldGroups.length === 0 && extraAnswers.length === 0) return null
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+    <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
       <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>DYNAMIC INTAKE FORMS</p>
       
       {fieldGroups.map((group, i) => (

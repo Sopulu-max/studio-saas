@@ -165,9 +165,8 @@ export default function ContractTemplatesForm({ initial }: { initial: ContractTe
           <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {templates.map((t, i) => (
               <AnimatedItem key={t.template_id} delay={i * 0.05}>
-                <div style={{
+                <div className="glass-panel" style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                  background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px',
                   padding: '12px 1rem', gap: '12px',
                 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -220,7 +219,7 @@ export default function ContractTemplatesForm({ initial }: { initial: ContractTe
       </div>
 
       {/* Template meta */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.25rem', marginBottom: '12px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
           <div>
             <label style={labelStyle}>Template name <span style={{ color: '#e24b4a' }}>*</span></label>
@@ -241,7 +240,7 @@ export default function ContractTemplatesForm({ initial }: { initial: ContractTe
       </div>
 
       {/* Variables reference */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', marginBottom: '12px', overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ marginBottom: '12px', overflow: 'hidden' }}>
         <button
           onClick={() => setVarsOpen(v => !v)}
           style={{
@@ -284,7 +283,7 @@ export default function ContractTemplatesForm({ initial }: { initial: ContractTe
         <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {clauses.map((clause, idx) => (
             <AnimatedItem key={clause._key} delay={idx * 0.05}>
-              <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '1rem' }}>
+              <div className="glass-panel" style={{ padding: '1rem' }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
                   <input
                     type="text"

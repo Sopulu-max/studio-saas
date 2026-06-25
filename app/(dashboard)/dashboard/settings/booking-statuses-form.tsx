@@ -119,10 +119,9 @@ export default function BookingStatusesForm({ initial, staffRoles }: { initial: 
           return (
             <AnimatedItem key={s.value} delay={i * 0.05}>
               {/* Row */}
-              <div style={{
+              <div className="glass-panel" style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '7px 10px', background: 'var(--surface)',
-                border: '1px solid var(--line-inner)',
+                padding: '7px 10px',
                 borderRadius: isExpanded ? '8px 8px 0 0' : '8px',
                 minWidth: 0,
               }}>

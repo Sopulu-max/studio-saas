@@ -55,7 +55,7 @@ function TabNav({ active }: { active: string }) {
     { key: 'by-category', label: 'By category' },
   ]
   return (
-    <div style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '3px', width: 'fit-content' }}>
+    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
       {tabs.map(t => (
         <Link key={t.key} href={tabUrl(t.key)} style={{
           padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
@@ -72,7 +72,7 @@ function StatsStrip({ items }: { items: { label: string; value: string | number;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: '12px', marginBottom: '1.5rem' }}>
       {items.map(item => (
-        <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+        <div key={item.label} className="glass-panel" style={{ padding: '1.1rem 1.25rem' }}>
           <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '500' }}>{item.label}</p>
           <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: item.accent ?? 'var(--text)', lineHeight: 1.1 }}>{item.value}</p>
         </div>
@@ -172,7 +172,7 @@ export default async function EquipmentPage({
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>{pct.toFixed(0)}%</span>
                   </div>
-                  <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                       <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
                     </div>
@@ -238,7 +238,7 @@ export default async function EquipmentPage({
                     </div>
                     <span style={{ fontSize: '11px', color: 'var(--text-4)' }}>{pct.toFixed(0)}%</span>
                   </div>
-                  <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                       <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
                     </div>
@@ -310,7 +310,7 @@ export default async function EquipmentPage({
       {equipLayout === 'chart-donut' && (() => {
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '16px' }}>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+            <div className="glass-panel" style={{ padding: '1.25rem' }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By status</p>
               <DonutChart title="items" segments={[
                 { label: 'Available',    value: stats.available,   color: '#3b6d11' },
@@ -319,7 +319,7 @@ export default async function EquipmentPage({
                 { label: 'Retired',      value: stats.total - stats.available - stats.in_use - stats.maintenance, color: '#a32d2d' },
               ]} />
             </div>
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+            <div className="glass-panel" style={{ padding: '1.25rem' }}>
               <p style={{ fontSize: '12px', fontWeight: '600', color: 'var(--text-3)', margin: '0 0 1.25rem', textTransform: 'uppercase', letterSpacing: '.06em' }}>By category</p>
               <DonutChart title="items" segments={
                 Object.entries(stats.by_category).map(([cat, cnt], idx) => {
@@ -350,7 +350,7 @@ export default async function EquipmentPage({
               return (
                 <AnimatedItem key={item.equipment_id} delay={i * 0.05}>
                   <Link href={`/dashboard/equipment/${item.equipment_id}`}
-                    style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
+                    className="glass-panel hover-lift" style={{ overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
                     <div style={{ height: '5px', background: st.color }} />
                     <div style={{ padding: '1rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
@@ -387,7 +387,7 @@ export default async function EquipmentPage({
       {/* ── List view ── */}
       {equipLayout === 'list' && equipment.length > 0 && (
         <>
-          <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Name</span><span>Category</span><span>Serial no.</span><span>Status</span>
             </div>
@@ -396,7 +396,7 @@ export default async function EquipmentPage({
               const st     = STATUS_COLORS[item.status ?? ''] ?? STATUS_COLORS.available
               return (
                 <AnimatedItem key={item.equipment_id} delay={i * 0.05}>
-                  <Link href={`/dashboard/equipment/${item.equipment_id}`} style={{
+                  <Link href={`/dashboard/equipment/${item.equipment_id}`} className="hover-lift" style={{
                     display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
                     padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                     borderBottom: i < equipment.length - 1 ? '1px solid var(--line-inner)' : 'none',

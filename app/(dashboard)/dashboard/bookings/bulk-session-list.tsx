@@ -64,7 +64,7 @@ export default function BulkSessionList({ sessions }: { sessions: SessionRow[] }
 
   return (
     <div style={{ position: 'relative' }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ display: 'grid', gridTemplateColumns: '36px 2fr 1fr 1fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
           <input type="checkbox" checked={allChecked} onChange={toggleAll}

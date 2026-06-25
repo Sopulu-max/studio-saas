@@ -88,7 +88,7 @@ export default function NewOrderForm({
       </div>
 
       {/* Session link */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <div>
           <label style={labelStyle}>Link to session <span style={{ color: 'var(--text-4)', fontSize: '12px' }}>(optional)</span></label>
           <SearchableSelect
@@ -109,7 +109,7 @@ export default function NewOrderForm({
       </div>
 
       {/* Line items */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>ORDER ITEMS</p>
 
         {/* Header */}
@@ -182,7 +182,7 @@ export default function NewOrderForm({
       </div>
 
       {/* Notes */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <label style={labelStyle}>Notes <span style={{ color: 'var(--text-4)', fontSize: '12px' }}>(optional)</span></label>
         <textarea
           value={notes} onChange={e => setNotes(e.target.value)}

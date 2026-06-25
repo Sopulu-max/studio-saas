@@ -106,10 +106,9 @@ export default function StaffRolesForm({ initial }: { initial: StaffRoleConfig[]
           const isColorOpen = expandedIdx === i
           return (
             <AnimatedItem key={r.value} delay={i * 0.05}>
-              <div style={{
+              <div className="glass-panel" style={{
                 display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '7px 10px', background: 'var(--surface)',
-                border: '1px solid var(--line-inner)',
+                padding: '7px 10px',
                 borderRadius: isColorOpen ? '8px 8px 0 0' : '8px',
                 minWidth: 0,
               }}>

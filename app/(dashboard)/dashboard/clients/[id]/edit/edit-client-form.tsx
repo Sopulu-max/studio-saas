@@ -63,7 +63,7 @@ export default function EditClientForm({
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Update contact details</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         {fields.map((field) => (
           <div key={field.key} style={{ marginBottom: '16px' }}>
             <label style={{ fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }}>
@@ -100,7 +100,7 @@ export default function EditClientForm({
           <button
             type="button"
             onClick={() => router.push(`/dashboard/clients/${clientId}`)}
-            style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}
+            className="glass-panel" style={{ padding: '10px 16px', color: 'var(--text-2)' }}
           >
             Cancel
           </button>

@@ -71,7 +71,7 @@ export default function EditEquipmentForm({
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Update details for {item.name}</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Name <span style={{ color: '#e24b4a' }}>*</span></label>
           <input type="text" value={form.name} onChange={e => update('name', e.target.value)}

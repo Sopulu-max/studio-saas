@@ -97,7 +97,7 @@ export default function InvoiceActions({
 
   if (currentStatus === 'cancelled') {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 16px' }}>This invoice has been cancelled.</p>
         <button onClick={() => handleStatusChange('draft')} disabled={loading}
           style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', background: 'transparent', color: 'var(--text-2)', cursor: 'pointer' }}>
@@ -108,7 +108,7 @@ export default function InvoiceActions({
   }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+    <div className="glass-panel" style={{ padding: '1.5rem' }}>
       <p style={{ fontSize: '13px', fontWeight: '500', margin: '0 0 10px', color: 'var(--text-3)' }}>UPDATE STATUS</p>
 
       {/* Status picker */}
@@ -148,7 +148,7 @@ export default function InvoiceActions({
               value={sendMethod}
               onChange={e => setSendMethod(e.target.value as 'email' | 'whatsapp' | 'both')}
               disabled={loading}
-              style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px 0 0 8px', border: '1px solid var(--line)', background: 'var(--surface)', cursor: 'pointer', borderRight: 'none' }}
+              className="glass-panel hover-lift" style={{ padding: '8px 12px', fontSize: '13px', borderRadius: '8px 0 0 8px', cursor: 'pointer', borderRight: 'none' }}
             >
               <option value="email">Email</option>
               <option value="whatsapp">WhatsApp</option>

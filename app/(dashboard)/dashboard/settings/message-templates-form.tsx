@@ -58,7 +58,7 @@ export default function MessageTemplatesForm({ initial }: { initial: MessageTemp
   const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+    <div className="glass-panel" style={{ padding: '1.5rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <div>
           <h2 style={{ fontSize: '15px', fontWeight: '500', margin: '0 0 4px' }}>Message Templates</h2>
@@ -75,7 +75,7 @@ export default function MessageTemplatesForm({ initial }: { initial: MessageTemp
       </div>
 
       {editingId && (
-        <form onSubmit={handleSave} style={{ background: 'var(--surface-2)', padding: '16px', borderRadius: '8px', marginBottom: '16px', border: '1px solid var(--line)' }}>
+        <form onSubmit={handleSave} className="glass-panel" style={{ background: 'var(--surface-2)', padding: '16px', marginBottom: '16px' }}>
           <div style={{ marginBottom: '16px' }}>
             <label style={labelStyle}>Title</label>
             <input 
@@ -96,7 +96,7 @@ export default function MessageTemplatesForm({ initial }: { initial: MessageTemp
               placeholder="e.g. Hello! Here is the link to our studio guide..."
               style={{ ...inputStyle, resize: 'vertical' }}
             />
-            <div style={{ marginTop: '8px', padding: '8px', background: 'var(--surface)', border: '1px solid var(--line-inner)', borderRadius: '6px' }}>
+            <div className="glass-panel" style={{ marginTop: '8px', padding: '8px' }}>
               <p style={{ fontSize: '12px', fontWeight: '500', margin: '0 0 4px', color: 'var(--text-3)' }}>Available Variables:</p>
               <ul style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, paddingLeft: '16px' }}>
                 <li><code>{'{'}{'{'}studio_name{'}'}{'}'}</code> - Your studio's name</li>
@@ -122,7 +122,7 @@ export default function MessageTemplatesForm({ initial }: { initial: MessageTemp
         <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {initial.map((template, i) => (
             <AnimatedItem key={template.template_id} delay={i * 0.05}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px', border: '1px solid var(--line-inner)', borderRadius: '8px', background: 'var(--surface)' }}>
+              <div className="glass-panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '12px' }}>
                 <div>
                   <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 4px' }}>{template.title}</p>
                   <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, whiteSpace: 'pre-wrap' }}>{template.content}</p>

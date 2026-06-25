@@ -325,7 +325,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
 
   const inputStyle  = { width: '100%', boxSizing: 'border-box' as const }
   const labelStyle  = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }
+  const sectionStyle = { padding: '1.5rem', marginBottom: '12px' }
 
   const activeSessionType = config.sessionTypes.find(t => t.value === form.session_type)
   const isOutdoor         = activeSessionType?.is_outdoor ?? false
@@ -338,7 +338,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Record a studio, outdoor, or event shoot</p>
       </div>
 
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <div style={{ marginBottom: 0 }}>
           <label style={labelStyle}>Session type</label>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
@@ -361,7 +361,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         </div>
       </div>
 
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Client <span style={{ color: '#e24b4a' }}>*</span></label>
           <ClientField
@@ -405,7 +405,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
         )}
       </div>
 
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>
           PROJECT DETAILS
         </p>
@@ -513,7 +513,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
 
       {/* Team */}
       {(requiredStaff.needsPhotoTeam || requiredStaff.needsVideoTeam) && (
-        <div style={sectionStyle}>
+        <div className="glass-panel" style={sectionStyle}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>TEAM / CREW</p>
           {staff.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
@@ -603,7 +603,7 @@ export default function NewSessionForm({ clients, packages, staff, services }: {
       )}
 
       {/* Notes / Project brief */}
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <label style={labelStyle}>Notes</label>
         <textarea
           value={form.notes}

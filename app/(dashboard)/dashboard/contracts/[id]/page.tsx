@@ -56,7 +56,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
           {contract.status === 'draft' && (
             <Link
               href={`/dashboard/contracts/${id}/edit`}
-              style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+              className="glass-panel hover-lift" style={{ fontSize: '13px', padding: '5px 14px', color: 'var(--text-2)', textDecoration: 'none' }}
             >
               Edit
             </Link>
@@ -64,7 +64,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
         {contract.client_id ? (
           <Link href={`/dashboard/clients/${contract.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
@@ -118,7 +118,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
         )}
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '.08em', color: 'var(--text-4)', margin: '0 0 20px', textTransform: 'uppercase' }}>
           Contract content
         </p>

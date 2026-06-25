@@ -45,13 +45,13 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </div>
         <Link
           href={`/dashboard/clients/${id}/edit`}
-          style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)', flexShrink: 0 }}
+          className="glass-panel hover-lift" style={{ fontSize: '13px', padding: '6px 14px', color: 'var(--text-2)', textDecoration: 'none', flexShrink: 0 }}
         >
           Edit
         </Link>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CONTACT</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
@@ -71,7 +71,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>FINANCIALS</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
           <div>
@@ -101,7 +101,7 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         )}
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>SESSIONS</p>
           <Link href={`/dashboard/bookings/new`} style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>

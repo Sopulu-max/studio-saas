@@ -311,7 +311,7 @@ export default function SessionActions({
   // ── Cancelled ─────────────────────────────────────────────────────────────
   if (isCancellation) {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textAlign: 'center' }}>
+      <div className="glass-panel" style={{ padding: '1.25rem', textAlign: 'center' }}>
         <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>This session has been cancelled.</p>
       </div>
     )
@@ -320,7 +320,7 @@ export default function SessionActions({
   // ── Selection stage ────────────────────────────────────────────────────────
   if (isSelectionStage) {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>RECORD SELECTIONS</p>
         {outfitsCount != null && (
           <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
@@ -399,7 +399,7 @@ export default function SessionActions({
   // ── Terminal success ───────────────────────────────────────────────────────
   if (isTerminal) {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <p style={{ fontSize: '13px', color: '#3b6d11', margin: '0 0 16px' }}>{currentStatusCfg.label} ✓</p>
 
         <StatusPicker
@@ -424,7 +424,7 @@ export default function SessionActions({
 
   // ── All other statuses ─────────────────────────────────────────────────────
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+    <div className="glass-panel" style={{ padding: '1.5rem' }}>
       <StatusPicker
         currentStatus={currentStatus}
         statuses={selectableStatuses}

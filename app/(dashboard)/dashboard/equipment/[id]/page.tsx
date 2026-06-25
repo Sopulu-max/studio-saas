@@ -73,7 +73,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
           </span>
           <Link
             href={`/dashboard/equipment/${id}/edit`}
-            style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+            className="glass-panel hover-lift" style={{ fontSize: '13px', padding: '5px 14px', color: 'var(--text-2)', textDecoration: 'none' }}
           >
             Edit
           </Link>
@@ -99,7 +99,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
       )}
 
       {/* Details card */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>DETAILS</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
@@ -143,7 +143,7 @@ export default async function EquipmentDetailPage({ params }: { params: Promise<
 
       {/* Checkout history */}
       {checkouts.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginTop: '12px' }}>
+        <div className="glass-panel" style={{ overflow: 'hidden', marginTop: '12px' }}>
           <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
             <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>CHECKOUT HISTORY</p>
           </div>

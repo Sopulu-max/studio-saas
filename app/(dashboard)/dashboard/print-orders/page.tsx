@@ -83,7 +83,7 @@ function TabNav({ active }: { active: string }) {
     { key: 'revenue', label: 'Revenue' },
   ]
   return (
-    <div style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '3px', width: 'fit-content' }}>
+    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
       {tabs.map(t => (
         <Link key={t.key} href={tabUrl(t.key)} style={{
           padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
@@ -100,7 +100,7 @@ function StatsStrip({ items }: { items: { label: string; value: string | number;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: '12px', marginBottom: '1.5rem' }}>
       {items.map(item => (
-        <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+        <div key={item.label} className="glass-panel" style={{ padding: '1.1rem 1.25rem' }}>
           <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '500' }}>{item.label}</p>
           <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: item.accent ?? 'var(--text)', lineHeight: 1.1 }}>{item.value}</p>
         </div>
@@ -125,7 +125,7 @@ function OrderRow({ o, i, isLast }: { o: PrintOrderRow; i: number; isLast: boole
   const total   = orderTotal(items)
   const booking = o.bookings
   return (
-    <Link key={o.order_id} href={`/dashboard/print-orders/${o.order_id}`} style={{
+    <Link key={o.order_id} href={`/dashboard/print-orders/${o.order_id}`} className="hover-lift" style={{
       display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr',
       padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
       borderBottom: !isLast ? '1px solid var(--line-inner)' : 'none',
@@ -218,7 +218,7 @@ export default async function PrintOrdersPage({
         {!orders.length ? (
           <EmptyState message="No active orders" sub="All print orders have been collected or cancelled" />
         ) : (
-          <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <div className="glass-panel" style={{ overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Session</span><span>Ordered</span><span>Items</span><span>Total</span><span>Status</span>
             </div>
@@ -281,7 +281,7 @@ export default async function PrintOrdersPage({
                       {group.orders.length} order{group.orders.length !== 1 ? 's' : ''} · ₦{group.total.toLocaleString()}
                     </p>
                   </div>
-                  <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div className="glass-panel" style={{ overflow: 'hidden' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                       <span>Session</span><span>Date</span><span>Items</span><span>Total</span><span>Status</span>
                     </div>
@@ -350,7 +350,7 @@ export default async function PrintOrdersPage({
           sub={status ? 'Try a different status filter' : 'Create your first order to track prints, albums, and canvases'}
         />
       ) : (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+        <div className="glass-panel" style={{ overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
             <span>Session</span><span>Date</span><span>Items</span><span>Total</span><span>Status</span>
           </div>

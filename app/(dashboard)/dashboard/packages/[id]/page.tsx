@@ -117,7 +117,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
       )}
 
       {/* Details */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>DETAILS</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
@@ -140,7 +140,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
       </div>
 
       {/* What's included (text bullets) */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>WHAT&apos;S INCLUDED</p>
         </div>
@@ -160,7 +160,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
 
       {/* Typed deliverables */}
       {typedInclusions.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+        <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
           <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)' }}>
             <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>DELIVERABLES</p>
           </div>
@@ -185,7 +185,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
 
       {/* Catalog services */}
       {pkgServices.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+        <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
           <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>CATALOG SERVICES</p>
             <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>
@@ -258,7 +258,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
       )}
 
       {/* Add-ons */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>ADD-ONS</p>
           <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{pkg.package_addons?.length ?? 0} total</p>
@@ -288,7 +288,7 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
       {sections.length > 0 && sections.map((sec) => {
         const videoInfo = parseVideo(sec.video_url)
         return (
-          <div key={sec.section_id} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+          <div key={sec.section_id} className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
             {videoInfo ? (
               <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden', background: '#000' }}>
                 {videoInfo.type === 'iframe' ? (

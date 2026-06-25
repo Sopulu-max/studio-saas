@@ -74,7 +74,7 @@ export default function EditOrderForm({
       </div>
 
       {/* Line items */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>ORDER ITEMS</p>
 
         <div style={{ display: 'grid', gridTemplateColumns: '3fr 1.2fr 1fr 1fr 32px', gap: '8px', marginBottom: '8px', fontSize: '12px', color: 'var(--text-4)' }}>
@@ -123,7 +123,7 @@ export default function EditOrderForm({
       </div>
 
       {/* Notes */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <label style={labelStyle}>Notes <span style={{ color: 'var(--text-4)', fontSize: '12px' }}>(optional)</span></label>
         <textarea value={notes} onChange={e => setNotes(e.target.value)}
           placeholder="Paper type, finish, delivery instructions…"

@@ -22,13 +22,13 @@ export default async function AttendancePage() {
         <div style={{ display: 'flex', gap: '8px' }}>
           <Link
             href="/dashboard/attendance/records"
-            style={{ fontSize: '13px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+            className="glass-panel" style={{ fontSize: '13px', padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none' }}
           >
             View records
           </Link>
           <Link
             href="/dashboard/staff"
-            style={{ fontSize: '13px', padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+            className="glass-panel" style={{ fontSize: '13px', padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none' }}
           >
             Manage staff
           </Link>

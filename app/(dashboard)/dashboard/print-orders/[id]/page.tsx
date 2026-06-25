@@ -78,7 +78,7 @@ export default async function PrintOrderDetailPage({
           {typedOrder.status !== 'collected' && typedOrder.status !== 'cancelled' && (
             <Link
               href={`/dashboard/print-orders/${id}/edit`}
-              style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+              className="glass-panel hover-lift" style={{ fontSize: '13px', padding: '5px 14px', color: 'var(--text-2)', textDecoration: 'none' }}
             >
               Edit
             </Link>
@@ -88,7 +88,7 @@ export default async function PrintOrderDetailPage({
 
       {/* Client & session */}
       {booking && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+        <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CLIENT</p>
           {booking.clients?.client_id ? (
             <Link href={`/dashboard/clients/${booking.clients.client_id}`} style={{ fontSize: '15px', fontWeight: '500', display: 'block', margin: '0 0 4px', color: 'inherit', textDecoration: 'none' }}>
@@ -116,7 +116,7 @@ export default async function PrintOrderDetailPage({
       )}
 
       {/* Order items */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 16px' }}>ITEMS</p>
 
         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
@@ -152,7 +152,7 @@ export default async function PrintOrderDetailPage({
 
       {/* Notes */}
       {typedOrder.notes && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+        <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 8px' }}>NOTES</p>
           <p style={{ fontSize: '14px', color: 'var(--text-2)', margin: 0, lineHeight: '1.6' }}>{typedOrder.notes}</p>
         </div>

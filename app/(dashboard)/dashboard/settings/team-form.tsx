@@ -117,10 +117,9 @@ export default function TeamForm({ initial }: { initial: StaffMember[] }) {
         <AnimatedList style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
           {members.map((m, i) => (
             <AnimatedItem key={m.staff_id} delay={i * 0.05}>
-              <div style={{
+              <div className="glass-panel" style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '9px 12px', background: 'var(--surface)',
-                border: '1px solid var(--line-inner)', borderRadius: '8px',
+                padding: '9px 12px'
               }}>
                 {/* Avatar initials */}
                 <div style={{

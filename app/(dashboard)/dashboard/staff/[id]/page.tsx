@@ -74,14 +74,14 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
           })}
           <Link
             href={`/dashboard/staff/${id}/edit`}
-            style={{ fontSize: '13px', padding: '5px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', background: 'var(--surface)' }}
+            className="glass-panel hover-lift" style={{ fontSize: '13px', padding: '5px 14px', color: 'var(--text-2)', textDecoration: 'none' }}
           >
             Edit
           </Link>
         </div>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>DETAILS</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
@@ -100,7 +100,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
       </div>
 
       {/* Working days */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>WORKING DAYS</p>
         {member.working_days && member.working_days.length > 0 ? (
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
@@ -125,7 +125,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
 
       {/* Recent check-ins */}
       {recentCheckins && recentCheckins.length > 0 && (
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+        <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
           <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>RECENT CHECK-INS</p>
             <Link href="/dashboard/attendance" style={{ fontSize: '12px', color: 'var(--text-4)', textDecoration: 'none' }}>
@@ -159,7 +159,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
       {(() => {
         if (!assignments?.length) {
           return (
-            <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '12px' }}>
+            <div className="glass-panel" style={{ padding: '1rem 1.25rem', marginBottom: '12px' }}>
               <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No sessions assigned yet</p>
             </div>
           )
@@ -187,7 +187,7 @@ export default async function StaffDetailPage({ params }: { params: Promise<{ id
         return (
           <>
             {roles.map(role => (
-              <div key={role} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+              <div key={role} className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
                 <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>
                     {ROLE_LABELS[role] ?? role.replace('_', ' ').toUpperCase()}

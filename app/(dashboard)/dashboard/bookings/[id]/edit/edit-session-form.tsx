@@ -248,7 +248,7 @@ export default function EditSessionForm({
 
   const inputStyle   = { width: '100%', boxSizing: 'border-box' as const }
   const labelStyle   = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
-  const sectionStyle = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }
+  const sectionStyle = { padding: '1.5rem', marginBottom: '12px' }
 
   const isOutdoor      = isOutdoorType(form.session_type)
   const isEvent        = isEventType(form.session_type)
@@ -261,7 +261,7 @@ export default function EditSessionForm({
       </div>
 
       {/* Session type */}
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <div style={{ marginBottom: 0 }}>
           <label style={labelStyle}>Session type</label>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' as const }}>
@@ -285,7 +285,7 @@ export default function EditSessionForm({
       </div>
 
       {/* Client + date */}
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Client</label>
           <ClientField
@@ -330,7 +330,7 @@ export default function EditSessionForm({
       </div>
 
       {/* Pricing specs + package */}
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>
           PRICING SPECS
         </p>
@@ -417,7 +417,7 @@ export default function EditSessionForm({
       </div>
       {/* Team */}
       {(requiredStaff.needsPhotoTeam || requiredStaff.needsVideoTeam) && (
-        <div style={sectionStyle}>
+        <div className="glass-panel" style={sectionStyle}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 14px' }}>TEAM / CREW</p>
           {staff.length === 0 ? (
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>
@@ -507,7 +507,7 @@ export default function EditSessionForm({
       )}
 
       {/* Notes / Project brief */}
-      <div style={sectionStyle}>
+      <div className="glass-panel" style={sectionStyle}>
         <label style={labelStyle}>Notes</label>
         <textarea
           value={form.notes}

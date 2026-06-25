@@ -34,7 +34,7 @@ export default function ServiceActions({
   }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem' }}>
+    <div className="glass-panel" style={{ padding: '1.25rem' }}>
       <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>ACTIONS</p>
 
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>

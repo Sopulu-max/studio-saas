@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { sessionName } from '@/lib/session-title'
 import InlineStatusSelect from '@/components/inline-status-select'
+import { cn } from '@/lib/utils'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -184,7 +185,7 @@ function getInitialLayout(): LayoutItem[] {
 
 // ─── Shared styles ────────────────────────────────────────────────────────────
 
-const card  = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px' } as const
+
 const sxn   = { fontSize: '12px', fontWeight: '700' as const, color: 'var(--text-2)', letterSpacing: '.06em', textTransform: 'uppercase' as const, margin: 0 }
 const badge = (bg: string, fg: string): React.CSSProperties => ({
   display: 'inline-block', fontSize: '11px', padding: '2px 8px',
@@ -395,7 +396,7 @@ export default function DashboardWidgets(props: DashboardProps) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
         <style>{`@media (max-width: 680px) { .kpi-grid { grid-template-columns: repeat(2,1fr) !important; } }`}</style>
         {kpis.map((k, i) => (
-          <Link key={i} href={k.href} className={i === 0 ? 'kpi-grid' : ''} style={{ ...card, padding: '1.1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
+          <Link key={i} href={k.href} className={cn("glass-panel hover-lift", i === 0 && 'kpi-grid')} style={{ padding: '1.1rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'block' }}>
             <p style={{ ...sxn, marginBottom: '10px' }}>{k.label}</p>
             <p style={{ fontSize: '28px', fontWeight: 700, margin: '0 0 1px', letterSpacing: '-0.02em', lineHeight: 1, color: k.accentColor ?? 'var(--text)' }}>
               {k.primary}
@@ -434,7 +435,7 @@ export default function DashboardWidgets(props: DashboardProps) {
     const todayCount = occs.filter(o => daysUntil(o.event_date) === 0).length
 
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
@@ -562,7 +563,7 @@ export default function DashboardWidgets(props: DashboardProps) {
     const statusPills = props.activeStatuses.filter(st  => (todayByStatus[st.value] ?? 0) > 0)
 
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>Today</p>
           <span style={{ fontSize: '13px', color: 'var(--text-4)' }}>
@@ -654,7 +655,7 @@ export default function DashboardWidgets(props: DashboardProps) {
     const hasTodayPayments = props.todayPaymentsList.length > 0
 
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ ...sxn, margin: 0 }}>Revenue</p>
@@ -761,7 +762,7 @@ export default function DashboardWidgets(props: DashboardProps) {
       g.sessions.push(s)
     }
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>Next 3 days</p>
           <Link href="/dashboard/bookings" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>All sessions →</Link>
@@ -833,7 +834,7 @@ export default function DashboardWidgets(props: DashboardProps) {
     const total = props.pipelineSessions.length
 
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>Active pipeline</p>
           <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{total} active</span>
@@ -943,7 +944,7 @@ export default function DashboardWidgets(props: DashboardProps) {
 
     const SHOW = 10
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
           <div>
             <p style={{ ...sxn, marginBottom: totalRemaining > 0 ? '3px' : 0 }}>Outstanding invoices</p>
@@ -1023,14 +1024,14 @@ export default function DashboardWidgets(props: DashboardProps) {
   function renderStaff() {
     if (!props.staffToday.length) {
       return (
-        <div style={{ ...card, padding: '1.25rem' }}>
+        <div className="glass-panel" style={{ padding: '1.25rem' }}>
           <p style={{ ...sxn, marginBottom: '8px' }}>Staff today</p>
           <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No staff scheduled today</p>
         </div>
       )
     }
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>Staff today</p>
           <Link href="/dashboard/attendance" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none' }}>Full board →</Link>
@@ -1104,7 +1105,7 @@ export default function DashboardWidgets(props: DashboardProps) {
     const todayClients = props.todayClientList
 
     return (
-      <div style={{ ...card, overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         {/* Header */}
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={sxn}>Clients</p>

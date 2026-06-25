@@ -173,15 +173,15 @@ export default async function CalendarPage({
                 Week
               </span>
             </div>
-            <Link href={prevWeekUrl}  style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>←</Link>
-            <Link href={todayWeekUrl} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '13px', background: 'var(--surface)' }}>Today</Link>
-            <Link href={nextWeekUrl}  style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>→</Link>
+            <Link href={prevWeekUrl}  className="glass-panel hover-lift" style={{ padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px' }}>←</Link>
+            <Link href={todayWeekUrl} className="glass-panel hover-lift" style={{ padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none', fontSize: '13px' }}>Today</Link>
+            <Link href={nextWeekUrl}  className="glass-panel hover-lift" style={{ padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px' }}>→</Link>
             <Link href="/dashboard/bookings/new" style={{ padding: '7px 16px', borderRadius: '8px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}>New session</Link>
           </div>
         </div>
 
         {/* Week grid */}
-        <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+        <div className="glass-panel" style={{ overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
 
             {/* Day column headers */}
@@ -253,7 +253,7 @@ export default async function CalendarPage({
                                     {typeCfg.label}
                                   </span>
                                   {s.shoot_type && (
-                                    <span style={{ fontSize: '10px', padding: '1px 6px', borderRadius: '10px', background: 'var(--surface)', color: 'var(--text-3)', border: '1px solid var(--line-inner)', whiteSpace: 'nowrap' as const }}>
+                                    <span className="glass-panel" style={{ fontSize: '10px', padding: '1px 6px', color: 'var(--text-3)', whiteSpace: 'nowrap' as const }}>
                                       {s.shoot_type}
                                     </span>
                                   )}
@@ -394,15 +394,15 @@ export default async function CalendarPage({
               Week
             </Link>
           </div>
-          <Link href={prevUrl} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>←</Link>
-          <Link href={monthUrl(now.getFullYear(), now.getMonth() + 1)} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '13px', background: 'var(--surface)' }}>Today</Link>
-          <Link href={nextUrl} style={{ padding: '7px 14px', borderRadius: '8px', border: '1px solid var(--line)', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px', background: 'var(--surface)' }}>→</Link>
+          <Link href={prevUrl} className="glass-panel hover-lift" style={{ padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px' }}>←</Link>
+          <Link href={monthUrl(now.getFullYear(), now.getMonth() + 1)} className="glass-panel hover-lift" style={{ padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none', fontSize: '13px' }}>Today</Link>
+          <Link href={nextUrl} className="glass-panel hover-lift" style={{ padding: '7px 14px', color: 'var(--text-2)', textDecoration: 'none', fontSize: '14px' }}>→</Link>
           <Link href="/dashboard/bookings/new" style={{ padding: '7px 16px', borderRadius: '8px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontSize: '13px', fontWeight: '500' }}>New session</Link>
         </div>
       </div>
 
       {/* Calendar grid */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         {/* Day name headers */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderBottom: '1px solid var(--line-inner)' }}>
           {DAY_NAMES.map(d => (

@@ -67,7 +67,7 @@ export default function ContractActions({
 
   if (currentStatus === 'void') {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: '0 0 16px' }}>This contract has been voided.</p>
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
           <button onClick={() => handleStatus('draft')} disabled={loading}
@@ -86,7 +86,7 @@ export default function ContractActions({
   const unchanged = selectedStatus === currentStatus
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+    <div className="glass-panel" style={{ padding: '1.5rem' }}>
       {/* Status picker */}
       <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 10px' }}>UPDATE STATUS</p>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap' as const }}>

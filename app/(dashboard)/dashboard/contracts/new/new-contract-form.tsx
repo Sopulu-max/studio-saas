@@ -162,7 +162,7 @@ export default function NewContractForm({
 
   const inputStyle  = { width: '100%', boxSizing: 'border-box' as const }
   const labelStyle  = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
-  const cardStyle   = { background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }
+  const cardStyle   = { padding: '1.5rem', marginBottom: '12px' }
 
   return (
     <div style={{ maxWidth: '680px' }}>
@@ -172,7 +172,7 @@ export default function NewContractForm({
       </div>
 
       {/* Booking + template selectors */}
-      <div style={cardStyle}>
+      <div className="glass-panel" style={cardStyle}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Booking <span style={{ color: '#e24b4a' }}>*</span></label>
           {bookings.length === 0 ? (
@@ -241,7 +241,7 @@ export default function NewContractForm({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           {clauses.map((clause, idx) => (
-            <div key={clause._key} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '1rem' }}>
+            <div key={clause._key} className="glass-panel" style={{ padding: '1rem' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', alignItems: 'center' }}>
                 <input
                   type="text"

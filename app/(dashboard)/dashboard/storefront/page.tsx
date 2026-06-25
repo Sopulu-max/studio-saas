@@ -34,9 +34,9 @@ export default async function StorefrontPage() {
           href={publicLink} 
           target="_blank" 
           rel="noopener noreferrer"
+          className="glass-panel hover-lift"
           style={{ 
-            padding: '8px 16px', fontSize: '13px', background: 'var(--surface)', 
-            color: 'var(--text)', border: '1px solid var(--line)', borderRadius: '8px', 
+            padding: '8px 16px', fontSize: '13px', color: 'var(--text)', 
             textDecoration: 'none', fontWeight: '500'
           }}
         >

@@ -35,7 +35,7 @@ export default function StorefrontForm({ studio, staff }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '48px', alignItems: 'center' }}>
       {/* Top: Form */}
       <div style={{ width: '100%', maxWidth: '600px' }}>
-        <form onSubmit={handleSave} style={{ background: 'var(--surface)', padding: '24px', borderRadius: '16px', border: '1px solid var(--line)' }}>
+        <form onSubmit={handleSave} className="glass-panel" style={{ padding: '24px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 16px' }}>Edit Website</h2>
           
           <div style={{ marginBottom: '20px' }}>
@@ -76,7 +76,7 @@ export default function StorefrontForm({ studio, staff }: Props) {
           </div>
         </form>
 
-        <div style={{ marginTop: '24px', padding: '16px', background: 'var(--surface)', borderRadius: '12px', border: '1px dashed var(--line)' }}>
+        <div className="glass-panel" style={{ marginTop: '24px', padding: '16px' }}>
           <p style={{ margin: '0 0 8px', fontSize: '14px', fontWeight: '600' }}>Want to update your address, phone, or logo?</p>
           <p style={{ margin: '0 0 12px', fontSize: '13px', color: 'var(--text-3)' }}>
             These are pulled directly from your main studio settings to ensure everything stays in sync.

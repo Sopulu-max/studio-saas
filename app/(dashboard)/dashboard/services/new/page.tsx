@@ -11,8 +11,7 @@ import { GripVertical } from 'lucide-react'
 const inputStyle = { width: '100%', boxSizing: 'border-box' as const }
 const labelStyle = { fontSize: '13px', color: 'var(--text-2)', display: 'block', marginBottom: '6px' }
 const sectionStyle = {
-  background: 'var(--surface)', border: '1px solid var(--line)',
-  borderRadius: '12px', padding: '1.5rem', marginBottom: '12px',
+  padding: '1.5rem', marginBottom: '12px'
 }
 
 const SERVICE_TYPES: { value: 'service' | 'product' | 'digital'; label: string; icon: string; desc: string }[] = [
@@ -26,7 +25,7 @@ type Section = { id: string; title: string; body: string; image_url: string; vid
 function SectionItem({ sec, i, updateSection, removeSection }: { sec: Section; i: number; updateSection: (i: number, field: keyof Section, val: string) => void; removeSection: (i: number) => void }) {
   const controls = useDragControls()
   return (
-    <Reorder.Item value={sec} dragListener={false} dragControls={controls} style={{ border: '1px solid var(--line-inner)', borderRadius: '8px', padding: '12px', marginBottom: '8px', background: 'var(--surface)', listStyle: 'none' }}>
+    <Reorder.Item value={sec} dragListener={false} dragControls={controls} className="glass-panel" style={{ padding: '12px', marginBottom: '8px', listStyle: 'none' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <button type="button" onPointerDown={(e) => controls.start(e)} style={{ cursor: 'grab', background: 'none', border: 'none', color: 'var(--text-3)', padding: '4px', display: 'flex', alignItems: 'center', touchAction: 'none' }}>
@@ -157,7 +156,7 @@ export default function NewServicePage() {
 
       <form onSubmit={handleSubmit}>
         {/* Type */}
-        <div style={sectionStyle}>
+        <div className="glass-panel" style={sectionStyle}>
           <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 12px' }}>Type</p>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
             {SERVICE_TYPES.map(t => (
@@ -184,7 +183,7 @@ export default function NewServicePage() {
         </div>
 
         {/* Details */}
-        <div style={sectionStyle}>
+        <div className="glass-panel" style={sectionStyle}>
           <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 16px' }}>Details</p>
 
           <div style={{ marginBottom: '16px' }}>
@@ -324,7 +323,7 @@ export default function NewServicePage() {
         </div>
 
         {/* Content sections */}
-        <div style={sectionStyle}>
+        <div className="glass-panel" style={sectionStyle}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <div>
               <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 2px' }}>Content sections</p>
@@ -345,7 +344,7 @@ export default function NewServicePage() {
         </div>
 
         {/* Settings */}
-        <div style={sectionStyle}>
+        <div className="glass-panel" style={sectionStyle}>
           <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 16px' }}>Settings</p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

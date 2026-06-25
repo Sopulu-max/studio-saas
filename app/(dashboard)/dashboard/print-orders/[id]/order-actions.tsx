@@ -38,7 +38,7 @@ export default function OrderActions({
 
   if (currentStatus === 'collected') {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textAlign: 'center' }}>
+      <div className="glass-panel" style={{ padding: '1.25rem', textAlign: 'center' }}>
         <p style={{ fontSize: '13px', color: '#3b6d11', margin: 0 }}>✓ Order collected</p>
       </div>
     )
@@ -46,14 +46,14 @@ export default function OrderActions({
 
   if (currentStatus === 'cancelled') {
     return (
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', textAlign: 'center' }}>
+      <div className="glass-panel" style={{ padding: '1.25rem', textAlign: 'center' }}>
         <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>This order has been cancelled.</p>
       </div>
     )
   }
 
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+    <div className="glass-panel" style={{ padding: '1.5rem' }}>
       <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>ACTIONS</p>
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
         {transitions.map(t => (

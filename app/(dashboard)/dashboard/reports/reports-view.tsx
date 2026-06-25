@@ -132,8 +132,9 @@ function KpiCard({ label, value, sub, subColor, onClick, active }: {
     <div
       onClick={onClick}
       role={onClick ? 'button' : undefined}
+      className="glass-panel hover-lift"
       style={{
-        background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.1rem',
+        padding: '1.1rem',
         cursor: onClick ? 'pointer' : 'default',
         outline: active ? '2px solid var(--btn)' : 'none', outlineOffset: '-1px',
       }}
@@ -147,7 +148,7 @@ function KpiCard({ label, value, sub, subColor, onClick, active }: {
 
 function CardWrap({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', ...style }}>
+    <div className="glass-panel" style={{ padding: '1.25rem', ...style }}>
       {children}
     </div>
   )
@@ -155,7 +156,7 @@ function CardWrap({ children, style }: { children: React.ReactNode; style?: Reac
 
 function CardList({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', ...style }}>
+    <div className="glass-panel" style={{ overflow: 'hidden', ...style }}>
       {children}
     </div>
   )

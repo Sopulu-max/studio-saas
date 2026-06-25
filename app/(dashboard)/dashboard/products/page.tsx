@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, PackageSearch, Image as ImageIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+
 import { Badge } from '@/components/ui/badge'
 
 export const metadata = { title: 'Products & Frames | Weave' }
@@ -56,13 +56,13 @@ export default async function ProductsPage() {
           </h2>
           <div className="space-y-3">
             {products.length === 0 ? (
-              <Card className="p-8 text-center text-muted-foreground border-dashed">
+              <div className="glass-panel p-8 text-center text-muted-foreground border-dashed">
                 <p>No products added yet.</p>
                 <p className="text-sm mt-1">Start by adding a canvas or framed print.</p>
-              </Card>
+              </div>
             ) : (
               products.map(product => (
-                <Card key={product.product_id} className="p-4 flex flex-col gap-2">
+                <div key={product.product_id} className="glass-panel p-4 flex flex-col gap-2">
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-medium text-base">{product.name}</h3>
@@ -86,7 +86,7 @@ export default async function ProductsPage() {
                       </div>
                     </div>
                   )}
-                </Card>
+                </div>
               ))
             )}
           </div>
@@ -100,13 +100,13 @@ export default async function ProductsPage() {
           </h2>
           <div className="space-y-3">
             {templates.length === 0 ? (
-              <Card className="p-8 text-center text-muted-foreground border-dashed">
+              <div className="glass-panel p-8 text-center text-muted-foreground border-dashed">
                 <p>No templates uploaded.</p>
                 <p className="text-sm mt-1">Upload transparent PNGs to let clients preview their photos inside physical frames.</p>
-              </Card>
+              </div>
             ) : (
               templates.map(template => (
-                <Card key={template.template_id} className="p-4 flex gap-4 items-center">
+                <div key={template.template_id} className="glass-panel p-4 flex gap-4 items-center">
                   <div className="w-20 h-20 bg-muted rounded-md border flex items-center justify-center shrink-0 overflow-hidden relative">
                     {/* A small preview using the actual mask coordinates to show how it works */}
                     <div 
@@ -136,7 +136,7 @@ export default async function ProductsPage() {
                       {template.mask_css}
                     </p>
                   </div>
-                </Card>
+                </div>
               ))
             )}
           </div>

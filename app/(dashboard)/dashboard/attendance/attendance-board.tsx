@@ -136,9 +136,8 @@ function StaffCard({ member, todayDay, onUpdate }: {
   }
 
   return (
-    <div style={{
-      background: 'var(--surface)', border: '1px solid var(--line)',
-      borderRadius: '12px', padding: '16px',
+    <div className="glass-panel" style={{
+      padding: '16px',
     }}>
       {/* Top row */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>

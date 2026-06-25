@@ -51,7 +51,7 @@ function TabNav({ active }: { active: string }) {
     { key: 'no-contract',      label: 'No contract' },
   ]
   return (
-    <div style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '3px', width: 'fit-content' }}>
+    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
       {tabs.map(t => (
         <Link key={t.key} href={tabUrl(t.key)} style={{
           padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
@@ -68,7 +68,7 @@ function StatsStrip({ items }: { items: { label: string; value: string | number;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: '12px', marginBottom: '1.5rem' }}>
       {items.map(item => (
-        <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+        <div key={item.label} className="glass-panel" style={{ padding: '1.1rem 1.25rem' }}>
           <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '500' }}>{item.label}</p>
           <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: item.accent ?? 'var(--text)', lineHeight: 1.1 }}>{item.value}</p>
         </div>
@@ -139,7 +139,7 @@ export default async function ContractsPage({
         {!contracts.length ? (
           <EmptyState message="No contracts awaiting signature" sub="All sent contracts have been signed" />
         ) : (
-          <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+          <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
             <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 100px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
               <span>Session</span><span>Sent on</span><span>Days waiting</span><span></span>
             </div>
@@ -202,7 +202,7 @@ export default async function ContractsPage({
             <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 1rem' }}>
               {noContract.length} active session{noContract.length !== 1 ? 's' : ''} without a contract
             </p>
-            <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+            <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 120px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
                 <span>Session</span><span>Type</span><span>Date</span><span></span>
               </div>
@@ -279,7 +279,7 @@ export default async function ContractsPage({
           sub={status ? 'Try a different status filter' : 'Create a contract for a booking to get client sign-off'}
         />
       ) : (
-        <AnimatedList style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+        <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
             <span>Session</span><span>Date</span><span>Signed by</span><span>Status</span>
           </div>
@@ -288,7 +288,7 @@ export default async function ContractsPage({
             const sc = STATUS_COLORS[c.status] ?? STATUS_COLORS.draft
             return (
               <AnimatedItem key={c.contract_id} delay={i * 0.05}>
-                <Link href={`/dashboard/contracts/${c.contract_id}`} style={{
+                <Link href={`/dashboard/contracts/${c.contract_id}`} className="hover-lift" style={{
                   display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr',
                   padding: '1rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
                   borderBottom: i < contracts.length - 1 ? '1px solid var(--line-inner)' : 'none',

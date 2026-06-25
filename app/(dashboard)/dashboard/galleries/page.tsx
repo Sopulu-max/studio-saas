@@ -48,7 +48,7 @@ function TabNav({ active }: { active: string }) {
     { key: 'delivered',       label: 'Delivered' },
   ]
   return (
-    <div style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '10px', padding: '3px', width: 'fit-content' }}>
+    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
       {tabs.map(t => (
         <Link key={t.key} href={tabUrl(t.key)} style={{
           padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
@@ -65,7 +65,7 @@ function StatsStrip({ items }: { items: { label: string; value: string | number;
   return (
     <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: '12px', marginBottom: '1.5rem' }}>
       {items.map(item => (
-        <div key={item.label} style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.1rem 1.25rem' }}>
+        <div key={item.label} className="glass-panel" style={{ padding: '1.1rem 1.25rem' }}>
           <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '500' }}>{item.label}</p>
           <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, color: item.accent ?? 'var(--text)', lineHeight: 1.1 }}>{item.value}</p>
         </div>
@@ -89,8 +89,8 @@ function GalleryCard({ g }: { g: GalleryListDTO }) {
   const s          = STATUS_COLORS[g.status] ?? STATUS_COLORS.processing
   const photoCount = g.photo_count
   return (
-    <Link href={`/dashboard/galleries/${g.gallery_id}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden' }}>
+    <Link href={`/dashboard/galleries/${g.gallery_id}`} className="hover-lift" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden' }}>
         <div style={{ height: '120px', background: 'var(--active)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {g.cover_photo_url
             ? <img src={g.cover_photo_url} alt={g.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />

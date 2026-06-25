@@ -75,7 +75,7 @@ export default async function ServiceDetailPage({
       </div>
 
       {/* Details card */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>DETAILS</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
           <div>
@@ -104,7 +104,7 @@ export default async function ServiceDetailPage({
       </div>
 
       {/* Packages using this service */}
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ overflow: 'hidden', marginBottom: '12px' }}>
         <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line-inner)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: 0 }}>LINKED PACKAGES</p>
           <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0 }}>{pkgServices.length} package{pkgServices.length !== 1 ? 's' : ''}</p>

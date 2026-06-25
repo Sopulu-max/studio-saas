@@ -41,7 +41,7 @@ export default function EditContractForm({
         </p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginBottom: '12px' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem', marginBottom: '12px' }}>
         <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>CONTRACT CONTENT</p>
         <textarea
           value={text}
@@ -66,7 +66,7 @@ export default function EditContractForm({
           {loading ? 'Saving…' : 'Save changes'}
         </button>
         <button type="button" onClick={() => router.push(`/dashboard/contracts/${contractId}`)}
-          style={{ padding: '10px 16px', background: 'transparent', color: 'var(--text-2)', border: '1px solid var(--line)' }}>
+          className="glass-panel hover-lift" style={{ padding: '10px 16px', color: 'var(--text-2)', cursor: 'pointer' }}>
           Cancel
         </button>
       </div>

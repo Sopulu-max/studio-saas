@@ -125,7 +125,7 @@ export default function EditStaffForm({
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Update details for {member.full_name}</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Full name <span style={{ color: '#e24b4a' }}>*</span></label>
           <input
@@ -241,7 +241,7 @@ export default function EditStaffForm({
             <button
               type="button"
               onClick={addCustomRole}
-              style={{ padding: '8px 14px', fontSize: '13px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-2)', whiteSpace: 'nowrap' }}
+              className="glass-panel hover-lift" style={{ padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-2)', whiteSpace: 'nowrap' }}
             >
               Add
             </button>

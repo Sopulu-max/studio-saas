@@ -76,10 +76,9 @@ export default function SettingsTabs({
   return (
     <div>
       {/* Tab bar */}
-      <div style={{
+      <div className="glass-panel" style={{
         display: 'flex', gap: '2px', flexWrap: 'wrap',
-        background: 'var(--surface)', border: '1px solid var(--line)',
-        borderRadius: '10px', padding: '3px',
+        padding: '3px',
         marginBottom: '1.25rem', width: 'fit-content',
       }}>
         {TABS.map(tab => (

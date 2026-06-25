@@ -27,7 +27,7 @@ export default function SignupPage() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg)' }}>
-      <div style={{ width: '100%', maxWidth: '400px', padding: '2rem', border: '1px solid var(--line)', borderRadius: '12px', background: 'var(--surface)' }}>
+      <div className="glass-panel" style={{ width: '100%', maxWidth: '400px', padding: '2rem' }}>
         <h1 style={{ fontSize: '20px', fontWeight: '500', marginBottom: '6px' }}>Create your studio</h1>
         <p style={{ fontSize: '14px', color: 'var(--text-3)', marginBottom: '24px' }}>Weave · Get started in seconds</p>
 

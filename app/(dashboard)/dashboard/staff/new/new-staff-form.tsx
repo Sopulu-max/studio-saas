@@ -86,7 +86,7 @@ export default function NewStaffForm({ staffRoles }: { staffRoles: StaffRoleConf
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Add a photographer or team member</p>
       </div>
 
-      <div style={{ background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem' }}>
+      <div className="glass-panel" style={{ padding: '1.5rem' }}>
         <div style={{ marginBottom: '16px' }}>
           <label style={labelStyle}>Full name <span style={{ color: '#e24b4a' }}>*</span></label>
           <input type="text" value={form.full_name} onChange={e => update('full_name', e.target.value)}
@@ -157,7 +157,7 @@ export default function NewStaffForm({ staffRoles }: { staffRoles: StaffRoleConf
               style={{ flex: 1, boxSizing: 'border-box' as const }}
             />
             <button type="button" onClick={addCustomRole}
-              style={{ padding: '8px 14px', fontSize: '13px', background: 'var(--surface)', border: '1px solid var(--line)', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-2)', whiteSpace: 'nowrap' as const }}>
+              className="glass-panel hover-lift" style={{ padding: '8px 14px', fontSize: '13px', cursor: 'pointer', color: 'var(--text-2)', whiteSpace: 'nowrap' as const }}>
               Add
             </button>
           </div>
