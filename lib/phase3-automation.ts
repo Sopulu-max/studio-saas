@@ -10,7 +10,7 @@ export async function runPhase3Automation(
   // 1. Fetch necessary data
   const { data: booking } = await admin
     .from('bookings')
-    .select('client_id, session_date, clients(full_name)')
+    .select('client_id, sessions!inner(session_date), clients(full_name)')
     .eq('booking_id', bookingId)
     .single()
 
@@ -75,7 +75,8 @@ export async function runPhase3Automation(
   // 3. Insert Draft Contract
   const clientName = Array.isArray(booking.clients) ? booking.clients[0]?.full_name : (booking.clients as any)?.full_name || 'Client'
   const studioName = studio?.name || 'Studio'
-  const sessionDateStr = booking.session_date ? new Date(booking.session_date).toLocaleDateString() : 'TBD'
+  const extractedSessionDate = (booking.sessions as any)?.[0]?.session_date || (booking as any).sessions?.session_date
+  const sessionDateStr = extractedSessionDate ? new Date(extractedSessionDate).toLocaleDateString() : 'TBD'
   
   const contractContent = studio?.default_contract_template || buildGenericContractTemplate({
     studioName,

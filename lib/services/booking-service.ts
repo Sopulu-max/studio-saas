@@ -74,10 +74,10 @@ export async function bookSession(
     // 2. Duplicate booking check
     let dupQuery = admin
       .from('bookings')
-      .select('booking_id')
+      .select('booking_id, sessions!inner(session_date)')
       .eq('studio_id', params.studio_id)
       .eq('client_id', clientId)
-      .eq('session_date', params.preferred_date)
+      .eq('sessions.session_date', params.preferred_date)
 
     for (const v of params.cancelValues) {
       dupQuery = dupQuery.neq('status', v)
@@ -102,18 +102,12 @@ export async function bookSession(
     const insertData: Record<string, any> = {
       studio_id:    params.studio_id,
       client_id:    clientId,
-      session_type: params.session_type,
-      session_date: params.preferred_date,
       status:       params.initialStatus,
       notes:        params.notes?.trim() || null,
       booking_ref:  nextRef,
       custom_answers: params.custom_answers || null,
     }
 
-    if (params.location_address) insertData.location_address = params.location_address.trim()
-    if (params.shoot_type)       insertData.shoot_type       = params.shoot_type.trim()
-    if (params.event_name)       insertData.event_name       = params.event_name.trim()
-    if (params.event_date)       insertData.event_date       = params.event_date
     if (params.package_id)       insertData.package_id       = params.package_id
 
     const { data: newBookingRaw, error: bookingError } = await admin
