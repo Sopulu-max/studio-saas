@@ -25,15 +25,19 @@ export async function getBookingStats(
     { count: pipelineCount },
     cancelledResult,
   ] = await Promise.all([
+    // total non-cancelled (does not filter by date, so bookings is fine)
     supabase.from('bookings').select('*', { count: 'exact', head: true })
       .eq('studio_id', studioId).not('status', 'in', cancelIn),
-    supabase.from('bookings').select('*', { count: 'exact', head: true })
-      .eq('studio_id', studioId).gte('session_date', monthStart).not('status', 'in', cancelIn),
+    // this month active sessions
+    supabase.from('sessions').select('bookings!inner(status)', { count: 'exact', head: true })
+      .eq('studio_id', studioId).gte('session_date', monthStart).not('bookings.status', 'in', cancelIn),
+    // active pipeline (does not filter by date)
     supabase.from('bookings').select('*', { count: 'exact', head: true })
       .eq('studio_id', studioId).not('status', 'in', excludeIn),
+    // cancelled this month
     cancelValues.length > 0
-      ? supabase.from('bookings').select('*', { count: 'exact', head: true })
-          .eq('studio_id', studioId).gte('session_date', monthStart).in('status', cancelValues)
+      ? supabase.from('sessions').select('bookings!inner(status)', { count: 'exact', head: true })
+          .eq('studio_id', studioId).gte('session_date', monthStart).in('bookings.status', cancelValues)
       : Promise.resolve({ count: 0 }),
   ])
 
@@ -64,27 +68,27 @@ export async function getBookingsList(
   } = {}
 ): Promise<{ data: BookingListDTO[]; count: number }> {
   let q = supabase
-    .from('bookings')
-    .select('*, clients(client_id, full_name, email), packages(name), sessions(session_date, session_type, shoot_type)', { count: 'exact' })
+    .from('sessions')
+    .select('session_date, session_type, shoot_type, bookings!inner(booking_id, booking_ref, status, client_id, packages(name), clients(client_id, full_name, email))', { count: 'exact' })
     .eq('studio_id', studioId)
 
-  if (params.status) q = q.eq('status', params.status)
-  if (params.type) q = q.eq('session_type', params.type) // Or through sessions
-  if (params.category) q = q.eq('shoot_type', params.category) // Or through sessions
-  if (params.date_from) q = q.gte('session_date', params.date_from) // Needs fix if session_date moved to sessions table entirely, but bookings still maintains it for backwards compatibility maybe? Wait, we moved it!
+  if (params.status) q = q.eq('bookings.status', params.status)
+  if (params.type) q = q.eq('session_type', params.type)
+  if (params.category) q = q.eq('shoot_type', params.category)
+  if (params.date_from) q = q.gte('session_date', params.date_from)
   if (params.date_to) q = q.lte('session_date', params.date_to + 'T23:59:59')
 
   if (params.clientIds && params.clientIds.length > 0) {
-    q = q.in('client_id', params.clientIds)
+    q = q.in('bookings.client_id', params.clientIds)
   } else if (params.clientIds && params.clientIds.length === 0) {
     return { data: [], count: 0 }
   }
 
   if (params.excludeStatuses && params.excludeStatuses.length > 0) {
-    q = q.not('status', 'in', `(${params.excludeStatuses.map(v => `"${v}"`).join(',')})`)
+    q = q.not('bookings.status', 'in', `(${params.excludeStatuses.map(v => `"${v}"`).join(',')})`)
   }
   if (params.includeStatuses && params.includeStatuses.length > 0) {
-    q = q.in('status', params.includeStatuses)
+    q = q.in('bookings.status', params.includeStatuses)
   }
 
   if (params.orderBy) {
@@ -105,16 +109,16 @@ export async function getBookingsList(
   const rows = (raw ?? []) as any[]
 
   const mapped = rows.map(r => ({
-    booking_id: r.booking_id,
-    booking_ref: r.booking_ref,
-    session_date: r.sessions?.[0]?.session_date ?? r.session_date ?? null,
-    session_type: r.sessions?.[0]?.session_type ?? r.session_type ?? null,
-    shoot_type: r.sessions?.[0]?.shoot_type ?? r.shoot_type ?? null,
-    status: r.status,
-    client_id: r.clients?.client_id ?? r.client_id ?? null,
-    client_name: r.clients?.full_name ?? null,
-    client_email: r.clients?.email ?? null,
-    package_name: r.packages?.name ?? null,
+    booking_id: r.bookings?.booking_id,
+    booking_ref: r.bookings?.booking_ref,
+    session_date: r.session_date ?? null,
+    session_type: r.session_type ?? null,
+    shoot_type: r.shoot_type ?? null,
+    status: r.bookings?.status,
+    client_id: r.bookings?.clients?.client_id ?? r.bookings?.client_id ?? null,
+    client_name: r.bookings?.clients?.full_name ?? null,
+    client_email: r.bookings?.clients?.email ?? null,
+    package_name: r.bookings?.packages?.name ?? null,
   }))
 
   return { data: mapped, count: count ?? 0 }
@@ -289,7 +293,7 @@ export async function getBookingSelectionsCount(supabase: any, studioId: string,
 export async function getBookingEventDetails(supabase: any, studioId: string, bookingId: string) {
   const { data } = await supabase
     .from('bookings')
-    .select('booking_id, event_date, shoot_type, clients(full_name, email)')
+    .select('booking_id, sessions(event_date, shoot_type), clients(full_name, email)')
     .eq('booking_id', bookingId)
     .eq('studio_id', studioId)
     .single()
@@ -297,8 +301,8 @@ export async function getBookingEventDetails(supabase: any, studioId: string, bo
   if (!data) return null
   return {
     booking_id: data.booking_id,
-    event_date: data.event_date,
-    shoot_type: data.shoot_type,
+    event_date: (data.sessions as any)?.[0]?.event_date ?? null,
+    shoot_type: (data.sessions as any)?.[0]?.shoot_type ?? null,
     client_name: data.clients?.full_name ?? null,
     client_email: data.clients?.email ?? null
   }
