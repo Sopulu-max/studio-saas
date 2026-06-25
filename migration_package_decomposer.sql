@@ -29,12 +29,13 @@ SELECT
   p.name || ' (Base)',
   'service',
   'Automatically created from legacy package: ' || p.name,
-  -- category_value: map the old service_type column to the new field
-  COALESCE(NULLIF(p.service_type, ''), 'photo'),
-  -- session_type: carry forward, default to 'any' if missing
-  COALESCE(NULLIF(p.session_type, ''), 'any'),
-  p.outfits_count,
-  p.duration_mins,
+  -- category_value: default to 'photo' since old column is dropped
+  'photo',
+  -- session_type: default to 'any' since old column is dropped
+  'any',
+  -- default values
+  0,
+  60,
   -- price: use package base_price as the service standalone price
   COALESCE(p.base_price, 0),
   true,
@@ -44,14 +45,6 @@ WHERE
   -- Only target packages with no linked services
   NOT EXISTS (
     SELECT 1 FROM package_services ps WHERE ps.package_id = p.package_id
-  )
-  -- Only if there's structural data worth migrating
-  AND (
-    p.outfits_count IS NOT NULL
-    OR p.duration_mins IS NOT NULL
-    OR p.session_type IS NOT NULL
-    OR p.service_type IS NOT NULL
-    OR p.base_price IS NOT NULL
   )
   -- Guard: don't create a duplicate if we already made this service
   AND NOT EXISTS (
@@ -129,7 +122,7 @@ SELECT
   s.service_id,
   true,          -- is_addon = true: optional upgrade
   pa.price,      -- preserve the addon-specific price
-  COALESCE(pa.display_order, 0)
+  0              -- default display_order since package_addons lacks one
 FROM package_addons pa
 JOIN packages p ON p.package_id = pa.package_id
 JOIN services s ON s.studio_id = p.studio_id AND s.name = pa.name

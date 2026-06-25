@@ -6,6 +6,7 @@ import {
   StaffAssignmentDTO,
   AddonRelationDTO,
 } from './types'
+import { unwrapRow } from '@/lib/utils'
 
 export async function getBookingStats(
   supabase: SupabaseClient,
@@ -108,18 +109,24 @@ export async function getBookingsList(
   const { data: raw, count } = await q
   const rows = (raw ?? []) as any[]
 
-  const mapped = rows.map(r => ({
-    booking_id: r.bookings?.booking_id,
-    booking_ref: r.bookings?.booking_ref,
-    session_date: r.session_date ?? null,
-    session_type: r.session_type ?? null,
-    shoot_type: r.shoot_type ?? null,
-    status: r.bookings?.status,
-    client_id: r.bookings?.clients?.client_id ?? r.bookings?.client_id ?? null,
-    client_name: r.bookings?.clients?.full_name ?? null,
-    client_email: r.bookings?.clients?.email ?? null,
-    package_name: r.bookings?.packages?.name ?? null,
-  }))
+  const mapped = rows.map(r => {
+    const b = unwrapRow(r.bookings)
+    const client = b ? unwrapRow(b.clients) : null
+    const pkg = b ? unwrapRow(b.packages) : null
+
+    return {
+      booking_id: b?.booking_id,
+      booking_ref: b?.booking_ref,
+      session_date: r.session_date ?? null,
+      session_type: r.session_type ?? null,
+      shoot_type: r.shoot_type ?? null,
+      status: b?.status,
+      client_id: client?.client_id ?? b?.client_id ?? null,
+      client_name: client?.full_name ?? null,
+      client_email: client?.email ?? null,
+      package_name: pkg?.name ?? null,
+    }
+  })
 
   return { data: mapped, count: count ?? 0 }
 }
@@ -158,6 +165,8 @@ export async function getBookingDetail(
 
   // Process data
   const b = rawBooking as any
+  const client = unwrapRow(b.clients)
+  const pkg = unwrapRow(b.packages)
   
   const amountPaid = (invoiceRaw?.payments ?? []).reduce((sum: number, p: any) => sum + Number(p.amount), 0)
   const balanceDue = invoiceRaw ? Math.max(0, Number(invoiceRaw.total) - amountPaid) : 0
@@ -184,38 +193,47 @@ export async function getBookingDetail(
     })),
 
     client_id: b.client_id,
-    client_name: b.clients?.full_name ?? null,
-    client_email: b.clients?.email ?? null,
-    client_phone: b.clients?.phone ?? null,
+    client_name: client?.full_name ?? null,
+    client_email: client?.email ?? null,
+    client_phone: client?.phone ?? null,
 
     package_id: b.package_id,
-    package_name: b.packages?.name ?? null,
-    base_price: b.packages?.base_price ?? null,
+    package_name: pkg?.name ?? null,
+    base_price: pkg?.base_price ?? null,
 
     custom_answers: b.custom_answers,
 
-    staff: (b.booking_staff ?? []).map((s: any) => ({
-      role: s.role,
-      staff_id: s.staff_id,
-      staff_name: s.staff?.full_name ?? null
-    })),
+    staff: (b.booking_staff ?? []).map((s: any) => {
+      const staffMember = unwrapRow(s.staff)
+      return {
+        role: s.role,
+        staff_id: s.staff_id,
+        staff_name: staffMember?.full_name ?? null
+      }
+    }),
 
-    addons: (b.booking_addons ?? []).map((a: any) => ({
-      quantity: a.quantity,
-      addon_name: a.package_addons?.name ?? null,
-      price: a.package_addons?.price ?? 0
-    })),
+    addons: (b.booking_addons ?? []).map((a: any) => {
+      const addon = unwrapRow(a.package_addons)
+      return {
+        quantity: a.quantity,
+        addon_name: addon?.name ?? null,
+        price: addon?.price ?? 0
+      }
+    }),
 
-    services: (servicesRaw ?? []).map((s: any) => ({
-      booking_service_id: s.booking_service_id,
-      quantity: s.quantity,
-      price_at_booking: s.price_at_booking,
-      status: s.status,
-      service_name: s.services?.name ?? null,
-      service_type: s.services?.type ?? null,
-      service_category: s.services?.category_value ?? null,
-      booking_fields: s.services?.booking_fields ?? null
-    })),
+    services: (servicesRaw ?? []).map((s: any) => {
+      const srv = unwrapRow(s.services)
+      return {
+        booking_service_id: s.booking_service_id,
+        quantity: s.quantity,
+        price_at_booking: s.price_at_booking,
+        status: s.status,
+        service_name: srv?.name ?? null,
+        service_type: srv?.type ?? null,
+        service_category: srv?.category_value ?? null,
+        booking_fields: srv?.booking_fields ?? null
+      }
+    }),
 
     invoice: invoiceRaw ? {
       invoice_id: invoiceRaw.invoice_id,
@@ -257,8 +275,9 @@ export async function getBookingClientContact(supabase: any, studioId: string, b
     .eq('studio_id', studioId)
     .single()
   
-  if (!data?.clients) return null
-  return data.clients as { full_name: string; email: string }
+  const client = unwrapRow(data?.clients)
+  if (!client) return null
+  return client as { full_name: string; email: string }
 }
 
 export async function verifyBookingOwnership(supabase: any, studioId: string, bookingIds: string[]): Promise<string[]> {
@@ -300,12 +319,13 @@ export async function getBookingEventDetails(supabase: any, studioId: string, bo
     .single()
   
   if (!data) return null
+  const client = unwrapRow(data.clients)
   return {
     booking_id: data.booking_id,
     event_date: (data.sessions as any)?.[0]?.event_date ?? null,
     shoot_type: (data.sessions as any)?.[0]?.shoot_type ?? null,
-    client_name: data.clients?.full_name ?? null,
-    client_email: data.clients?.email ?? null
+    client_name: client?.full_name ?? null,
+    client_email: client?.email ?? null
   }
 }
 
