@@ -14,39 +14,37 @@ type NavGroup = { title: string; items: NavItem[] }
 
 const OWNER_NAV_GROUPS: NavGroup[] = [
   {
-    title: 'COMMERCIAL',
+    title: 'COMMAND CENTER',
     items: [
-      { label: 'Bookings',     href: '/dashboard/bookings' },
-      { label: 'Clients',      href: '/dashboard/clients' },
-      { label: 'Invoices',     href: '/dashboard/invoices' },
-      { label: 'Contracts',    href: '/dashboard/contracts' },
+      { label: 'Live Operations', href: '/dashboard' },
+      { label: 'Active Sessions', href: '/dashboard/bookings' },
+      { label: 'Team & Logistics', href: '/dashboard/attendance' },
+      { label: 'Equipment Hub',   href: '/dashboard/equipment' },
     ]
   },
   {
-    title: 'FULFILLMENT',
+    title: 'STUDIO CATALOG',
     items: [
-      { label: 'Services & Catalog', href: '/dashboard/services' },
-      { label: 'Galleries',    href: '/dashboard/galleries' },
-      { label: 'Print orders', href: '/dashboard/print-orders' },
-      { label: 'Packages (Legacy)', href: '/dashboard/packages' },
-      { label: 'Products',     href: '/dashboard/products' },
+      { label: 'Services & Add-ons', href: '/dashboard/services' },
+      { label: 'Legacy Packages', href: '/dashboard/packages' },
+      { label: 'Products & Print', href: '/dashboard/products' },
     ]
   },
   {
-    title: 'LOGISTICS & TEAM',
+    title: 'FINANCE & CLIENTS',
     items: [
-      { label: 'Calendar',     href: '/dashboard/calendar' },
-      { label: 'Staff',        href: '/dashboard/staff' },
-      { label: 'Attendance',   href: '/dashboard/attendance' },
-      { label: 'Equipment',    href: '/dashboard/equipment' },
+      { label: 'Client CRM',      href: '/dashboard/clients' },
+      { label: 'Smart Contracts', href: '/dashboard/contracts' },
+      { label: 'Invoices & Payments', href: '/dashboard/invoices' },
+      { label: 'Financial Reports', href: '/dashboard/reports' },
     ]
   },
   {
-    title: 'SYSTEM',
+    title: 'STOREFRONT',
     items: [
-      { label: 'Dashboard',    href: '/dashboard' },
-      { label: 'Website',      href: '/dashboard/storefront' },
-      { label: 'Reports',      href: '/dashboard/reports' },
+      { label: 'Public Galleries', href: '/dashboard/galleries' },
+      { label: 'Print Orders',    href: '/dashboard/print-orders' },
+      { label: 'Website Builder', href: '/dashboard/storefront' },
     ]
   }
 ]
@@ -55,9 +53,9 @@ const STAFF_NAV_GROUPS: NavGroup[] = [
   {
     title: 'MY WORKSPACE',
     items: [
-      { label: 'My bookings',  href: '/dashboard/bookings' },
-      { label: 'Calendar',     href: '/dashboard/calendar' },
-      { label: 'Clients',      href: '/dashboard/clients' },
+      { label: 'My Sessions',  href: '/dashboard/bookings' },
+      { label: 'Live Operations', href: '/dashboard' },
+      { label: 'Client Base',      href: '/dashboard/clients' },
     ]
   }
 ]

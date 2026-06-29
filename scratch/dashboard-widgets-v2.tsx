@@ -60,7 +60,7 @@ export default function DashboardWidgets(props: DashboardProps) {
   }, 0)
 
   return (
-    <div className="flex flex-col h-full animate-enter p-6 md:p-8">
+    <div className="flex flex-col h-full animate-enter">
       
       {/* Header & Urgent Alerts */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
