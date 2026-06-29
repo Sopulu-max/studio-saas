@@ -1,8 +1,13 @@
 import type { Metadata } from 'next'
 import { cookies } from 'next/headers'
 import { Toaster } from 'sonner'
+import { Plus_Jakarta_Sans } from 'next/font/google'
 import './globals.css'
 
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-sans",
+  subsets: ["latin"],
+});
 export const metadata: Metadata = {
   title: 'Weave by Creative Renaissance - Studio management for photographers',
   description:
@@ -12,37 +17,16 @@ export const metadata: Metadata = {
   },
 }
 
-const themeScript = `
-(function(){
-  try {
-    var t = localStorage.getItem('theme');
-    var d = document.documentElement;
-    if (t === 'dark' || (!t && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-      d.classList.add('dark');
-    } else {
-      d.classList.remove('dark');
-    }
-  } catch(e){}
-})();
-`
-
 export default async function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
-  const cookieStore = await cookies()
-  const theme = cookieStore.get('theme')?.value
-  const isDark = theme === 'dark'
-
   return (
     <html
       lang="en"
-      className={`h-full antialiased${isDark ? ' dark' : ''}`}
+      className={`dark ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <head>
-        <script suppressHydrationWarning dangerouslySetInnerHTML={{ __html: themeScript }} />
-      </head>
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-full flex flex-col font-sans">
         {children}
         <Toaster position="bottom-right" richColors closeButton />
       </body>

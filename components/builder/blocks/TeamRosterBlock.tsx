@@ -65,12 +65,12 @@ export function TeamRosterBlock({ block, isEditMode, updateBlock }: {
   )
 
   return (
-    <div style={{ width: '100%', padding: '40px 20px', background: '#fafafa', borderRadius: isEditMode ? '12px' : 0 }}>
+    <div style={{ width: '100%', padding: '40px 20px', background: 'transparent' }}>
       {EditControls}
       {titleEl}
 
       {team.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', background: 'white', borderRadius: '12px', color: 'var(--text-3)' }}>
+        <div className="glass-panel" style={{ textAlign: 'center', padding: '40px', borderRadius: '12px', color: 'var(--text-3)' }}>
           <p>No team members found.</p>
         </div>
       ) : (
@@ -80,33 +80,36 @@ export function TeamRosterBlock({ block, isEditMode, updateBlock }: {
           gap: '32px'
         }}>
           {team.map((member: any) => (
-            <div key={member.staff_id} style={{ 
+            <div key={member.staff_id} className="hover-lift" style={{ 
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              textAlign: 'center'
+              textAlign: 'center',
+              padding: '24px',
+              borderRadius: '24px',
+              background: 'var(--surface)'
             }}>
               <div style={{ 
                 width: '120px', 
                 height: '120px', 
                 borderRadius: '50%', 
                 overflow: 'hidden',
-                background: 'white',
-                border: '4px solid white',
-                boxShadow: '0 4px 14px rgba(0,0,0,0.05)',
+                background: 'var(--surface-2)',
+                border: '4px solid var(--line-inner)',
+                boxShadow: '0 0 20px rgba(0,0,0,0.5)',
                 marginBottom: '16px',
                 position: 'relative'
               }}>
                 {member.avatar_url ? (
                   <Image src={member.avatar_url} alt={member.name} fill style={{ objectFit: 'cover' }} />
                 ) : (
-                  <div style={{ width: '100%', height: '100%', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '100%', height: '100%', background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <span style={{ fontSize: '32px', color: 'var(--text-4)' }}>{member.name?.[0] || 'T'}</span>
                   </div>
                 )}
               </div>
               
-              <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '600' }}>{member.name}</h3>
+              <h3 style={{ margin: '0 0 4px', fontSize: '18px', fontWeight: '600', color: 'var(--text)' }}>{member.name}</h3>
               {member.bio && <p style={{ margin: 0, fontSize: '14px', color: 'var(--text-2)', lineHeight: '1.5' }}>{member.bio}</p>}
             </div>
           ))}

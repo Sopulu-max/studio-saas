@@ -71,7 +71,7 @@ export function PackageGridBlock({ block, isEditMode, updateBlock }: {
       {titleEl}
 
       {packages.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '40px', background: 'var(--panel)', borderRadius: '12px', color: 'var(--text-3)' }}>
+        <div className="glass-panel" style={{ textAlign: 'center', padding: '40px', borderRadius: '12px', color: 'var(--text-3)' }}>
           <p>No packages found. {isEditMode && 'Create some in your dashboard to see them here!'}</p>
         </div>
       ) : (
@@ -81,49 +81,48 @@ export function PackageGridBlock({ block, isEditMode, updateBlock }: {
           gap: '24px'
         }}>
           {packages.map((pkg: any) => (
-            <div key={pkg.package_id} className="hover-lift" style={{ 
+            <div key={pkg.package_id} className="hover-lift glass-panel" style={{ 
               borderRadius: '16px', 
               overflow: 'hidden',
-              background: 'white',
-              boxShadow: '0 4px 20px rgba(0,0,0,0.06)',
-              border: '1px solid var(--line-inner)',
               display: 'flex',
               flexDirection: 'column'
             }}>
               {pkg.cover_url ? (
-                <div style={{ width: '100%', height: '200px', position: 'relative', background: '#f5f5f5' }}>
+                <div style={{ width: '100%', height: '200px', position: 'relative', background: 'var(--surface-2)' }}>
                   <Image src={pkg.cover_url} alt={pkg.name} fill style={{ objectFit: 'cover' }} />
                 </div>
               ) : (
-                <div style={{ width: '100%', height: '200px', background: 'var(--panel)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ width: '100%', height: '200px', background: 'var(--surface-2)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span style={{ color: 'var(--text-4)' }}>No Image</span>
                 </div>
               )}
               
               <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: '600' }}>{pkg.name}</h3>
+                <h3 style={{ margin: '0 0 8px', fontSize: '20px', fontWeight: '600', color: 'var(--text)' }}>{pkg.name}</h3>
                 {pkg.tagline && <p style={{ margin: '0 0 16px', fontSize: '14px', color: 'var(--text-2)' }}>{pkg.tagline}</p>}
                 
                 {pkg.base_price && (
                   <div style={{ marginTop: 'auto', paddingTop: '16px', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
                     <span style={{ fontSize: '14px', color: 'var(--text-3)' }}>Starting at</span>
-                    <span style={{ fontSize: '20px', fontWeight: '700' }}>
+                    <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--text)' }}>
                       {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(pkg.base_price)}
                     </span>
                   </div>
                 )}
                 
                 {/* Simulated Book Button */}
-                <button style={{ 
+                <button className="hover-lift" style={{ 
                   marginTop: '16px', 
                   width: '100%', 
                   padding: '12px', 
                   borderRadius: '8px', 
                   border: 'none',
-                  background: 'var(--text)', 
+                  background: 'var(--btn)', 
                   color: 'white', 
-                  fontWeight: '500',
-                  cursor: isEditMode ? 'default' : 'pointer'
+                  fontWeight: '600',
+                  boxShadow: '0 0 15px rgba(124,58,237,0.4)',
+                  cursor: isEditMode ? 'default' : 'pointer',
+                  transition: 'all 0.3s'
                 }}>
                   Book Now
                 </button>

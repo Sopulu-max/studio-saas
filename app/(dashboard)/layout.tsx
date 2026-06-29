@@ -39,13 +39,21 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <StudioConfigProvider config={config}>
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)' }}>
-        <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} />
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', position: 'relative', overflow: 'hidden' }}>
+        {/* Ambient Glows */}
+        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '40vw', height: '40vw', background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, rgba(9,9,11,0) 70%)', filter: 'blur(80px)', pointerEvents: 'none', zIndex: 0 }} />
+        <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '60vw', height: '60vw', background: 'radial-gradient(circle, rgba(167,139,250,0.05) 0%, rgba(9,9,11,0) 60%)', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 0 }} />
+
+        <div style={{ zIndex: 10, display: 'flex', flexShrink: 0 }}>
+          <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} />
+        </div>
         <main style={{
           flex: 1,
           padding: '2rem 2.5rem',
           overflowY: 'auto',
           maxWidth: '100%',
+          zIndex: 10,
+          position: 'relative'
         }} className="dashboard-main">
           {children}
         </main>
