@@ -32,8 +32,8 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   const clientViewUrl = buildSignedPublicLink(studioSlug, 'invoice', id, siteUrl)
 
   return (
-    <div style={{ maxWidth: '640px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
+    <div className="flex flex-col h-full overflow-y-auto p-6 md:p-8 animate-enter pb-24 max-w-4xl mx-auto w-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 shrink-0">
         <div>
           <h1 style={{ fontSize: '20px', fontWeight: '600', margin: '0 0 4px' }}>
             {invoice.client.client_id ? (
@@ -52,9 +52,10 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
             href={clientViewUrl}
             target="_blank"
             rel="noreferrer"
-            className="glass-panel hover-lift" style={{ fontSize: '12px', color: 'var(--link)', textDecoration: 'none', padding: '4px 10px' }}
+            className="px-4 py-2 rounded-lg font-bold text-[13px] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover-lift transition-all"
+            style={{ textDecoration: 'none' }}
           >
-            Client view
+            Client view ↗
           </Link>
           <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: statusStyle.bg, color: statusStyle.color, fontWeight: '500' }}>
             {invoice.status}

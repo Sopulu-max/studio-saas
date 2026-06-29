@@ -25,8 +25,8 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
   const config = buildStudioConfig(studioRow?.session_types, studioRow?.booking_statuses, studioRow?.service_types)
 
   return (
-    <div style={{ maxWidth: '640px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+    <div className="flex flex-col h-full overflow-y-auto p-6 md:p-8 animate-enter pb-24 max-w-4xl mx-auto w-full">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 shrink-0">
         <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
           <AvatarUpload
             entityId={id}
@@ -45,9 +45,10 @@ export default async function ClientDetailPage({ params }: { params: Promise<{ i
         </div>
         <Link
           href={`/dashboard/clients/${id}/edit`}
-          className="glass-panel hover-lift" style={{ fontSize: '13px', padding: '6px 14px', color: 'var(--text-2)', textDecoration: 'none', flexShrink: 0 }}
+          className="px-4 py-2 rounded-lg font-bold text-[13px] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover-lift transition-all"
+          style={{ textDecoration: 'none' }}
         >
-          Edit
+          Edit Client
         </Link>
       </div>
 

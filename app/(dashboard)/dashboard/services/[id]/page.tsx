@@ -40,35 +40,24 @@ export default async function ServiceDetailPage({
   const addons    = pkgServices.filter(ps => ps.is_addon)
 
   return (
-    <div style={{ maxWidth: '600px' }}>
+    <div className="flex flex-col h-full overflow-y-auto p-6 md:p-8 animate-enter pb-24 max-w-4xl mx-auto w-full">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 shrink-0">
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 8px' }}>{svc.name}</h1>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <span style={{
-              fontSize: '12px', padding: '3px 10px', borderRadius: '20px',
-              background: tc.bg, color: tc.color, fontWeight: '500',
-            }}>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] m-0 mb-1">{svc.name}</h1>
+          <div className="flex gap-2 flex-wrap items-center">
+            <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest" style={{ background: tc.bg, color: tc.color }}>
               {TYPE_ICONS[svc.type]} {TYPE_LABELS[svc.type] ?? svc.type}
             </span>
-            <span style={{
-              fontSize: '11px', padding: '2px 8px', borderRadius: '20px', fontWeight: '500',
-              background: svc.is_active ? '#eaf3de' : '#f3f3f3',
-              color:      svc.is_active ? '#3b6d11' : '#888',
-              border:     svc.is_active ? 'none' : '1px solid #e0e0e0',
-            }}>
+            <span className={`px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest border ${svc.is_active ? 'bg-[#eaf3de] text-[#3b6d11] border-transparent' : 'bg-[var(--surface-2)] text-[var(--text-4)] border-[var(--line)]'}`}>
               {svc.is_active ? 'Active' : 'Inactive'}
             </span>
           </div>
         </div>
         <Link
           href={`/dashboard/services/${id}/edit`}
-          style={{
-            fontSize: '13px', padding: '6px 14px', borderRadius: '8px',
-            background: 'transparent', border: '1px solid var(--line)',
-            color: 'var(--text-2)', textDecoration: 'none', flexShrink: 0,
-          }}
+          className="px-4 py-2 rounded-lg font-bold text-[13px] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover-lift transition-all"
+          style={{ textDecoration: 'none' }}
         >
           Edit service
         </Link>

@@ -48,37 +48,40 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
   const studioSlug = studio?.slug ?? ''
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
+    <div className="flex flex-col h-full overflow-y-auto p-6 md:p-8 animate-enter pb-24">
       
       {/* Page Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 shrink-0">
         <div>
-          <h1 style={{ fontSize: '24px', fontWeight: '600', margin: '0 0 6px', letterSpacing: '-0.02em' }}>
-            {sessionName(booking.client_name, booking.booking_ref, id, booking.sessions?.[0]?.session_date)}
-          </h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0, display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <span style={{ fontFamily: 'monospace', fontSize: '13px', letterSpacing: '0.02em', background: 'var(--surface-2)', padding: '2px 6px', borderRadius: '4px' }}>
+          <div className="flex items-center gap-3 mb-1">
+            <h1 className="text-3xl font-bold tracking-tight text-[var(--text)] m-0">
+              {sessionName(booking.client_name, booking.booking_ref, id, booking.sessions?.[0]?.session_date)}
+            </h1>
+            <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest" style={{ background: statusCfg.color_bg, color: statusCfg.color_fg }}>
+              {statusCfg.label}
+            </span>
+          </div>
+          <p className="text-sm text-[var(--text-3)] m-0 flex items-center gap-2">
+            <span className="font-mono text-[13px] tracking-widest px-2 py-0.5 rounded bg-[var(--surface-2)]">
               #{booking.booking_ref ?? id.slice(0, 6)}
             </span>
-            {booking.package_name && `· ${booking.package_name}`}
+            {booking.package_name && <span className="font-medium text-[var(--text-4)] uppercase tracking-wider text-[11px]">• {booking.package_name}</span>}
           </p>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '13px', padding: '4px 12px', borderRadius: '20px', background: statusCfg.color_bg, color: statusCfg.color_fg, fontWeight: '500', width: 'fit-content' }}>
-            {statusCfg.label}
-          </span>
+        
+        <div className="flex gap-3 items-center flex-wrap">
           <Link
             href={`/dashboard/bookings/${id}/edit`}
-            className="glass-panel hover-lift"
-            style={{ fontSize: '13px', padding: '6px 16px', color: 'var(--text-2)', textDecoration: 'none' }}
+            className="px-4 py-2 rounded-lg font-bold text-[13px] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover-lift transition-all"
+            style={{ textDecoration: 'none' }}
           >
-            Edit Booking
+            Edit Operation
           </Link>
           <Link
             href={buildSignedPublicLink(studioSlug, 'summary', id)}
             target="_blank"
-            className="glass-panel hover-lift"
-            style={{ fontSize: '13px', padding: '6px 16px', color: 'var(--text-2)', textDecoration: 'none' }}
+            className="px-4 py-2 rounded-lg font-bold text-[13px] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover-lift transition-all"
+            style={{ textDecoration: 'none' }}
           >
             Client Portal ↗
           </Link>

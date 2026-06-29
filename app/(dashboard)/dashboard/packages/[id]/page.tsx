@@ -72,22 +72,22 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
   const s = shootTypeColor(pkg.shoot_type)
 
   return (
-    <div style={{ maxWidth: '640px' }}>
+    <div className="flex flex-col h-full overflow-y-auto p-6 md:p-8 animate-enter pb-24 max-w-4xl mx-auto w-full">
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 shrink-0">
         <div>
-          <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>{pkg.name}</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text)] m-0 mb-1">{pkg.name}</h1>
           {pkg.tagline && (
-            <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: '0 0 6px', lineHeight: '1.5' }}>{pkg.tagline}</p>
+            <p className="text-[14px] text-[var(--text-3)] m-0 mb-2 leading-relaxed">{pkg.tagline}</p>
           )}
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="flex gap-2 flex-wrap items-center">
             {pkg.shoot_type && (
-              <span style={{ fontSize: '12px', padding: '3px 10px', borderRadius: '20px', background: s.bg, color: s.color }}>
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest" style={{ background: s.bg, color: s.color }}>
                 {pkg.shoot_type}
               </span>
             )}
             {pkg.is_public === false && (
-              <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: '#f3f3f3', color: '#888', fontWeight: '500', border: '1px solid #e0e0e0' }}>
+              <span className="px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-widest bg-[var(--surface-2)] text-[var(--text-4)] border border-[var(--line)]">
                 Hidden
               </span>
             )}
@@ -95,11 +95,8 @@ export default async function PackageDetailPage({ params }: { params: Promise<{ 
         </div>
         <Link
           href={`/dashboard/packages/${id}/edit`}
-          style={{
-            fontSize: '13px', padding: '6px 14px', borderRadius: '8px',
-            background: 'transparent', border: '1px solid var(--line)',
-            color: 'var(--text-2)', textDecoration: 'none', display: 'inline-block', flexShrink: 0,
-          }}
+          className="px-4 py-2 rounded-lg font-bold text-[13px] border border-[var(--line)] bg-[var(--surface-2)] text-[var(--text)] hover-lift transition-all"
+          style={{ textDecoration: 'none' }}
         >
           Edit package
         </Link>
