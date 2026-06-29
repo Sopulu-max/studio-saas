@@ -54,7 +54,7 @@ export default function AddSessionModal({ bookingId, onClose }: { bookingId: str
       <div className="glass-panel animate-enter" style={{ background: 'var(--bg)', width: '100%', maxWidth: '500px', padding: '1.5rem', borderRadius: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', margin: 0 }}>Add Session</h2>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-3)' }}>×</button>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-3)' }}>x</button>
         </div>
 
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
