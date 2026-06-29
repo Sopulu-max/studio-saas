@@ -85,10 +85,10 @@
 }
 
 .dark {
-  /* Ayu Mirage-inspired blue-tinted dark */
+  /* Point Shadcn base to Cinematic tokens */
   --background: oklch(0.18 0.02 250);
   --foreground: oklch(0.83 0.005 90);
-  --card: oklch(0.21 0.022 250);
+  --card: oklch(0.18 0.02 250);
   --card-foreground: oklch(0.83 0.005 90);
   --popover: oklch(0.21 0.022 250);
   --popover-foreground: oklch(0.83 0.005 90);

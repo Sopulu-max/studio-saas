@@ -26,7 +26,7 @@ export default async function RootLayout({
       className={`dark ${jakarta.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col font-sans">
+      <body className="min-h-full flex flex-col font-sans bg-[var(--bg)] text-[var(--text)]">
         {children}
         <Toaster position="bottom-right" richColors closeButton />
       </body>
