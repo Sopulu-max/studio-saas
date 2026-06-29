@@ -39,28 +39,39 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   return (
     <StudioConfigProvider config={config}>
-      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg)', position: 'relative', overflow: 'hidden', padding: '16px', gap: '16px' }}>
+        
         {/* Ambient Glows */}
-        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '40vw', height: '40vw', background: 'radial-gradient(circle, rgba(124,58,237,0.08) 0%, rgba(9,9,11,0) 70%)', filter: 'blur(80px)', pointerEvents: 'none', zIndex: 0 }} />
-        <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '60vw', height: '60vw', background: 'radial-gradient(circle, rgba(167,139,250,0.05) 0%, rgba(9,9,11,0) 60%)', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 0 }} />
+        <div style={{ position: 'absolute', top: '-10%', left: '-10%', width: '50vw', height: '50vw', background: 'radial-gradient(circle, rgba(124,58,237,0.12) 0%, rgba(9,9,11,0) 70%)', filter: 'blur(100px)', pointerEvents: 'none', zIndex: 0 }} />
+        <div style={{ position: 'absolute', bottom: '-20%', right: '-10%', width: '70vw', height: '70vw', background: 'radial-gradient(circle, rgba(167,139,250,0.08) 0%, rgba(9,9,11,0) 60%)', filter: 'blur(120px)', pointerEvents: 'none', zIndex: 0 }} />
 
-        <div style={{ zIndex: 10, display: 'flex', flexShrink: 0 }}>
+        {/* Floating Sidebar Island */}
+        <div style={{ zIndex: 10, display: 'flex', flexShrink: 0, height: 'calc(100vh - 32px)' }}>
           <Sidebar studioName={studio?.name ?? 'My Studio'} studioSlug={studio?.slug ?? ''} isOwner={isOwner} messageTemplates={(messageTemplates ?? []) as { template_id: string; title: string; content: string }[]} />
         </div>
-        <main style={{
+
+        {/* Floating Main Content Island */}
+        <main className="glass-panel" style={{
           flex: 1,
-          padding: '2rem 2.5rem',
+          height: 'calc(100vh - 32px)',
           overflowY: 'auto',
           maxWidth: '100%',
           zIndex: 10,
-          position: 'relative'
-        }} className="dashboard-main">
+          position: 'relative',
+          borderRadius: '24px', /* Large Dribbble-style radius */
+          border: '1px solid rgba(255,255,255,0.05)',
+          background: 'rgba(255,255,255,0.015)',
+          boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.4)',
+        }}>
           {children}
         </main>
+        
         <style>{`
           @media (max-width: 768px) {
             .dashboard-main {
-              padding: 4.5rem 1.25rem 2rem !important;
+              height: 100vh !important;
+              border-radius: 0 !important;
+              border: none !important;
             }
           }
         `}</style>

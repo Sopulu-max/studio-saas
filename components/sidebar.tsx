@@ -229,8 +229,8 @@ export default function Sidebar({ studioName, studioSlug, isOwner = true, messag
   return (
     <>
       {/* Desktop sidebar */}
-      <aside className="sidebar-desktop glass-panel border-r-0 border-y-0 border-l-0 border-r border-[var(--line-inner)]"
-        style={{ width: '216px', minHeight: '100vh', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+      <aside className="sidebar-desktop glass-panel"
+        style={{ width: '240px', height: '100%', display: 'flex', flexDirection: 'column', flexShrink: 0, borderRadius: '24px', border: '1px solid rgba(255,255,255,0.05)', background: 'rgba(255,255,255,0.015)', boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.4)', overflow: 'hidden' }}>
         {navContent}
       </aside>
 

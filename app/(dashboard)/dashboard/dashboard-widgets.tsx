@@ -720,7 +720,7 @@ export default function DashboardWidgets(props: DashboardProps) {
         </div>
 
         {/* This week sub-label */}
-        <div style={{ padding: '0.875rem 1.25rem 0.25rem' }}>
+        <div style={{ padding: '1.25rem 1.5rem 0.5rem' }}>
           <p style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-3)', margin: '0 0 8px', letterSpacing: '.03em' }}>This week</p>
         </div>
 
@@ -885,7 +885,7 @@ export default function DashboardWidgets(props: DashboardProps) {
                   const hasOccasion = days !== null && days <= 14
                   return (
                     <div key={s.session_id} style={{
-                      display: 'flex', alignItems: 'center', gap: '10px', padding: '0.7rem 1.25rem',
+                      display: 'flex', alignItems: 'center', gap: '10px', padding: '0.85rem 1.5rem',
                       borderBottom: (i < shown.length - 1 || extras > 0) ? '1px solid var(--line-inner)' : 'none',
                     }}>
                       <Link href={`/dashboard/bookings/${unwrapRow(s.bookings)?.booking_id}`} style={{ flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
@@ -1205,11 +1205,11 @@ export default function DashboardWidgets(props: DashboardProps) {
         )}
 
         {/* Today's client list */}
-        <div style={{ padding: '0.875rem 1.25rem 0.25rem' }}>
+        <div style={{ padding: '1.25rem 1.5rem 0.5rem' }}>
           <p style={{ ...sxn, marginBottom: todayClients.length ? '0' : '8px' }}>Today&apos;s clients</p>
         </div>
         {todayClients.length === 0 ? (
-          <div style={{ padding: '0.5rem 1.25rem 1rem' }}>
+          <div style={{ padding: '0.75rem 1.5rem 1.5rem' }}>
             <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No clients scheduled today</p>
           </div>
         ) : (
@@ -1218,7 +1218,7 @@ export default function DashboardWidgets(props: DashboardProps) {
             return (
               <Link key={`${c.clientId}-${i}`} href={`/dashboard/clients/${c.clientId}`} style={{
                 display: 'flex', alignItems: 'center', gap: '10px',
-                padding: '0.7rem 1.25rem',
+                padding: '0.85rem 1.5rem',
                 borderTop: '1px solid var(--line-inner)',
                 textDecoration: 'none', color: 'inherit',
               }}>
