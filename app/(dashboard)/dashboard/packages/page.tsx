@@ -1,378 +1,94 @@
 import Link from 'next/link'
-import SearchInput from '@/components/search-input'
-import FilterSelect from '@/components/filter-select'
-import Pagination from '@/components/pagination'
 import { redirect } from 'next/navigation'
 import { getStudioContext } from '@/lib/studio'
-import { buildPackagesShareLink } from '@/lib/whatsapp-links'
+import { getPackageList } from '@/lib/domains/packages/repository'
 import { AnimatedList, AnimatedItem } from '@/components/animated-list'
 
-import {
-  getPackageStats,
-  getPackageList,
-  getPackagesByUsage,
-  getPackageAddonsList
-} from '@/lib/domains/packages/repository'
-
-// ─── Constants ──────────────────────────────────────────────────────────────
-
-const PAGE_SIZE = 20
-
-const KNOWN_COLORS: Record<string, { bg: string; color: string }> = {
-  portrait:    { bg: '#eeedfe', color: '#534ab7' },
-  wedding:     { bg: '#fbeaf0', color: '#993556' },
-  corporate:   { bg: '#e6f1fb', color: '#185fa5' },
-  event:       { bg: '#faeeda', color: '#854f0b' },
-  maternity:   { bg: '#fce8f3', color: '#8b2d6e' },
-  fashion:     { bg: '#e8f4fc', color: '#1a6a8a' },
-  birthday:    { bg: '#faeeda', color: '#854f0b' },
-  graduation:  { bg: '#eaf3de', color: '#3b6d11' },
-  engagement:  { bg: '#fbeaf0', color: '#993556' },
-  newborn:     { bg: '#eeedfe', color: '#534ab7' },
-  boudoir:     { bg: '#fce8f3', color: '#8b2d6e' },
-  product:     { bg: '#e6f1fb', color: '#185fa5' },
-  lifestyle:   { bg: '#eaf3de', color: '#3b6d11' },
-  family:      { bg: '#e8f4fc', color: '#1a6a8a' },
-  other:       { bg: '#f1efe8', color: '#5f5e5a' },
-}
-
-const FALLBACK_PALETTE = [
-  { bg: '#eeedfe', color: '#534ab7' },
-  { bg: '#fbeaf0', color: '#993556' },
-  { bg: '#e6f1fb', color: '#185fa5' },
-  { bg: '#faeeda', color: '#854f0b' },
-  { bg: '#eaf3de', color: '#3b6d11' },
-  { bg: '#fce8f3', color: '#8b2d6e' },
-  { bg: '#e8f4fc', color: '#1a6a8a' },
-]
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-function shootTypeColor(type: string | null | undefined) {
-  if (!type) return KNOWN_COLORS.other
-  const key = type.toLowerCase().trim()
-  if (KNOWN_COLORS[key]) return KNOWN_COLORS[key]
-  const idx = [...type].reduce((s, c) => s + c.charCodeAt(0), 0) % FALLBACK_PALETTE.length
-  return FALLBACK_PALETTE[idx]
-}
-
-function pageUrl(params: Record<string, string | undefined>, pg: number) {
-  const p = new URLSearchParams()
-  Object.entries(params).forEach(([k, v]) => { if (v && k !== 'page') p.set(k, v) })
-  p.set('page', String(pg))
-  return `/dashboard/packages?${p}`
-}
-
-function tabUrl(view: string) {
-  return `/dashboard/packages?view=${view}`
-}
-
-// ─── Component helpers ──────────────────────────────────────────────────────
-
-function TabNav({ active }: { active: string }) {
-  const tabs = [
-    { key: 'all',      label: 'All' },
-    { key: 'by-usage', label: 'By usage' },
-    { key: 'add-ons',  label: 'Add-ons' },
-  ]
-  return (
-    <div className="glass-panel" style={{ display: 'flex', gap: '2px', marginBottom: '1.25rem', padding: '3px', width: 'fit-content' }}>
-      {tabs.map(t => (
-        <Link key={t.key} href={tabUrl(t.key)} style={{
-          padding: '6px 16px', borderRadius: '7px', fontSize: '13px', fontWeight: '500',
-          textDecoration: 'none', whiteSpace: 'nowrap',
-          background: active === t.key ? 'var(--btn)' : 'transparent',
-          color: active === t.key ? 'var(--btn-fg)' : 'var(--text-3)',
-        }}>{t.label}</Link>
-      ))}
-    </div>
-  )
-}
-
-function StatsStrip({ items }: { items: { label: string; value: string | number }[] }) {
-  return (
-    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${items.length}, 1fr)`, gap: '12px', marginBottom: '1.5rem' }}>
-      {items.map(item => (
-        <div key={item.label} className="glass-panel" style={{ padding: '1.1rem 1.25rem' }}>
-          <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 6px', fontWeight: '500' }}>{item.label}</p>
-          <p style={{ fontSize: '26px', fontWeight: '500', margin: 0, lineHeight: 1.1 }}>{item.value}</p>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function EmptyState({ message, sub }: { message: string; sub: string }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '4rem', border: '1px dashed var(--line)', borderRadius: '12px', color: 'var(--text-3)' }}>
-      <p style={{ fontSize: '15px', margin: '0 0 4px' }}>{message}</p>
-      <p style={{ fontSize: '13px', margin: 0 }}>{sub}</p>
-    </div>
-  )
-}
-
-// ─── Page ───────────────────────────────────────────────────────────────────
-
-export default async function PackagesPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ view?: string; q?: string; shoot_type?: string; page?: string }>
-}) {
-  const { view = 'all', q = '', shoot_type = '', page = '1' } = await searchParams
-  const pageNum = Math.max(1, parseInt(page) || 1)
-  const from    = (pageNum - 1) * PAGE_SIZE
-  const to      = from + PAGE_SIZE - 1
-
+export default async function LegacyPackagesPage() {
   const context = await getStudioContext()
   if ('error' in context) redirect('/login')
 
-  // ── Stats (always) ───────────────────────────────────────────────
-  const { stats, studioSlug, studioName } = await getPackageStats(context.admin, context.studioId)
+  const { admin, studioId } = context
 
-  const statsItems = [
-    { label: 'Total packages',   value: stats.total_packages },
-    { label: 'Avg price',        value: `₦${stats.avg_price.toLocaleString()}` },
-    { label: 'Total add-ons',    value: stats.total_addons },
-    { label: 'Used this month',  value: stats.used_this_month },
-  ]
+  // Fetch legacy packages
+  const res = await getPackageList(admin, studioId, 1, '', '', 500)
+  const packages = res.packages
 
-  // ── Header ───────────────────────────────────────────────────────
-  const header = (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-      <div>
-        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Packages & Offerings</h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>
-          Curate and design your studio's offerings and packages.
-        </p>
-        {studioSlug && (
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', marginTop: '8px' }}>
-            <Link href={`/packages/${studioSlug}`} target="_blank" style={{ fontSize: '12px', color: 'var(--text-3)', textDecoration: 'none' }}>
-              View public catalog ↗
-            </Link>
-            <a href={buildPackagesShareLink(studioName, studioSlug)} target="_blank" rel="noopener noreferrer" style={{ fontSize: '12px', color: '#25D366', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 0C5.385 0 0 5.385 0 12.031C0 14.673 1.05 17.202 2.87 19.166L1.134 23.366L5.438 21.63C7.355 23.303 9.773 24 12.031 24C18.677 24 24 18.615 24 11.969C24 5.323 18.677 0 12.031 0ZM18.57 16.711C18.293 17.487 16.892 18.172 16.208 18.256C15.655 18.339 14.898 18.423 11.83 17.151C8.077 15.589 5.666 11.758 5.485 11.517C5.304 11.276 4 9.539 4 7.747C4 5.955 4.908 5.086 5.274 4.721C5.551 4.444 5.986 4.316 6.388 4.316C6.516 4.316 6.634 4.321 6.743 4.326C7.02 4.341 7.159 4.356 7.34 4.789C7.568 5.339 8.125 6.702 8.192 6.841C8.258 6.98 8.35 7.16 8.258 7.34C8.167 7.52 8.106 7.595 7.97 7.747C7.835 7.899 7.7 8.084 7.564 8.192C7.429 8.3 7.279 8.423 7.444 8.708C7.61 8.993 8.183 9.932 9.034 10.688C10.13 11.587 11.018 11.874 11.334 12.008C11.56 12.102 11.846 12.078 12.012 11.898C12.223 11.673 12.479 11.282 12.736 10.891C12.932 10.59 13.174 10.545 13.43 10.635C13.702 10.726 15.134 11.433 15.42 11.568C15.706 11.704 15.897 11.779 15.957 11.884C16.017 11.99 16.017 12.516 15.741 13.292" /></svg>
-              Share via WhatsApp
-            </a>
-          </div>
-        )}
-      </div>
-      <Link href="/dashboard/packages/new" style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '14px', background: 'var(--btn)', color: 'var(--btn-fg)', textDecoration: 'none', fontWeight: '500' }}>
-        New package
-      </Link>
-    </div>
-  )
-
-  // ── By usage view ────────────────────────────────────────────────
-  if (view === 'by-usage') {
-    const sorted = await getPackagesByUsage(context.admin, context.studioId)
-
-    return (
-      <div>
-        {header}
-        <StatsStrip items={statsItems} />
-        <TabNav active="by-usage" />
-
-        {!sorted.length ? (
-          <EmptyState message="No packages yet" sub="Create your first package to start tracking usage" />
-        ) : (
-          <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '32px 2fr 1fr 1fr 1fr 80px', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500', alignItems: 'center' }}>
-              <span>#</span><span>Package</span><span>Category</span><span>Price</span><span>Add-ons</span><span style={{ textAlign: 'right' }}>Bookings</span>
-            </div>
-
-            {sorted.map((pkg, i) => {
-              const usage = pkg.usage_count ?? 0
-              const s     = shootTypeColor(pkg.shoot_type)
-              return (
-                <AnimatedItem key={pkg.package_id} delay={i * 0.05}>
-                  <Link href={`/dashboard/packages/${pkg.package_id}`} style={{
-                    display: 'grid', gridTemplateColumns: '32px 2fr 1fr 1fr 1fr 80px',
-                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                    borderBottom: i < sorted.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  }}>
-                    <span style={{ fontSize: '12px', color: 'var(--text-4)' }}>{i + 1}</span>
-                    <p style={{ fontSize: '13px', fontWeight: '600', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{pkg.name}</p>
-                    {pkg.shoot_type ? (
-                      <span style={{ display: 'inline-block', width: 'fit-content', fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500' }}>
-                        {pkg.shoot_type}
-                      </span>
-                    ) : (
-                      <span style={{ fontSize: '13px', color: 'var(--text-4)' }}>—</span>
-                    )}
-                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>₦{Number(pkg.base_price ?? 0).toLocaleString()}</p>
-                    <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0 }}>{pkg.package_addons?.length ?? 0}</p>
-                    <p style={{ fontSize: '14px', fontWeight: usage > 0 ? '600' : '400', color: usage > 0 ? 'var(--text)' : 'var(--text-4)', margin: 0, textAlign: 'right' }}>
-                      {usage}
-                    </p>
-                  </Link>
-                </AnimatedItem>
-              )
-            })}
-          </AnimatedList>
-        )}
-      </div>
-    )
+  function fmtValue(val: number | null) {
+    if (val === null) return 'Variable'
+    if (val === 0) return 'Free'
+    return '₦' + val.toLocaleString('en-NG')
   }
-
-  // ── Add-ons view ─────────────────────────────────────────────────
-  if (view === 'add-ons') {
-    const addons = await getPackageAddonsList(context.admin, context.studioId)
-
-    return (
-      <div>
-        {header}
-        <StatsStrip items={statsItems} />
-        <TabNav active="add-ons" />
-
-        {!addons.length ? (
-          <EmptyState message="No add-ons yet" sub="Add optional extras to your packages from the package detail page" />
-        ) : (
-          <AnimatedList className="glass-panel" style={{ overflow: 'hidden' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', padding: '10px 1.25rem', borderBottom: '1px solid var(--line-inner)', fontSize: '12px', color: 'var(--text-3)', fontWeight: '500' }}>
-              <span>Add-on</span><span>Package</span><span style={{ textAlign: 'right' }}>Price</span>
-            </div>
-
-            {addons.map((a, i) => {
-              const s = shootTypeColor(a.shoot_type)
-              return (
-                <AnimatedItem key={a.addon_id} delay={i * 0.05}>
-                  <Link href={`/dashboard/packages/${a.pkg_id}`} style={{
-                    display: 'grid', gridTemplateColumns: '2fr 2fr 1fr',
-                    padding: '0.875rem 1.25rem', textDecoration: 'none', color: 'inherit', alignItems: 'center',
-                    borderBottom: i < addons.length - 1 ? '1px solid var(--line-inner)' : 'none',
-                  }}>
-                    <div>
-                      <p style={{ fontSize: '13px', fontWeight: '600', margin: '0 0 2px' }}>{a.name}</p>
-                      {a.description && (
-                        <p style={{ fontSize: '12px', color: 'var(--text-4)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.description}</p>
-                      )}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.pkg_name}</p>
-                      {a.shoot_type && (
-                        <span style={{ fontSize: '11px', padding: '2px 7px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', flexShrink: 0 }}>{a.shoot_type}</span>
-                      )}
-                    </div>
-                    <p style={{ fontSize: '13px', fontWeight: '500', margin: 0, textAlign: 'right' }}>
-                      {a.price ? `₦${Number(a.price).toLocaleString()}` : '—'}
-                    </p>
-                  </Link>
-                </AnimatedItem>
-              )
-            })}
-          </AnimatedList>
-        )}
-      </div>
-    )
-  }
-
-  // ── All view (default) — card grid preserved ─────────────────────
-  const { packages, total: listTotal, distinctTypes } = await getPackageList(
-    context.admin,
-    context.studioId,
-    pageNum,
-    q,
-    shoot_type,
-    PAGE_SIZE
-  )
-
-  const totalPages  = Math.ceil(listTotal / PAGE_SIZE)
-  const params      = { view: 'all', q, shoot_type }
-  const prevUrl     = pageNum > 1          ? pageUrl(params, pageNum - 1) : undefined
-  const nextUrl     = pageNum < totalPages ? pageUrl(params, pageNum + 1) : undefined
 
   return (
-    <div>
-      {header}
-      <StatsStrip items={statsItems} />
-      <TabNav active="all" />
-
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem', flexWrap: 'wrap' }}>
-        <SearchInput defaultValue={q} placeholder="Search packages..." />
-        {distinctTypes.length > 0 && (
-          <FilterSelect
-            name="shoot_type"
-            defaultValue={shoot_type}
-            placeholder="All categories"
-            options={distinctTypes.map(t => ({ value: t, label: t }))}
-          />
-        )}
+    <div className="flex flex-col h-full overflow-hidden p-6 md:p-8 animate-enter">
+      
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4 shrink-0">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--text)] mb-1">Legacy Packages</h1>
+          <p className="text-sm text-[var(--text-4)] uppercase tracking-widest font-semibold">Pre-built Bundles</p>
+        </div>
+        
+        <div className="flex gap-3">
+          <Link href="/dashboard/packages/new" className="px-6 py-2.5 rounded-full text-sm font-bold shadow-lg hover-lift transition-all" style={{ background: 'var(--btn)', color: 'var(--btn-fg)' }}>
+            + New Legacy Package
+          </Link>
+        </div>
       </div>
 
-      {!packages?.length ? (
-        <EmptyState
-          message={q || shoot_type ? 'No packages match your filters' : 'No packages yet'}
-          sub={q || shoot_type ? 'Try adjusting your search or filters' : 'Create your first package to start taking bookings'}
-        />
-      ) : (
-        <>
-          <AnimatedList style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '12px' }}>
-            {packages.map((pkg, i) => {
-              const s = shootTypeColor(pkg.shoot_type)
-              return (
-                <AnimatedItem key={pkg.package_id} delay={i * 0.05}>
-                  <Link href={`/dashboard/packages/${pkg.package_id}`} className="glass-panel hover-lift" style={{ overflow: 'hidden', display: 'block', textDecoration: 'none', color: 'inherit' }}>
-                    {/* Cover image */}
-                    {pkg.cover_url ? (
-                      <div style={{ width: '100%', aspectRatio: '16 / 9', overflow: 'hidden' }}>
-                        <img src={pkg.cover_url} alt={pkg.name} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
-                      </div>
-                    ) : (
-                      <div style={{ width: '100%', aspectRatio: '16 / 9', background: 'var(--hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <rect x="3" y="3" width="18" height="18" rx="2" />
-                          <circle cx="8.5" cy="8.5" r="1.5" />
-                          <polyline points="21 15 16 10 5 21" />
-                        </svg>
-                      </div>
-                    )}
-                    <div style={{ padding: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '4px' }}>
-                        <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>{pkg.name}</p>
-                        <div style={{ display: 'flex', gap: '4px', flexShrink: 0, marginLeft: '8px' }}>
-                          {pkg.is_public === false && (
-                            <span style={{ fontSize: '10px', padding: '2px 6px', borderRadius: '20px', background: '#f3f3f3', color: '#888', border: '1px solid #e0e0e0', fontWeight: '500' }}>
-                              Hidden
-                            </span>
-                          )}
-                          {pkg.shoot_type && (
-                            <span style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '20px', background: s.bg, color: s.color, fontWeight: '500', whiteSpace: 'nowrap' }}>
-                              {pkg.shoot_type}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      {(pkg.tagline || pkg.description) && (
-                        <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 10px', lineHeight: '1.5', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as const }}>
-                          {pkg.tagline || pkg.description}
-                        </p>
-                      )}
-                      <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap' }}>
-                        <div>
-                          <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Price</p>
-                          <p style={{ fontSize: '14px', fontWeight: '600', margin: 0 }}>₦{Number(pkg.base_price).toLocaleString()}</p>
-                        </div>
+      <div className="flex-1 overflow-y-auto pr-2 pb-12 flex flex-col gap-10">
+        
+        {/* WARNING ALERT */}
+        <div className="glass-panel p-5 rounded-[12px] border-l-4 border-l-amber-500 bg-[rgba(245,158,11,0.05)]">
+          <h3 className="font-bold text-amber-500 mb-1">Legacy Architecture</h3>
+          <p className="text-[13px] text-[var(--text-3)] m-0">
+            Packages are being phased out in favor of the new <strong>Services & Add-ons</strong> matrix. You can still manage your existing bundled packages here, but we recommend building future offerings in the Services Catalog.
+          </p>
+        </div>
 
-                        {(pkg.package_addons?.length ?? 0) > 0 && (
-                          <div>
-                            <p style={{ fontSize: '10px', color: 'var(--text-4)', margin: '0 0 1px' }}>Add-ons</p>
-                            <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{pkg.package_addons!.length}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                </AnimatedItem>
-              )
-            })}
-          </AnimatedList>
-          {totalPages > 1 && (
-            <div style={{ marginTop: '1rem' }}>
-              <Pagination page={pageNum} totalPages={totalPages} prevUrl={prevUrl} nextUrl={nextUrl} />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {packages.length === 0 ? (
+            <div className="col-span-full p-8 text-center border border-dashed border-[var(--line-inner)] rounded-[16px] text-[var(--text-4)] text-sm font-medium">
+              No legacy packages found.
             </div>
+          ) : (
+            packages.map((pkg: any) => (
+              <Link 
+                key={pkg.package_id}
+                href={`/dashboard/packages/${pkg.package_id}`}
+                className="glass-panel p-6 flex flex-col gap-4 relative overflow-hidden group hover-lift transition-all" 
+                style={{ borderRadius: '16px', textDecoration: 'none' }}
+              >
+                
+                {/* Status dot */}
+                <div className="absolute top-6 right-6 flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${pkg.is_active ? 'bg-green-500' : 'bg-red-500'}`} />
+                </div>
+
+                <div>
+                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider mb-3 inline-block" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-3)' }}>
+                    Bundle
+                  </span>
+                  <h3 className="font-bold text-[18px] text-[var(--text)] tracking-tight leading-tight m-0 pr-6">{pkg.name}</h3>
+                </div>
+
+                <div className="flex justify-between items-end border-t border-[var(--line-inner)] pt-4 mt-auto">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-0.5">Category</span>
+                    <span className="text-[13px] font-bold text-[var(--text-2)] capitalize">{pkg.shoot_type || 'Uncategorized'}</span>
+                  </div>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-0.5">Bundle Price</span>
+                    <span className="text-[16px] font-black text-[var(--text)] tracking-tight">{fmtValue(pkg.price)}</span>
+                  </div>
+                </div>
+              </Link>
+            ))
           )}
-        </>
-      )}
+        </div>
+
+      </div>
     </div>
   )
 }

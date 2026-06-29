@@ -315,3 +315,53 @@ export async function searchClientsQuery(supabase: SupabaseClient, studioId: str
   
   return data ?? []
 }
+
+export type ClientCRM_DTO = {
+  client_id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  lifetime_value: number
+  total_bookings: number
+  last_interaction: string | null
+}
+
+export async function fetchClientCRM(supabase: SupabaseClient, studioId: string): Promise<ClientCRM_DTO[]> {
+  const { data, error } = await supabase
+    .from('clients')
+    .select(`
+      client_id,
+      full_name,
+      email,
+      phone,
+      created_at,
+      bookings (
+        status,
+        total_price,
+        created_at
+      )
+    `)
+    .eq('studio_id', studioId)
+    .order('created_at', { ascending: false })
+
+  if (error || !data) return []
+
+  return data.map(c => {
+    const bookings = Array.isArray(c.bookings) ? c.bookings : (c.bookings ? [c.bookings] : [])
+    const lifetime_value = bookings.reduce((sum: number, b: any) => sum + Number(b.total_price || 0), 0)
+    let last_interaction = c.created_at
+    if (bookings.length > 0) {
+      const sorted = [...bookings].sort((a, b) => b.created_at.localeCompare(a.created_at))
+      last_interaction = sorted[0].created_at
+    }
+    return {
+      client_id: c.client_id,
+      full_name: c.full_name,
+      email: c.email,
+      phone: c.phone,
+      lifetime_value,
+      total_bookings: bookings.length,
+      last_interaction
+    }
+  })
+}
