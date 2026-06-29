@@ -17,11 +17,11 @@ function signPayload(payload: string) {
     .digest('hex')
 }
 
-export function buildSignedPublicLink(kind: PublicLinkKind, id: string, siteUrl?: string, ttlHours = 24 * 14) {
+export function buildSignedPublicLink(studioSlug: string, kind: PublicLinkKind, id: string, siteUrl?: string, ttlHours = 24 * 14) {
   const base = (siteUrl ?? process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
   const expiresAt = String(Date.now() + ttlHours * 60 * 60 * 1000)
   const signature = signPayload(buildPayload(kind, id, expiresAt))
-  return `${base}/view/${kind}/${id}?exp=${expiresAt}&sig=${signature}`
+  return `${base}/${studioSlug}/portal/${kind}/${id}?exp=${expiresAt}&sig=${signature}`
 }
 
 export function verifySignedPublicLink(kind: PublicLinkKind, id: string, signature?: string, expiresAt?: string) {

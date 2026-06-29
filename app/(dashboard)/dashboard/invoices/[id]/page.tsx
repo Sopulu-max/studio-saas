@@ -25,8 +25,11 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
   }
   const statusStyle = STATUS_COLORS[invoice.status ?? ''] ?? STATUS_COLORS.draft
 
+  const studio = await context.admin.from('studios').select('slug').eq('studio_id', context.studioId).single()
+  const studioSlug = (studio.data?.slug as string) ?? ''
+  
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-  const clientViewUrl = buildSignedPublicLink('invoice', id, siteUrl)
+  const clientViewUrl = buildSignedPublicLink(studioSlug, 'invoice', id, siteUrl)
 
   return (
     <div style={{ maxWidth: '640px' }}>
@@ -194,6 +197,7 @@ export default async function InvoiceDetailPage({ params }: { params: Promise<{ 
         total={invoice.breakdown.total}
         clientPhone={invoice.client.phone}
         publicLink={clientViewUrl}
+        studioSlug={studioSlug}
       />
     </div>
   )

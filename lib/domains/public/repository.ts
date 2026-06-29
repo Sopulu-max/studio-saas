@@ -14,12 +14,80 @@ export async function getStorefrontBySlug(
 ): Promise<PublicStorefrontDTO | null> {
   const { data: studioRaw } = await supabase
     .from('studios')
-    .select('studio_id, name, slug, email, phone, address, logo_url, bio, theme')
+    .select('studio_id, name, slug, email, phone, address, logo_url, cover_url, bio, theme')
     .eq('slug', slug)
     .maybeSingle()
 
   if (!studioRaw) return null
   const studio = studioRaw as any
+
+  // Fetch Public Staff
+  const { data: staffData } = await supabase
+    .from('staff')
+    .select('staff_id, full_name, public_name, public_bio, avatar_url')
+    .eq('studio_id', studio.studio_id)
+    .eq('is_public', true)
+
+  const team = (staffData || []).map(s => ({
+    staff_id: s.staff_id,
+    name: s.public_name || s.full_name,
+    bio: s.public_bio || null,
+    avatar_url: s.avatar_url,
+  }))
+
+  // Fetch Public Galleries
+  const { data: galleryData } = await supabase
+    .from('galleries')
+    .select('gallery_id, title, shared_link, gallery_photos ( url )')
+    .eq('studio_id', studio.studio_id)
+    .eq('is_public', true)
+    .eq('status', 'delivered')
+
+  const portfolio = (galleryData || []).map((g: any) => ({
+    gallery_id: g.gallery_id,
+    title: g.title,
+    shared_link: g.shared_link,
+    cover_photo_url: g.gallery_photos && g.gallery_photos.length > 0 ? g.gallery_photos[0].url : null,
+  }))
+
+  // Fetch Public Packages
+  const { data: packageData } = await supabase
+    .from('packages')
+    .select('package_id, name, public_title, description, public_description, cover_url, base_price, package_services(service_id, is_addon, addon_price, display_order, services(service_id, name, type, description, price, category_value, session_type, outfits_count, duration_mins, booking_fields))')
+    .eq('studio_id', studio.studio_id)
+    .eq('is_public', true)
+    .order('display_order', { ascending: true })
+
+  const packages: PublicPackageDTO[] = (packageData || []).map((rawPkg: any) => {
+    const linkedServices = rawPkg.package_services
+      ? rawPkg.package_services
+          .filter((ps: any) => ps.services != null && !ps.is_addon)
+          .sort((a: any, b: any) => a.display_order - b.display_order)
+          .map((ps: any) => ({
+            service_id: ps.services.service_id,
+            name: ps.services.name,
+            type: ps.services.type,
+            description: ps.services.description ?? null,
+            price: ps.services.price ?? null,
+            category_value: ps.services.category_value ?? null,
+            session_type: ps.services.session_type ?? null,
+            outfits_count: ps.services.outfits_count ?? null,
+            duration_mins: ps.services.duration_mins ?? null,
+            booking_fields: ps.services.booking_fields ?? [],
+            is_addon: ps.is_addon,
+            addon_price: ps.addon_price ?? null
+          }))
+      : []
+
+    return {
+      package_id: rawPkg.package_id,
+      name: rawPkg.public_title || rawPkg.name,
+      description: rawPkg.public_description || rawPkg.description || null,
+      cover_url: rawPkg.cover_url || null,
+      base_price: rawPkg.base_price ?? null,
+      services: linkedServices
+    }
+  })
 
   return {
     studio_id: studio.studio_id,
@@ -29,8 +97,12 @@ export async function getStorefrontBySlug(
     phone: studio.phone ?? null,
     address: studio.address ?? null,
     logo_url: studio.logo_url ?? null,
+    cover_url: studio.cover_url ?? null,
     bio: studio.bio ?? null,
     theme: studio.theme ?? null,
+    team,
+    portfolio,
+    packages,
   }
 }
 

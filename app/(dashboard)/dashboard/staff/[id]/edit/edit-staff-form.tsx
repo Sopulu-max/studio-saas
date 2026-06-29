@@ -30,6 +30,10 @@ export default function EditStaffForm({
     phone: string | null
     hire_date: string | null
     working_days: string[] | null
+    is_public: boolean | null
+    bio: string | null
+    avatar_url: string | null
+    display_order: number | null
   }
   staffRoles: StaffRoleConfig[]
 }) {
@@ -53,6 +57,10 @@ export default function EditStaffForm({
     hire_date: member.hire_date ?? '',
     roles: initialRoles,
     working_days: member.working_days ?? [],
+    is_public: member.is_public ?? false,
+    bio: member.bio ?? '',
+    avatar_url: member.avatar_url ?? '',
+    display_order: String(member.display_order ?? '0'),
   })
 
   function update(field: string, value: string) {
@@ -100,7 +108,10 @@ export default function EditStaffForm({
     setLoading(true)
     setError('')
     setExistingId('')
-    const { error, existingStaffId } = await updateStaff(staffId, form)
+    const { error, existingStaffId } = await updateStaff(staffId, {
+      ...form,
+      display_order: parseInt(form.display_order) || 0,
+    })
 
     if (error) {
       setError(error)
@@ -284,6 +295,56 @@ export default function EditStaffForm({
         <div style={{ marginBottom: '24px' }}>
           <label style={labelStyle}>Hire date</label>
           <input type="date" value={form.hire_date} onChange={(e) => update('hire_date', e.target.value)} style={inputStyle} />
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--line)', margin: '24px 0' }} />
+
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '8px' }}>Storefront Profile</h3>
+          <p style={{ fontSize: '13px', color: 'var(--text-3)', marginBottom: '16px' }}>
+            Choose whether to show this team member on the public storefront.
+          </p>
+
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <input type="checkbox" checked={form.is_public} onChange={e => update('is_public', e.target.checked as any)} />
+              <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-1)' }}>Visible on Storefront</span>
+            </label>
+          </div>
+
+          {form.is_public && (
+            <>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>Bio</label>
+                <textarea 
+                  value={form.bio} 
+                  onChange={e => update('bio', e.target.value)} 
+                  placeholder="A short biography..." 
+                  rows={3} 
+                  style={{ ...inputStyle, resize: 'vertical' }} 
+                />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>Avatar URL</label>
+                <input 
+                  type="url" 
+                  value={form.avatar_url} 
+                  onChange={e => update('avatar_url', e.target.value)} 
+                  placeholder="https://..." 
+                  style={inputStyle} 
+                />
+              </div>
+              <div style={{ marginBottom: '16px' }}>
+                <label style={labelStyle}>Display Order</label>
+                <input 
+                  type="number" 
+                  value={form.display_order} 
+                  onChange={e => update('display_order', e.target.value)} 
+                  style={inputStyle} 
+                />
+              </div>
+            </>
+          )}
         </div>
 
         {error && (

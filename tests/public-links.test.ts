@@ -12,17 +12,17 @@ function readParams(url: string) {
 }
 
 test('buildSignedPublicLink creates a verifiable invoice URL', () => {
-  const url = buildSignedPublicLink('invoice', 'inv_123', 'https://example.com', 1)
+  const url = buildSignedPublicLink('my-studio', 'invoice', 'inv_123', 'https://example.com', 1)
   const { pathname, sig, exp } = readParams(url)
 
-  assert.equal(pathname, '/view/invoice/inv_123')
+  assert.equal(pathname, '/my-studio/portal/invoice/inv_123')
   assert.ok(sig)
   assert.ok(exp)
   assert.equal(verifySignedPublicLink('invoice', 'inv_123', sig, exp), true)
 })
 
 test('verifySignedPublicLink rejects tampered ids', () => {
-  const url = buildSignedPublicLink('contract', 'ctr_123', 'https://example.com', 1)
+  const url = buildSignedPublicLink('my-studio', 'contract', 'ctr_123', 'https://example.com', 1)
   const { sig, exp } = readParams(url)
 
   assert.equal(verifySignedPublicLink('contract', 'ctr_999', sig, exp), false)

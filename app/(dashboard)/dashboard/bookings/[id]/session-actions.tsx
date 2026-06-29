@@ -7,15 +7,18 @@ import { toast } from 'sonner'
 import { useStudioConfig } from '@/components/studio-config-provider'
 import { getCancellationStatus, getStatusConfig } from '@/lib/studio-config'
 import {
-  updateSessionStatus,
+  changeBookingStatus,
   updateSessionDriveLink,
+  recordSelections,
+} from '@/app/actions/bookings'
+import {
   assignSessionStaff,
   removeSessionStaff,
-  recordSelections,
-} from '@/app/actions/sessions'
+} from '@/app/actions/fulfillment'
 import { addExtraCharge } from '@/app/actions/invoices'
+import type { SessionDetailDTO } from '@/lib/domains/bookings/types'
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// --- Types --------------------------------------------------------------------
 
 type StaffMember   = { staff_id: string; full_name: string; role?: string }
 type AssignedStaff = { staff_id: string; full_name: string; role: string }
@@ -26,12 +29,12 @@ interface SessionActionsProps {
   serviceType:    string
   outfitsCount:   number | null
   invoiceId:      string | null
-  assignedStaff:  AssignedStaff[]
+  sessions:       SessionDetailDTO[]
   availableStaff: StaffMember[]
   driveLink:      string
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// --- Helpers ------------------------------------------------------------------
 
 function btnStyle(primary: boolean, danger?: boolean): React.CSSProperties {
   if (danger)  return { background: 'transparent', color: '#e24b4a', border: '0.5px solid #f09595', padding: '8px 18px', fontSize: '14px', borderRadius: '8px', cursor: 'pointer' }
@@ -39,7 +42,7 @@ function btnStyle(primary: boolean, danger?: boolean): React.CSSProperties {
   return { background: 'transparent', color: 'var(--text-3)', border: '1px solid var(--line)', padding: '8px 18px', fontSize: '14px', borderRadius: '8px', cursor: 'pointer' }
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
+// --- Sub-components -----------------------------------------------------------
 
 function DriveLinkForm({ value, onChange, onSave, loading }: {
   value: string; onChange: (v: string) => void; onSave: () => void; loading: boolean
@@ -84,7 +87,7 @@ function StaffRoleRow({ roleValue, roleLabel, assigned, availableStaff, onAssign
         <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '4px', marginBottom: '6px' }}>
           {assignedForRole.map(s => (
             <div key={s.staff_id} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>✓ {s.full_name}</span>
+              <span style={{ fontSize: '13px', color: 'var(--text-1)' }}>? {s.full_name}</span>
               <button
                 onClick={() => onRemove(s.staff_id)}
                 disabled={loading}
@@ -107,7 +110,7 @@ function StaffRoleRow({ roleValue, roleLabel, assigned, availableStaff, onAssign
         <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
           <select value={selected} onChange={e => setSelected(e.target.value)}
             style={{ flex: 1, fontSize: '13px', boxSizing: 'border-box' as const }}>
-            <option value="">Assign {roleLabel}…</option>
+            <option value="">Assign {roleLabel}�</option>
             {availableStaff.map(s => (
               <option key={s.staff_id} value={s.staff_id}>{s.full_name}</option>
             ))}
@@ -117,7 +120,7 @@ function StaffRoleRow({ roleValue, roleLabel, assigned, availableStaff, onAssign
             disabled={!selected || loading}
             style={{ padding: '7px 12px', fontSize: '12px', background: 'var(--btn)', color: 'var(--btn-fg)', border: 'none', borderRadius: '7px', cursor: 'pointer', whiteSpace: 'nowrap' as const }}
           >
-            {loading ? '…' : 'Assign'}
+            {loading ? '�' : 'Assign'}
           </button>
         </div>
       )}
@@ -125,7 +128,8 @@ function StaffRoleRow({ roleValue, roleLabel, assigned, availableStaff, onAssign
   )
 }
 
-function StaffPanel({ assigned, availableStaff, onAssign, onRemove, loading, serviceType }: {
+function StaffPanel({ sessionName, assigned, availableStaff, onAssign, onRemove, loading, serviceType }: {
+  sessionName:    string
   assigned:       AssignedStaff[]
   availableStaff: StaffMember[]
   onAssign:       (staffId: string, role: string) => Promise<void>
@@ -162,7 +166,7 @@ function StaffPanel({ assigned, availableStaff, onAssign, onRemove, loading, ser
 
   return (
     <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px', marginTop: '16px' }}>
-      <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', margin: '0 0 12px' }}>Staff</p>
+      <p style={{ fontSize: '13px', fontWeight: '600', color: 'var(--text-2)', margin: '0 0 12px' }}>Staff: {sessionName}</p>
       {rows.map(row => (
         <StaffRoleRow
           key={row.roleValue}
@@ -175,16 +179,16 @@ function StaffPanel({ assigned, availableStaff, onAssign, onRemove, loading, ser
   )
 }
 
-// ─── Status picker ────────────────────────────────────────────────────────────
+// --- Status picker ------------------------------------------------------------
 
-function StatusPicker({ currentStatus, statuses, onUpdate, loading }: {
-  currentStatus: string
-  statuses:      { value: string; label: string }[]
-  onUpdate:      (status: string) => Promise<void>
-  loading:       boolean
+function StatusPicker({ current, statuses, onUpdate, loading }: {
+  current: string
+  statuses: { value: string; label: string }[]
+  onUpdate: (val: string) => void
+  loading: boolean
 }) {
-  const [selected, setSelected] = useState(currentStatus)
-  const unchanged = selected === currentStatus
+  const [selected, setSelected] = useState(current)
+  const unchanged = selected === current
 
   return (
     <div>
@@ -215,11 +219,11 @@ function StatusPicker({ currentStatus, statuses, onUpdate, loading }: {
   )
 }
 
-// ─── Main component ───────────────────────────────────────────────────────────
+// --- Main component -----------------------------------------------------------
 
 export default function SessionActions({
   sessionId, currentStatus, serviceType,
-  outfitsCount, invoiceId, assignedStaff, availableStaff, driveLink,
+  outfitsCount, invoiceId, sessions, availableStaff, driveLink,
 }: SessionActionsProps) {
   const router  = useRouter()
   const config  = useStudioConfig()
@@ -229,6 +233,8 @@ export default function SessionActions({
   const [selectionCount, setSelectionCount] = useState('')
   const [extraAmount, setExtraAmount]       = useState('')
   const [showExtra, setShowExtra]           = useState(false)
+
+  const bookingId = sessionId;
 
   const currentStatusCfg = getStatusConfig(config, currentStatus)
   const cancelStatusCfg  = getCancellationStatus(config)
@@ -252,7 +258,7 @@ export default function SessionActions({
 
   async function handleStatus(next: string) {
     setLoading(true)
-    const { error } = await updateSessionStatus(sessionId, next)
+    const { error } = await changeBookingStatus(bookingId, next)
     if (error) toast.error(error)
     else toast.success('Status updated')
     router.refresh()
@@ -261,23 +267,23 @@ export default function SessionActions({
 
   async function handleSaveDriveLink() {
     setLoading(true)
-    const { error } = await updateSessionDriveLink(sessionId, driveLinkValue)
+    const { error } = await updateSessionDriveLink(bookingId, driveLinkValue)
     if (error) toast.error(error)
     else { toast.success('Drive link saved'); setShowDriveForm(false); router.refresh() }
     setLoading(false)
   }
 
-  async function handleAssignStaff(staffId: string, role: string) {
+  async function handleAssignStaff(specificSessionId: string, staffId: string, role: string) {
     setLoading(true)
-    const { error } = await assignSessionStaff(sessionId, staffId, role)
+    const { error } = await assignSessionStaff(specificSessionId, bookingId, staffId, role) 
     if (error) toast.error(error)
     else { toast.success('Staff assigned'); router.refresh() }
     setLoading(false)
   }
 
-  async function handleRemoveStaff(staffId: string) {
+  async function handleRemoveStaff(specificSessionId: string, staffId: string) {
     setLoading(true)
-    const { error } = await removeSessionStaff(sessionId, staffId)
+    const { error } = await removeSessionStaff(specificSessionId, bookingId, staffId)
     if (error) toast.error(error)
     else { toast.success('Staff removed'); router.refresh() }
     setLoading(false)
@@ -293,164 +299,80 @@ export default function SessionActions({
         if (chargeErr) { toast.error(chargeErr); setLoading(false); return }
       }
     }
-    const { error } = await recordSelections(sessionId, selCount)
+    const { error } = await recordSelections(bookingId, selCount)
     if (error) toast.error(error)
     else { toast.success('Selections recorded'); router.refresh() }
     setLoading(false)
   }
 
-  const staffPanelProps = {
-    assigned: assignedStaff,
-    availableStaff,
-    onAssign: handleAssignStaff,
-    onRemove: handleRemoveStaff,
-    loading,
-    serviceType,
-  }
-
-  // ── Cancelled ─────────────────────────────────────────────────────────────
-  if (isCancellation) {
-    return (
-      <div className="glass-panel" style={{ padding: '1.25rem', textAlign: 'center' }}>
-        <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>This session has been cancelled.</p>
-      </div>
-    )
-  }
-
-  // ── Selection stage ────────────────────────────────────────────────────────
-  if (isSelectionStage) {
-    return (
-      <div className="glass-panel" style={{ padding: '1.5rem' }}>
-        <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 12px' }}>RECORD SELECTIONS</p>
-        {outfitsCount != null && (
-          <p style={{ fontSize: '13px', color: 'var(--text-3)', margin: '0 0 12px' }}>
-            {outfitsCount} outfit{outfitsCount !== 1 ? 's' : ''} → base of {baseImages} images included
-          </p>
-        )}
-        <div style={{ marginBottom: '12px' }}>
-          <label style={{ fontSize: '13px', color: 'var(--text-2)', display: 'block' as const, marginBottom: '5px' }}>
-            How many images did the client select?
-          </label>
-          <input type="number" min="1" value={selectionCount}
-            onChange={e => { setSelectionCount(e.target.value); setShowExtra(false); setExtraAmount('') }}
-            placeholder="e.g. 24" style={{ width: '100%', boxSizing: 'border-box' as const }} />
-        </div>
-        {hasExtraImages && selCount > 0 && (
-          <div style={{ background: '#faeeda', borderRadius: '8px', padding: '12px', marginBottom: '12px', fontSize: '13px' }}>
-            <p style={{ margin: '0 0 6px', color: '#854f0b', fontWeight: '500' }}>
-              {extraImages} extra image{extraImages !== 1 ? 's' : ''} above base
-            </p>
-            {invoiceId ? (
-              !showExtra ? (
-                <button onClick={() => setShowExtra(true)}
-                  style={{ fontSize: '12px', color: '#854f0b', background: 'transparent', border: '0.5px solid #c9943a', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>
-                  Add extra charge to invoice
-                </button>
-              ) : (
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px' }}>
-                  <input type="number" min="0" value={extraAmount} onChange={e => setExtraAmount(e.target.value)}
-                    placeholder="Extra amount (₦)" style={{ flex: 1, boxSizing: 'border-box' as const }} />
-                  <button onClick={() => { setShowExtra(false); setExtraAmount('') }}
-                    style={{ fontSize: '12px', color: 'var(--text-3)', background: 'transparent', border: '1px solid var(--line)', borderRadius: '6px', padding: '4px 10px', cursor: 'pointer' }}>
-                    Skip
-                  </button>
-                </div>
-              )
-            ) : (
-              <p style={{ margin: 0, color: 'var(--text-3)' }}>Create an invoice first to add an extra charge.</p>
-            )}
-          </div>
-        )}
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: '16px' }}>
-          <button onClick={handleRecordSelections} disabled={loading || !selectionCount} style={btnStyle(true)}>
-            {loading ? '...' : 'Confirm selections'}
-          </button>
-          {showDriveBtn && (
-            <button onClick={() => setShowDriveForm(v => !v)} style={btnStyle(false)}>
-              {showDriveForm ? 'Cancel' : driveLink ? 'Update Drive link' : 'Add Drive link'}
-            </button>
-          )}
-        </div>
-        {showDriveForm && (
-          <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
-        )}
-
-        <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px', marginTop: '16px' }}>
-          <StatusPicker
-            currentStatus={currentStatus}
-            statuses={selectableStatuses}
-            onUpdate={handleStatus}
-            loading={loading}
-          />
-          {cancelStatusCfg && (
-            <div style={{ marginTop: '12px' }}>
-              <button onClick={() => handleStatus(cancelStatusCfg.value)} disabled={loading} style={btnStyle(false, true)}>
-                Cancel session
-              </button>
-            </div>
-          )}
-        </div>
-
-        <StaffPanel {...staffPanelProps} />
-      </div>
-    )
-  }
-
-  // ── Terminal success ───────────────────────────────────────────────────────
-  if (isTerminal) {
-    return (
-      <div className="glass-panel" style={{ padding: '1.5rem' }}>
-        <p style={{ fontSize: '13px', color: '#3b6d11', margin: '0 0 16px' }}>{currentStatusCfg.label} ✓</p>
-
-        <StatusPicker
-          currentStatus={currentStatus}
-          statuses={selectableStatuses}
-          onUpdate={handleStatus}
-          loading={loading}
-        />
-
-        <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' as const }}>
-          <button onClick={() => setShowDriveForm(v => !v)} style={btnStyle(false)}>
-            {showDriveForm ? 'Cancel' : driveLink ? 'Update Drive link' : 'Add Drive link'}
-          </button>
-        </div>
-        {showDriveForm && (
-          <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
-        )}
-        <StaffPanel {...staffPanelProps} />
-      </div>
-    )
-  }
-
-  // ── All other statuses ─────────────────────────────────────────────────────
   return (
-    <div className="glass-panel" style={{ padding: '1.5rem' }}>
-      <StatusPicker
-        currentStatus={currentStatus}
-        statuses={selectableStatuses}
-        onUpdate={handleStatus}
-        loading={loading}
-      />
-
-      <div style={{ marginTop: '12px', display: 'flex', gap: '8px', flexWrap: 'wrap' as const, alignItems: 'center' }}>
-        {showDriveBtn && (
-          <button onClick={() => setShowDriveForm(v => !v)} style={btnStyle(false)}>
-            {showDriveForm ? 'Cancel' : driveLink ? 'Update Drive link' : 'Add Drive link'}
-          </button>
-        )}
-        {cancelStatusCfg && (
-          <button onClick={() => handleStatus(cancelStatusCfg.value)} disabled={loading}
-            style={{ ...btnStyle(false, true), marginLeft: showDriveBtn ? 'auto' : undefined }}>
-            Cancel session
-          </button>
-        )}
-      </div>
-
-      {showDriveForm && (
-        <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
+    <div className="glass-panel animate-enter" style={{ padding: '1.5rem', animationDelay: '0.4s', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+      
+      {!isCancellation && !isTerminal && (
+        <StatusPicker current={currentStatus} statuses={selectableStatuses} onUpdate={handleStatus} loading={loading} />
       )}
 
-      <StaffPanel {...staffPanelProps} />
+      {isSelectionStage && (
+        <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px' }}>
+          <p style={{ fontSize: '13px', fontWeight: '500', color: 'var(--text-3)', margin: '0 0 10px' }}>RECORD SELECTIONS</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <input type="number" value={selectionCount} onChange={e => setSelectionCount(e.target.value)}
+              placeholder={`Client selected... (Base: ${baseImages})`}
+              style={{ width: '100%', boxSizing: 'border-box' }} className="input-field" />
+            
+            {hasExtraImages && (
+              <div style={{ background: 'var(--surface-2)', padding: '12px', borderRadius: '8px', border: '1px solid var(--line-inner)' }}>
+                <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 8px' }}>
+                  Client selected <strong style={{ color: '#e24b4a' }}>{extraImages}</strong> extra images!
+                </p>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={showExtra} onChange={e => setShowExtra(e.target.checked)} />
+                  Add extra charge to invoice?
+                </label>
+                {showExtra && (
+                  <div style={{ marginTop: '8px' }}>
+                    <input type="number" value={extraAmount} onChange={e => setExtraAmount(e.target.value)}
+                      placeholder="Amount (?)"
+                      className="input-field" style={{ width: '100%', boxSizing: 'border-box' }} />
+                  </div>
+                )}
+              </div>
+            )}
+            <button onClick={handleRecordSelections} disabled={loading || !selectionCount} style={btnStyle(false)}>
+              {loading ? '...' : 'Save & Notify Editors'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showDriveBtn && (
+        <>
+          {!showDriveForm && !driveLink ? (
+            <div style={{ borderTop: '1px solid var(--line-inner)', paddingTop: '16px' }}>
+              <button onClick={() => setShowDriveForm(true)} style={{ ...btnStyle(false), width: '100%' }}>
+                + Add Drive Link
+              </button>
+            </div>
+          ) : (
+            <DriveLinkForm value={driveLinkValue} onChange={setDriveLinkValue} onSave={handleSaveDriveLink} loading={loading} />
+          )}
+        </>
+      )}
+
+      {/* Map over sessions to allow assigning staff to specific sessions */}
+      {sessions.map(sess => (
+        <StaffPanel 
+          key={sess.session_id}
+          sessionName={sess.shoot_type || sess.session_type || 'Session'}
+          assigned={(sess.staff ?? []).map(s => ({ staff_id: s.staff_id || '', full_name: s.staff_name || '', role: s.role || '' }))}
+          availableStaff={availableStaff}
+          onAssign={(staffId, role) => handleAssignStaff(sess.session_id, staffId, role)}
+          onRemove={(staffId) => handleRemoveStaff(sess.session_id, staffId)}
+          loading={loading}
+          serviceType={serviceType}
+        />
+      ))}
+
     </div>
   )
 }

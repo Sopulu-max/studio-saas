@@ -26,6 +26,56 @@ const addPaymentSchema = z.object({
   reference: z.string().optional().default(''),
 })
 
+export async function recordIntake(form: {
+  sessionId: string
+  agreedAmount: string
+  paymentAmount: string
+  paymentMethod: string
+}) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  if (!(await ownsBooking(context.admin, context.studioId, form.sessionId))) {
+    return { error: 'Session not found' }
+  }
+
+  const agreed = Math.max(0, parseFloat(form.agreedAmount) || 0)
+  if (agreed === 0) return { error: 'Agreed amount must be greater than 0' }
+
+  const paid = Math.max(0, parseFloat(form.paymentAmount) || 0)
+  const invoiceStatus = paid === 0 ? 'draft' : paid >= agreed ? 'paid' : 'sent'
+
+  const { data: invoice, error: invoiceError } = await context.admin
+    .from('invoices')
+    .insert({
+      booking_id: form.sessionId,
+      subtotal: agreed,
+      discount: 0,
+      tax: 0,
+      total: agreed,
+      status: invoiceStatus,
+      issued_at: new Date().toISOString().split('T')[0],
+    })
+    .select()
+    .single()
+
+  if (invoiceError || !invoice) return { error: invoiceError?.message ?? 'Failed to create invoice' }
+
+  if (paid > 0) {
+    const { error: paymentError } = await context.admin
+      .from('payments')
+      .insert({
+        invoice_id: invoice.invoice_id,
+        amount: paid,
+        method: form.paymentMethod,
+        paid_at: new Date().toISOString(),
+      })
+    if (paymentError) return { error: paymentError.message }
+  }
+
+  return { error: null, invoiceId: invoice.invoice_id }
+}
+
 export async function addInvoice(form: {
   booking_id: string
   agreed_amount: string
@@ -188,7 +238,7 @@ export async function sendInvoiceToClient(invoiceId: string) {
 
   const { data: studio } = await context.admin
     .from('studios')
-    .select('name, email')
+    .select('name, email, slug')
     .eq('owner_id', context.userId)
     .single()
 
@@ -196,13 +246,13 @@ export async function sendInvoiceToClient(invoiceId: string) {
     total?: number | string | null
     due_date?: string | null
     bookings?: {
-      session_date?: string | null
+      sessions?: { session_date?: string | null }[] | null
       clients?: { full_name?: string | null; email?: string | null } | null
     } | null
   }
   const { data: invoiceRaw } = await context.admin
     .from('invoices')
-    .select('total, due_date, bookings(session_date, clients(full_name, email))')
+    .select('total, due_date, bookings(sessions(session_date), clients(full_name, email))')
     .eq('invoice_id', invoiceId)
     .single()
   const invoice = invoiceRaw as unknown as InvoiceEmailRecord | null
@@ -216,10 +266,11 @@ export async function sendInvoiceToClient(invoiceId: string) {
     to: clientEmail,
     clientName: unwrapRow(unwrapRow(invoice.bookings)?.clients)?.full_name ?? 'Client',
     studioName: (studio?.name as string | null | undefined) ?? '',
+    studioSlug: (studio?.slug as string | null | undefined) ?? '',
     invoiceId,
     total: Number(invoice.total),
     dueDate: invoice.due_date ?? undefined,
-    sessionDate: unwrapRow(invoice.bookings)?.session_date ?? undefined,
+    sessionDate: (Array.isArray(unwrapRow(invoice.bookings)?.sessions) ? (unwrapRow(invoice.bookings)?.sessions as any)[0]?.session_date : (unwrapRow(invoice.bookings)?.sessions as any)?.session_date) ?? undefined,
     siteUrl: process.env.NEXT_PUBLIC_SITE_URL,
   })
 
@@ -291,11 +342,20 @@ export async function getInvoiceFormData(bookingId?: string) {
 
   let bookingsQuery = context.admin
     .from('bookings')
-    .select('booking_id, booking_ref, session_date, status, session_type, package_id, custom_answers, clients(full_name, phone), packages(name, base_price)')
+    .select('booking_id, booking_ref, status, package_id, custom_answers, clients(full_name, phone), packages(name, base_price), sessions(session_date, session_type)')
     .eq('studio_id', context.studioId)
-    .order('session_date', { ascending: false })
+    .order('created_at', { ascending: false })
   for (const v of cancelValues) { bookingsQuery = bookingsQuery.neq('status', v) }
-  const { data: studioBookings } = await bookingsQuery
+  const { data: studioBookingsRaw } = await bookingsQuery
+
+  const studioBookings = (studioBookingsRaw ?? []).map((b: any) => {
+    const s = Array.isArray(b.sessions) ? b.sessions[0] : b.sessions
+    return {
+      ...b,
+      session_date: s?.session_date ?? null,
+      session_type: s?.session_type ?? null,
+    }
+  })
 
   const { data: studioPackages } = await context.admin
     .from('packages')

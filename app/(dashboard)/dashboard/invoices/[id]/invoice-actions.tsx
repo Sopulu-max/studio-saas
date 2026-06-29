@@ -22,13 +22,15 @@ export default function InvoiceActions({
   total,
   clientPhone,
   publicLink,
+  studioSlug,
 }: {
   invoiceId: string
-  currentStatus: string
+  currentStatus: string | null
   balanceDue: number
   total: number
   clientPhone?: string | null
   publicLink: string
+  studioSlug: string
 }) {
   const router = useRouter()
   const [showPaymentForm, setShowPaymentForm] = useState(false)
@@ -37,7 +39,7 @@ export default function InvoiceActions({
   const [payment, setPayment]   = useState({ amount: '', method: 'bank_transfer', reference: '' })
   const [sendMethod, setSendMethod] = useState<'email' | 'whatsapp' | 'both'>('email')
   const [selectedStatus, setSelectedStatus] = useState(
-    currentStatus === 'cancelled' ? 'draft' : currentStatus
+    (!currentStatus || currentStatus === 'cancelled') ? 'draft' : currentStatus
   )
 
   async function handleSendToClient() {
@@ -138,7 +140,7 @@ export default function InvoiceActions({
 
       {/* Other actions */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: showPaymentForm ? '16px' : '0' }}>
-        <a href={`/print/invoice/${invoiceId}`} target="_blank" rel="noreferrer"
+        <a href={`/${studioSlug}/print/invoice/${invoiceId}`} target="_blank" rel="noreferrer"
           style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', background: 'transparent', color: 'var(--text-2)', textDecoration: 'none', cursor: 'pointer', display: 'inline-block' }}>
           Download PDF
         </a>

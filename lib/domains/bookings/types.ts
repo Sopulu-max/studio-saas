@@ -19,6 +19,7 @@ export type BookingListDTO = {
 }
 
 export type StaffAssignmentDTO = {
+  session_id?: string
   role: string | null
   staff_id: string | null
   staff_name: string | null
@@ -68,12 +69,14 @@ export type BookedServiceDTO = {
 }
 
 export type SessionDetailDTO = {
+  session_id: string
   session_date: string | null
   session_type: string | null
   shoot_type: string | null
   location_address: string | null
   event_name: string | null
   event_date: string | null
+  staff?: StaffAssignmentDTO[]
 }
 
 export type BookingDetailDTO = {

@@ -20,6 +20,10 @@ export async function addStaff(form: {
   phone:        string
   hire_date:    string
   working_days?: string[]
+  is_public?:    boolean
+  bio?:          string
+  avatar_url?:   string
+  display_order?: number
 }) {
   const result = staffSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -45,6 +49,10 @@ export async function addStaff(form: {
     phone:        form.phone || null,
     hire_date:    form.hire_date || null,
     working_days: form.working_days ?? [],
+    is_public:    form.is_public ?? false,
+    bio:          form.bio || null,
+    avatar_url:   form.avatar_url || null,
+    display_order:form.display_order ?? 0,
     studio_id:    context.studioId,
   })
   return { error: error?.message ?? null, existingStaffId: null }
@@ -57,6 +65,10 @@ export async function updateStaff(staffId: string, form: {
   phone:        string
   hire_date:    string
   working_days?: string[]
+  is_public?:    boolean
+  bio?:          string
+  avatar_url?:   string
+  display_order?: number
 }) {
   const result = staffSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -89,6 +101,10 @@ export async function updateStaff(staffId: string, form: {
       phone:        form.phone || null,
       hire_date:    form.hire_date || null,
       working_days: form.working_days ?? [],
+      is_public:    form.is_public ?? false,
+      bio:          form.bio || null,
+      avatar_url:   form.avatar_url || null,
+      display_order:form.display_order ?? 0,
     })
     .eq('staff_id', staffId)
 

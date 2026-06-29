@@ -109,16 +109,20 @@ export async function checkoutEquipment(
   assignedTo: string,
   bookingId?: string,
   checkoutNotes?: string,
+  sessionId?: string,
 ) {
   if (!assignedTo.trim()) return { error: 'Enter who is taking this equipment' }
 
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
-  const [{ data: equipment }, { data: actualSession }] = await Promise.all([
-    context.admin.from('equipment').select('equipment_id').eq('equipment_id', equipmentId).eq('studio_id', context.studioId).maybeSingle(),
-    bookingId ? context.admin.from('sessions').select('session_id').eq('booking_id', bookingId).eq('studio_id', context.studioId).maybeSingle() : Promise.resolve({ data: null })
-  ])
+  let finalSessionId = sessionId;
+  if (!finalSessionId && bookingId) {
+    const { data: actualSession } = await context.admin.from('sessions').select('session_id').eq('booking_id', bookingId).eq('studio_id', context.studioId).maybeSingle()
+    if (actualSession) finalSessionId = actualSession.session_id as string;
+  }
+
+  const { data: equipment } = await context.admin.from('equipment').select('equipment_id').eq('equipment_id', equipmentId).eq('studio_id', context.studioId).maybeSingle()
 
   if (!equipment) {
     return { error: 'Equipment not found' }
@@ -134,7 +138,7 @@ export async function checkoutEquipment(
       assigned_to:    assignedTo.trim(),
       checked_out_at: now,
       booking_id:     bookingId || null,
-      session_id:     (actualSession as any)?.session_id || null,
+      session_id:     finalSessionId || null,
     })
     .eq('equipment_id', equipmentId)
 
@@ -146,7 +150,7 @@ export async function checkoutEquipment(
     studio_id:      context.studioId,
     assigned_to:    assignedTo.trim(),
     booking_id:     bookingId || null,
-    session_id:     (actualSession as any)?.session_id || null,
+    session_id:     finalSessionId || null,
     checked_out_at: now,
     notes:          checkoutNotes?.trim() || null,
   })

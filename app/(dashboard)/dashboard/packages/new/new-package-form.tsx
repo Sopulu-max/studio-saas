@@ -123,11 +123,13 @@ export default function NewPackageForm({
 
   const [form, setForm] = useState({
     name: '', description: '', base_price: defaultPrice ?? '', shoot_type: 'Portrait',
+    public_title: '', public_description: '',
     coverage_hours: '', display_order: '0',
   })
 
   const [pricingType,     setPricingType]     = useState<'fixed' | 'per_project'>('fixed')
-  const [isPublic,        setIsPublic]        = useState(true)
+  const [isPublic,        setIsPublic]        = useState(false)
+  const [coverUrl,        setCoverUrl]        = useState('')
   const [addons,          setAddons]          = useState<Addon[]>([])
   const [sections,        setSections]        = useState<Section[]>([])
   const [typedInclusions, setTypedInclusions] = useState<TypedInclusion[]>([])
@@ -217,6 +219,7 @@ export default function NewPackageForm({
       addons,
       pricing_type:         pricingType,
       is_public:            isPublic,
+      cover_url:            coverUrl || null,
       display_order:        parseInt(form.display_order) || 0,
       sections,
       typed_inclusions:     typedInclusions,
@@ -248,7 +251,36 @@ export default function NewPackageForm({
         <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Define a shoot package for your studio</p>
       </div>
 
-      {/* Catalog settings */}
+            <div className="glass-panel" style={sectionStyle}>
+              <h3 style={{ fontSize: '15px', fontWeight: '600', marginBottom: '16px' }}>Storefront Display</h3>
+              <p style={{ fontSize: '13px', color: 'var(--text-3)', marginBottom: '16px' }}>
+                How this package appears to clients on your public storefront.
+              </p>
+              
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={isPublic} onChange={e => setIsPublic(e.target.checked)} />
+                  <span style={{ fontSize: '14px', fontWeight: '500', color: 'var(--text-1)' }}>Visible on Storefront</span>
+                </label>
+              </div>
+
+              {isPublic && (
+                <>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={labelStyle}>Public Title <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(Overrides internal name)</span></label>
+                    <input type="text" value={form.public_title} onChange={e => update('public_title', e.target.value)} placeholder="e.g. The Signature Collection" style={inputStyle} />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={labelStyle}>Public Description <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(Overrides internal description)</span></label>
+                    <textarea value={form.public_description} onChange={e => update('public_description', e.target.value)} placeholder="Engaging copy for clients..." rows={3} style={{ ...inputStyle, resize: 'vertical' }} />
+                  </div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={labelStyle}>Cover image <span style={{ color: 'var(--text-4)', fontWeight: '400' }}>(Thumbnail on storefront)</span></label>
+                    {/* Add CoverUpload logic if it exists here, or standard URL input */}
+                  </div>
+                </>
+              )}
+            </div>
       <div style={sectionStyle}>
         <p style={{ fontSize: '14px', fontWeight: '500', margin: '0 0 14px' }}>Catalog settings</p>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

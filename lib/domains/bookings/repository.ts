@@ -142,10 +142,10 @@ export async function getBookingDetail(
     .select(`
       booking_id, booking_ref, status, notes, drive_link, selections_count, extra_outfits, extra_pictures,
       client_id, package_id, custom_answers,
-      sessions ( session_date, session_type, shoot_type, location_address, event_name, event_date ),
+      sessions ( session_id, session_date, session_type, shoot_type, location_address, event_name, event_date ),
       clients ( client_id, full_name, email, phone ),
       packages ( name, base_price ),
-      booking_staff ( role, staff_id, staff ( full_name ) ),
+      booking_staff ( session_id, role, staff_id, staff ( full_name ) ),
       booking_addons ( quantity, package_addons ( name, price ) )
     `)
     .eq('booking_id', bookingId)
@@ -184,12 +184,21 @@ export async function getBookingDetail(
     extra_pictures: b.extra_pictures,
 
     sessions: (b.sessions ?? []).map((s: any) => ({
+      session_id: s.session_id,
       session_date: s.session_date ?? null,
       session_type: s.session_type ?? null,
       shoot_type: s.shoot_type ?? null,
       location_address: s.location_address ?? null,
       event_name: s.event_name ?? null,
       event_date: s.event_date ?? null,
+      staff: (b.booking_staff ?? []).filter((bs: any) => bs.session_id === s.session_id).map((bs: any) => {
+        const staffMember = unwrapRow(bs.staff)
+        return {
+          role: bs.role,
+          staff_id: bs.staff_id,
+          staff_name: staffMember?.full_name ?? null
+        }
+      })
     })),
 
     client_id: b.client_id,
@@ -206,6 +215,7 @@ export async function getBookingDetail(
     staff: (b.booking_staff ?? []).map((s: any) => {
       const staffMember = unwrapRow(s.staff)
       return {
+        session_id: s.session_id,
         role: s.role,
         staff_id: s.staff_id,
         staff_name: staffMember?.full_name ?? null

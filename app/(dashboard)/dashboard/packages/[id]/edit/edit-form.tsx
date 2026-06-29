@@ -39,6 +39,8 @@ type EditPackageRecord = {
   pricing_type?:        'fixed' | 'per_project' | null
   cover_url?:           string | null
   is_public?:           boolean | null
+  public_title?:        string | null
+  public_description?:  string | null
   display_order?:       number | null
   package_addons?:      PackageAddonRecord[] | null
   package_sections?:    PackageSectionRecord[] | null
@@ -153,6 +155,8 @@ export default function EditPackageForm({
   const [form, setForm] = useState({
     name:              pkg.name           ?? '',
     description:       pkg.description    ?? '',
+    public_title:      pkg.public_title   ?? '',
+    public_description:pkg.public_description ?? '',
     base_price:        String(pkg.base_price    ?? ''),
     shoot_type:        pkg.shoot_type     ?? '',
     coverage_hours:    pkg.coverage_hours  != null ? String(pkg.coverage_hours) : '',
@@ -160,7 +164,8 @@ export default function EditPackageForm({
   })
 
   const [pricingType,    setPricingType]    = useState<'fixed' | 'per_project'>(pkg.pricing_type ?? 'fixed')
-  const [isPublic,       setIsPublic]       = useState<boolean>(pkg.is_public     ?? true)
+  const [isPublic,       setIsPublic]       = useState<boolean>(pkg.is_public     ?? false)
+  const [coverUrl,       setCoverUrl]       = useState<string>(pkg.cover_url      ?? '')
   const [addons,         setAddons]         = useState<Addon[]>(
     (pkg.package_addons ?? []).map(a => ({ name: a.name ?? '', description: a.description ?? '', price: String(a.price) }))
   )
@@ -267,6 +272,7 @@ export default function EditPackageForm({
       typed_inclusions:     typedInclusions,
       linked_services:      linkedServices,
       contract_template_id: contractTemplateId || null,
+      cover_url:            coverUrl || null,
       force_duplicate:      forceDuplicate,
     })
 

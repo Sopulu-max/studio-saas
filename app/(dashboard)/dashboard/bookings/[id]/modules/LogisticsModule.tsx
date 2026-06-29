@@ -1,11 +1,15 @@
 import type { BookingDetailDTO } from '@/lib/domains/bookings/types'
+import AddSessionButton from './AddSessionButton'
 
 export default function LogisticsModule({ booking }: { booking: BookingDetailDTO }) {
   const sessions = booking.sessions ?? []
 
   return (
     <div className="glass-panel animate-enter" style={{ padding: '1.5rem', animationDelay: '0.1s' }}>
-      <p className="label-mini">Logistics & Locations</p>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+        <p className="label-mini" style={{ margin: 0 }}>Logistics & Locations</p>
+        <AddSessionButton bookingId={booking.booking_id} />
+      </div>
 
       {sessions.length === 0 ? (
         <p style={{ fontSize: '14px', color: 'var(--text-4)' }}>No sessions scheduled.</p>

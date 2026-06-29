@@ -25,8 +25,11 @@ export default async function GalleryDetailPage({ params }: { params: Promise<{ 
   }
   const s = STATUS_COLORS[gallery.status ?? ''] ?? STATUS_COLORS.processing
 
+  const studio = await context.admin.from('studios').select('slug').eq('studio_id', context.studioId).single()
+  const studioSlug = (studio.data?.slug as string) ?? ''
+
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-  const clientLink = `${siteUrl}/gallery/${gallery.shared_link}`
+  const clientLink = `${siteUrl}/${studioSlug}/gallery/${gallery.shared_link}`
   const selectionOpen = session?.status === 'selecting'
 
   return (

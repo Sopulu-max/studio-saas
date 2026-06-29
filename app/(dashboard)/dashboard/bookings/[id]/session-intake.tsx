@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { recordIntake } from '@/app/actions/sessions'
+import { recordIntake } from '@/app/actions/invoices'
 
 const METHODS = [
   { value: 'cash',          label: 'Cash' },

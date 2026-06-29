@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { updateSessionScope } from '@/app/actions/sessions'
+import { updateBookingExtras } from '@/app/actions/bookings'
 
 export default function SessionExtras({
   sessionId,
@@ -27,7 +27,7 @@ export default function SessionExtras({
 
   async function handleSave() {
     setLoading(true)
-    const { error } = await updateSessionScope(sessionId, {
+    const { error } = await updateBookingExtras(sessionId, {
       extra_outfits:  outfits,
       extra_pictures: pictures,
     })

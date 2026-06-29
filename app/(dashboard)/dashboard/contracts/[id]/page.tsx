@@ -23,6 +23,8 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
 
   if (!contract) redirect('/dashboard/contracts')
 
+  const studio = await context.admin.from('studios').select('slug').eq('studio_id', context.studioId).single()
+
   const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
     draft:  { bg: '#f1efe8', color: '#5f5e5a' },
     sent:   { bg: '#e6f1fb', color: '#185fa5' },
@@ -152,6 +154,7 @@ export default async function ContractDetailPage({ params }: { params: Promise<{
         contractId={id}
         currentStatus={contract.status ?? ''}
         clientName={contract.client_name ?? ''}
+        studioSlug={(studio.data?.slug as string) ?? ''}
       />
     </div>
   )

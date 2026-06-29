@@ -8,6 +8,7 @@ export async function sendInvoiceEmail({
   to,
   clientName,
   studioName,
+  studioSlug,
   invoiceId,
   total,
   dueDate,
@@ -17,6 +18,7 @@ export async function sendInvoiceEmail({
   to: string
   clientName: string
   studioName: string
+  studioSlug: string
   invoiceId: string
   total: number
   dueDate?: string
@@ -26,7 +28,7 @@ export async function sendInvoiceEmail({
   const formatted = (n: number) =>
     '₦' + n.toLocaleString('en-NG', { minimumFractionDigits: 0 })
 
-  const viewUrl = buildSignedPublicLink('invoice', invoiceId, siteUrl)
+  const viewUrl = buildSignedPublicLink(studioSlug, 'invoice', invoiceId, siteUrl)
 
   const dueLine = dueDate
     ? `<p style="margin:0 0 6px;color:#555;font-size:14px;">Due by: <strong>${new Date(dueDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>`
@@ -88,6 +90,7 @@ export async function sendContractEmail({
   to,
   clientName,
   studioName,
+  studioSlug,
   contractId,
   sessionDate,
   siteUrl,
@@ -95,11 +98,12 @@ export async function sendContractEmail({
   to: string
   clientName: string
   studioName: string
+  studioSlug: string
   contractId: string
   sessionDate?: string
   siteUrl?: string
 }) {
-  const viewUrl = buildSignedPublicLink('contract', contractId, siteUrl)
+  const viewUrl = buildSignedPublicLink(studioSlug, 'contract', contractId, siteUrl)
 
   const sessionLine = sessionDate
     ? `<p style="margin:0 0 6px;font-size:14px;color:#555;">Session date: <strong>${new Date(sessionDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}</strong></p>`

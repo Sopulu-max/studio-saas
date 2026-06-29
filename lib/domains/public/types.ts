@@ -6,8 +6,22 @@ export type PublicStorefrontDTO = {
   phone: string | null
   address: string | null
   logo_url: string | null
+  cover_url: string | null
   bio: string | null
   theme: any | null
+  packages?: PublicPackageDTO[]
+  team?: {
+    staff_id: string
+    name: string
+    bio: string | null
+    avatar_url: string | null
+  }[]
+  portfolio?: {
+    gallery_id: string
+    title: string | null
+    shared_link: string | null
+    cover_photo_url: string | null
+  }[]
 }
 
 export type PublicServiceDTO = {
@@ -42,6 +56,8 @@ export type PublicPackageDTO = {
   package_id: string
   name: string
   tagline?: string | null
+  description?: string | null
+  cover_url?: string | null
   base_price?: number | null
   services: PublicPackageServiceDTO[]
 }

@@ -44,6 +44,9 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
     .eq('studio_id', context.studioId)
     .order('full_name')
 
+  const studio = await fetchStudio(context.admin, context.studioId)
+  const studioSlug = studio?.slug ?? ''
+
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', paddingBottom: '100px' }}>
       
@@ -72,7 +75,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
             Edit Booking
           </Link>
           <Link
-            href={buildSignedPublicLink('summary', id)}
+            href={buildSignedPublicLink(studioSlug, 'summary', id)}
             target="_blank"
             className="glass-panel hover-lift"
             style={{ fontSize: '13px', padding: '6px 16px', color: 'var(--text-2)', textDecoration: 'none' }}
@@ -115,11 +118,7 @@ export default async function SessionDetailPage({ params }: { params: Promise<{ 
         serviceType={booking.services?.[0]?.service_category ?? 'photo'}
         outfitsCount={booking.custom_answers?.legacy_outfits ? Number(booking.custom_answers.legacy_outfits) : null}
         invoiceId={booking.invoice?.invoice_id ?? null}
-        assignedStaff={(booking.staff ?? []).map((bs) => ({
-          staff_id: bs.staff_id ?? '',
-          full_name: bs.staff_name ?? '',
-          role: bs.role ?? '',
-        }))}
+        sessions={booking.sessions ?? []}
         availableStaff={(availableStaff ?? []) as unknown as { staff_id: string; full_name: string; role?: string }[]}
         driveLink={booking.drive_link ?? ''}
       />

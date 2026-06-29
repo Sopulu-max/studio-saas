@@ -89,7 +89,7 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
     shared_link: string
     bookings: {
       booking_id: string
-      session_date: string | null
+      sessions?: { session_date: string | null }[] | null
       drive_link: string | null
       clients: { full_name: string | null; email: string | null } | null
     } | null
@@ -97,7 +97,7 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
 
   const { data: galleryRaw } = await context.admin
     .from('galleries')
-    .select('shared_link, bookings(booking_id, session_date, drive_link, clients(full_name, email))')
+    .select('shared_link, bookings(booking_id, sessions(session_date), drive_link, clients(full_name, email))')
     .eq('gallery_id', galleryId)
     .single()
   const gallery = galleryRaw as unknown as GalleryDeliveryRow | null
@@ -109,12 +109,13 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
 
   const { data: studio } = await context.admin
     .from('studios')
-    .select('name')
+    .select('name, slug')
     .eq('studio_id', context.studioId)
     .single()
 
   const siteUrl    = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
-  const galleryUrl = `${siteUrl}/gallery/${gallery.shared_link}`
+  const studioSlug = (studio?.slug as string) ?? ''
+  const galleryUrl = `${siteUrl}/${studioSlug}/gallery/${gallery.shared_link}`
 
   const { error: emailError } = await sendGalleryEmail({
     to: clientEmail,
@@ -122,7 +123,7 @@ export async function deliverGallery(galleryId: string, driveLink?: string) {
     studioName: (studio?.name as string | null | undefined) ?? '',
     galleryUrl,
     driveLink: driveLink || unwrapRow(gallery.bookings)?.drive_link || undefined,
-    sessionDate: unwrapRow(gallery.bookings)?.session_date ?? undefined,
+    sessionDate: (Array.isArray(unwrapRow(gallery.bookings)?.sessions) ? (unwrapRow(gallery.bookings)?.sessions as any)[0]?.session_date : (unwrapRow(gallery.bookings)?.sessions as any)?.session_date) ?? undefined,
   })
 
   if (emailError) return { error: emailError }

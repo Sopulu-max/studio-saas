@@ -12,11 +12,13 @@ export default async function EditStaffPage({ params }: { params: Promise<{ id: 
     staff_id: string; full_name: string; email: string
     roles: string[] | null; role: string | null; phone: string | null
     hire_date: string | null; working_days: string[] | null
+    is_public: boolean | null; bio: string | null
+    avatar_url: string | null; display_order: number | null
   }
   const [{ data: memberRaw }, studio] = await Promise.all([
     context.admin
       .from('staff')
-      .select('staff_id, full_name, email, roles, phone, hire_date, working_days')
+      .select('staff_id, full_name, email, roles, phone, hire_date, working_days, is_public, bio, avatar_url, display_order')
       .eq('staff_id', id)
       .eq('studio_id', context.studioId)
       .single(),

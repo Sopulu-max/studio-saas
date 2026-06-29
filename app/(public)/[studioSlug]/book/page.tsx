@@ -9,10 +9,10 @@ import type { Metadata } from 'next'
 import { buildTheme, themeCssVars } from '@/lib/studio-theme'
 
 export async function generateMetadata(
-  { params }: { params: Promise<{ slug: string }> }
+  { params }: { params: Promise<{ studioSlug: string }> }
 ): Promise<Metadata> {
-  const { slug } = await params
-  const studio = await fetchStorefront(slug)
+  const { studioSlug } = await params
+  const studio = await fetchStorefront(studioSlug)
   const name = studio?.name ?? 'Studio'
   const title = `Book a session — ${name}`
   const description = `Request a photography session with ${name}. Pick your session type and preferred date.`
@@ -51,13 +51,13 @@ export default async function PublicBookingPage({
   params,
   searchParams,
 }: {
-  params:       Promise<{ slug: string }>
+  params:       Promise<{ studioSlug: string }>
   searchParams: Promise<{ package?: string }>
 }) {
-  const [{ slug }, search] = await Promise.all([params, searchParams])
+  const [{ studioSlug }, search] = await Promise.all([params, searchParams])
   const initialPackageId = search.package
 
-  const catalog = await fetchBookingCatalog(slug)
+  const catalog = await fetchBookingCatalog(studioSlug)
   if (!catalog) notFound()
 
   const studio = catalog.studio as unknown as StudioRow
@@ -121,7 +121,7 @@ export default async function PublicBookingPage({
             )}
             <span style={{ fontSize: '14px', fontWeight: '600', letterSpacing: '-.01em' }}>{studio.name}</span>
           </div>
-          <Link href={`/packages/${slug}`} style={{
+          <Link href={`/${studioSlug}#packages`} style={{
             fontSize: '12px', color: '#8a8580', display: 'flex', alignItems: 'center', gap: '4px',
           }}>
             ← View packages

@@ -149,11 +149,21 @@ export async function getPrintOrderFormData() {
 
   let query = context.admin
     .from('bookings')
-    .select('booking_id, booking_ref, session_date, session_type, clients(full_name, phone), packages(name)')
+    .select('booking_id, booking_ref, clients(full_name, phone), packages(name), sessions(session_date, session_type)')
     .eq('studio_id', context.studioId)
-    .order('session_date', { ascending: false })
+    .order('created_at', { ascending: false })
   for (const v of cancelValues) { query = query.neq('status', v) }
 
   const { data: sessionsRaw } = await query
-  return { sessions: (sessionsRaw ?? []) as unknown as PrintOrderFormSession[] }
+  
+  const mappedSessions = (sessionsRaw ?? []).map((b: any) => {
+    const s = Array.isArray(b.sessions) ? b.sessions[0] : b.sessions
+    return {
+      ...b,
+      session_date: s?.session_date ?? null,
+      session_type: s?.session_type ?? null,
+    }
+  })
+  
+  return { sessions: mappedSessions as unknown as PrintOrderFormSession[] }
 }

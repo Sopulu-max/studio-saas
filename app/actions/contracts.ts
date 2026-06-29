@@ -135,7 +135,7 @@ export async function sendContractToClient(contractId: string) {
 
   const { data: studio } = await context.admin
     .from('studios')
-    .select('name, email')
+    .select('name, email, slug')
     .eq('studio_id', context.studioId)
     .single()
 
@@ -152,6 +152,7 @@ export async function sendContractToClient(contractId: string) {
     to:          clientEmail,
     clientName:  contract.client_name ?? 'Client',
     studioName:  (studio?.name as string | null | undefined) ?? '',
+    studioSlug:  (studio?.slug as string | null | undefined) ?? '',
     contractId,
     sessionDate: contract.session_date ?? undefined,
     siteUrl,

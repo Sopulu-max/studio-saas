@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { updateSessionStatus } from '@/app/actions/sessions'
+import { changeBookingStatus } from '@/app/actions/bookings'
 
 export default function PendingActions({
   sessionId,
@@ -20,7 +20,7 @@ export default function PendingActions({
 
   async function handle(next: string) {
     setLoading(next === confirmStatus ? 'confirm' : 'decline')
-    const { error } = await updateSessionStatus(sessionId, next)
+    const { error } = await changeBookingStatus(sessionId, next)
     if (error) {
       toast.error(error)
       setLoading(null)

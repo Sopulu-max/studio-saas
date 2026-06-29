@@ -3,16 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { deleteSession } from '@/app/actions/sessions'
+import { removeBooking } from '@/app/actions/bookings'
 
 export default function DeleteSessionButton({ sessionId }: { sessionId: string }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
   async function handleDelete() {
-    if (!confirm('Delete this session? This cannot be undone.')) return
+    if (!confirm('Delete this booking? This cannot be undone.')) return
     setLoading(true)
-    const { error } = await deleteSession(sessionId)
+    const { error } = await removeBooking(sessionId)
     if (error) {
       toast.error(error)
       setLoading(false)

@@ -457,27 +457,22 @@ export async function updateSession(sessionId: string, form: {
   if (!videoOk)   return { error: 'Videographer not found' }
   if (!videoEdOk) return { error: 'Video Editor not found' }
 
-  const updateData: Record<string, any> = {
+  const bookingData: Record<string, any> = {
     client_id:        form.client_id,
-    session_date:     form.session_date,
-    session_type:     form.session_type,
-    shoot_type:       form.shoot_type        || null,
     notes:            form.notes             || null,
     package_id:       form.package_id        || null,
-    location_address: form.location_address  || null,
-    event_name:       form.event_name        || null,
-    event_date:       form.event_date        || null,
     custom_answers:   form.custom_answers    || null,
   }
 
-  const { error: updateError } = await context.admin
+  const { error: bookingError } = await context.admin
     .from('bookings')
-    .update(updateData)
+    .update(bookingData)
     .eq('booking_id', sessionId)
+    .eq('studio_id', context.studioId)
 
-  if (updateError) return { error: updateError.message }
+  if (bookingError) return { error: bookingError.message }
 
-  const sessionUpdateData: Record<string, any> = {
+  const sessionData: Record<string, any> = {
     session_date:     form.session_date,
     session_type:     form.session_type,
     shoot_type:       form.shoot_type        || null,
@@ -488,8 +483,9 @@ export async function updateSession(sessionId: string, form: {
 
   const { error: sessionUpdateError } = await context.admin
     .from('sessions')
-    .update(sessionUpdateData)
+    .update(sessionData)
     .eq('session_id', actualSessionId)
+    .eq('studio_id', context.studioId)
 
   if (sessionUpdateError) return { error: sessionUpdateError.message }
 
@@ -589,3 +585,59 @@ export async function sendEventDateReminder(sessionId: string) {
   return { error: null }
 }
 
+const addAdditionalSessionSchema = z.object({
+  booking_id: z.string().min(1, 'Booking ID is required'),
+  session_type: z.string().min(1, 'Session type is required'),
+  session_date: z.string().min(1, 'Session date is required'),
+  location_address: z.string().optional().default(''),
+  event_name: z.string().optional().default(''),
+  event_date: z.string().optional().default(''),
+  shoot_type: z.string().optional().default(''),
+  notes: z.string().optional().default(''),
+})
+
+export async function addAdditionalSession(form: {
+  booking_id: string
+  session_type: string
+  session_date: string
+  location_address?: string
+  event_name?: string
+  event_date?: string
+  shoot_type?: string
+  notes?: string
+}) {
+  const result = addAdditionalSessionSchema.safeParse(form)
+  if (!result.success) return { error: result.error.issues[0].message }
+
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  const { data: booking, error: fetchErr } = await context.admin
+    .from('bookings')
+    .select('studio_id')
+    .eq('booking_id', form.booking_id)
+    .single()
+
+  if (fetchErr || !booking || booking.studio_id !== context.studioId) {
+    return { error: 'Booking not found or access denied' }
+  }
+
+  const { error } = await context.admin
+    .from('sessions')
+    .insert({
+      booking_id: form.booking_id,
+      studio_id: context.studioId,
+      session_type: form.session_type,
+      session_date: form.session_date,
+      location_address: form.location_address || null,
+      event_name: form.event_name || null,
+      event_date: form.event_date || null,
+      shoot_type: form.shoot_type || null,
+      notes: form.notes || null,
+    })
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard/bookings/' + form.booking_id)
+  return { error: null }
+}

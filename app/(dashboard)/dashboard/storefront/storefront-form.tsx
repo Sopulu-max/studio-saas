@@ -2,8 +2,11 @@
 
 import { useState } from 'react'
 import { StudioRow } from '@/lib/studio'
-import { updateStudioBio } from '@/app/actions/storefront'
+import { updateStorefrontSettings } from '@/app/actions/storefront'
 import StorefrontView from '@/components/storefront-view'
+import { THEME_PRESETS, PRESET_ORDER, PRESET_LABELS, type ThemePreset, buildTheme, getThemeStyles } from '@/lib/studio-theme'
+
+import type { PublicStorefrontDTO } from '@/lib/domains/public/types'
 
 type Props = {
   studio: StudioRow
@@ -12,6 +15,14 @@ type Props = {
 
 export default function StorefrontForm({ studio, staff }: Props) {
   const [bio, setBio] = useState(studio.bio || '')
+  
+  // Use existing theme preset or default to 'luxury'
+  const initialPreset = (typeof studio.theme === 'object' && studio.theme !== null && 'preset' in studio.theme) 
+    ? (studio.theme as any).preset as ThemePreset 
+    : 'luxury'
+  
+  const [themePreset, setThemePreset] = useState<ThemePreset>(initialPreset)
+
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -22,8 +33,9 @@ export default function StorefrontForm({ studio, staff }: Props) {
     
     const fd = new FormData()
     fd.append('bio', bio)
+    fd.append('theme', JSON.stringify({ preset: themePreset }))
 
-    const res = await updateStudioBio(fd)
+    const res = await updateStorefrontSettings(fd)
     if (res?.error) setMessage(res.error)
     else setMessage('Saved successfully')
 
@@ -53,6 +65,42 @@ export default function StorefrontForm({ studio, staff }: Props) {
             />
             <p style={{ margin: '6px 0 0', fontSize: '12px', color: 'var(--text-4)' }}>
               This will be displayed prominently on your public website.
+            </p>
+          </div>
+
+          <div style={{ marginBottom: '24px' }}>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '12px' }}>Color Theme</label>
+            <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+              {PRESET_ORDER.map((presetId) => {
+                const preset = THEME_PRESETS[presetId]
+                const isSelected = presetId === themePreset
+                return (
+                  <button
+                    key={presetId}
+                    type="button"
+                    onClick={() => setThemePreset(presetId)}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: '50%',
+                      background: preset.bg,
+                      border: isSelected ? `2px solid var(--text)` : '2px solid transparent',
+                      boxShadow: isSelected ? '0 0 0 2px var(--bg)' : 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.2s',
+                    }}
+                    title={PRESET_LABELS[presetId]}
+                  >
+                    <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: preset.primary }} />
+                  </button>
+                )
+              })}
+            </div>
+            <p style={{ margin: '8px 0 0', fontSize: '12px', color: 'var(--text-4)' }}>
+              Select a color palette for your storefront.
             </p>
           </div>
 
@@ -96,12 +144,31 @@ export default function StorefrontForm({ studio, staff }: Props) {
         </div>
         
         {/* We add a border wrapper so it looks like a "page" within the dashboard */}
-        <div style={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: '0 12px 48px rgba(0,0,0,0.05)' }}>
+        <div style={{ 
+          borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--line)', boxShadow: '0 12px 48px rgba(0,0,0,0.05)',
+          ...getThemeStyles(buildTheme({ preset: themePreset }))
+        }}>
           <StorefrontView 
-            studio={{ ...studio, bio }} 
-            staff={staff} 
-            showTeam={true} 
-            isPublic={false}
+            storefront={{
+              studio_id: studio.studio_id,
+              slug: studio.slug || 'preview',
+              name: studio.name || 'Studio',
+              bio: bio || null,
+              logo_url: studio.logo_url,
+              cover_url: null,
+              address: studio.address,
+              email: studio.email,
+              phone: studio.phone,
+              theme: { preset: themePreset },
+              packages: [], // Mock packages for preview
+              team: staff.filter(s => s.is_public).map(s => ({
+                staff_id: s.staff_id,
+                name: s.full_name,
+                role: s.role,
+                bio: s.bio,
+                avatar_url: s.avatar_url || s.users?.avatar_url || null,
+              }))
+            }} 
           />
         </div>
       </div>

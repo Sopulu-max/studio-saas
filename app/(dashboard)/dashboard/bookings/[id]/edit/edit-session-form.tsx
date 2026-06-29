@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { updateSession } from '@/app/actions/sessions'
+import { editBookingAndSession } from '@/app/actions/orchestrators'
 import SearchableSelect from '@/components/searchable-select'
 import ClientField from '@/components/client-field'
 import { useStudioConfig } from '@/components/studio-config-provider'
@@ -222,7 +222,7 @@ export default function EditSessionForm({
     }
     setLoading(true)
     setError('')
-    const { error } = await updateSession(sessionId, {
+    const { error } = await editBookingAndSession(sessionId, {
       client_id:       form.client_id,
       session_type:    form.session_type,
       shoot_type:      form.shoot_type,

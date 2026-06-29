@@ -16,10 +16,12 @@ export default function ContractActions({
   contractId,
   currentStatus,
   clientName,
+  studioSlug,
 }: {
   contractId: string
   currentStatus: string
   clientName: string
+  studioSlug: string
 }) {
   const router = useRouter()
   const [loading, setLoading]       = useState(false)
@@ -115,7 +117,7 @@ export default function ContractActions({
 
       {/* Other actions */}
       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' as const, marginBottom: showSignForm ? '16px' : '0' }}>
-        <a href={`/print/contract/${contractId}`} target="_blank" rel="noreferrer"
+        <a href={`/${studioSlug}/print/contract/${contractId}`} target="_blank" rel="noreferrer"
           style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '8px', border: '1px solid var(--line)', background: 'transparent', color: 'var(--text-2)', textDecoration: 'none', cursor: 'pointer', display: 'inline-block' }}>
           Download PDF
         </a>

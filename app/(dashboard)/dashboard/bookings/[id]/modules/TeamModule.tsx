@@ -8,27 +8,39 @@ export default function TeamModule({ booking }: { booking: BookingDetailDTO }) {
     <div className="glass-panel animate-enter" style={{ padding: '1.5rem', animationDelay: '0.3s' }}>
       <p className="label-mini">Team & Assignments</p>
 
-      {staffList.length === 0 ? (
-        <p style={{ fontSize: '13px', color: 'var(--text-4)' }}>No staff assigned.</p>
+      {booking.sessions.length === 0 ? (
+        <p style={{ fontSize: '13px', color: 'var(--text-4)' }}>No sessions scheduled.</p>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {staffList.map((member, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: 'var(--surface-2)', borderRadius: '10px' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--text-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg)', fontSize: '12px', fontWeight: 'bold' }}>
-                {member.staff_name?.charAt(0).toUpperCase() ?? '?'}
-              </div>
-              <div>
-                <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 2px', textTransform: 'capitalize' }}>
-                  {member.role?.replace('_', ' ')}
-                </p>
-                {member.staff_id ? (
-                  <Link href={`/dashboard/staff/${member.staff_id}`} style={{ fontSize: '14px', fontWeight: '500', color: 'inherit', textDecoration: 'none' }} className="hover-lift">
-                    {member.staff_name}
-                  </Link>
-                ) : (
-                  <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{member.staff_name}</p>
-                )}
-              </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {booking.sessions.map((sess, i) => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: 0, fontWeight: '600', textTransform: 'uppercase' }}>
+                {sess.shoot_type || sess.session_type || 'Session'}
+              </p>
+              
+              {(!sess.staff || sess.staff.length === 0) ? (
+                <p style={{ fontSize: '13px', color: 'var(--text-4)', margin: 0 }}>No staff assigned.</p>
+              ) : (
+                sess.staff.map((member, j) => (
+                  <div key={j} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '8px', background: 'var(--surface-2)', borderRadius: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--text-4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--bg)', fontSize: '12px', fontWeight: 'bold' }}>
+                      {member.staff_name?.charAt(0).toUpperCase() ?? '?'}
+                    </div>
+                    <div>
+                      <p style={{ fontSize: '12px', color: 'var(--text-3)', margin: '0 0 2px', textTransform: 'capitalize' }}>
+                        {member.role?.replace('_', ' ')}
+                      </p>
+                      {member.staff_id ? (
+                        <Link href={`/dashboard/staff/${member.staff_id}`} style={{ fontSize: '14px', fontWeight: '500', color: 'inherit', textDecoration: 'none' }} className="hover-lift">
+                          {member.staff_name}
+                        </Link>
+                      ) : (
+                        <p style={{ fontSize: '14px', fontWeight: '500', margin: 0 }}>{member.staff_name}</p>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           ))}
         </div>

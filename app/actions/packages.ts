@@ -48,7 +48,10 @@ export async function addPackage(form: {
   contract_template?: string
   contract_template_id?: string | null
   pricing_type?: string
+  cover_url?: string | null
   is_public?: boolean
+  public_title?: string | null
+  public_description?: string | null
   display_order?: number
   addons: { name: string; description: string; price: string }[]
   sections?: Section[]
@@ -82,7 +85,10 @@ export async function addPackage(form: {
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',
+      cover_url:      form.cover_url      || null,
       is_public:      form.is_public      ?? true,
+      public_title:   form.public_title   || null,
+      public_description: form.public_description || null,
       display_order:  form.display_order  ?? 0,
       studio_id:      context.studioId,
     })
@@ -164,7 +170,10 @@ export async function updatePackage(packageId: string, form: {
   contract_template?: string
   contract_template_id?: string | null
   pricing_type?: string
+  cover_url?: string | null
   is_public?: boolean
+  public_title?: string | null
+  public_description?: string | null
   display_order?: number
   addons: { name: string; description: string; price: string }[]
   sections?: Section[]
@@ -203,7 +212,10 @@ export async function updatePackage(packageId: string, form: {
       contract_template: form.contract_template || null,
       contract_template_id: form.contract_template_id || null,
       pricing_type:   form.pricing_type  || 'fixed',
-      is_public:      form.is_public      ?? true,
+      cover_url:      form.cover_url      || null,
+      is_public:      form.is_public      ?? false,
+      public_title:   form.public_title   || null,
+      public_description: form.public_description || null,
       display_order:  form.display_order  ?? 0,
     })
     .eq('package_id', packageId)
