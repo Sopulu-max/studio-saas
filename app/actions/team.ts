@@ -138,3 +138,29 @@ export async function resendStaffInvite(staffId: string): Promise<{ error: strin
   })
   return { error: emailErr ?? null }
 }
+
+export async function updateStaffMember(staffId: string, data: {
+  roles?: string[]
+  public_name?: string | null
+  public_bio?: string | null
+  is_public?: boolean
+}): Promise<{ error: string | null }> {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: 'Not authenticated' }
+  if (context.role !== 'owner') return { error: 'Only the studio owner can update staff members' }
+
+  const updatePayload: Record<string, any> = {}
+  if (data.roles !== undefined) updatePayload.roles = data.roles
+  if (data.public_name !== undefined) updatePayload.public_name = data.public_name
+  if (data.public_bio !== undefined) updatePayload.public_bio = data.public_bio
+  if (data.is_public !== undefined) updatePayload.is_public = data.is_public
+
+  const { error } = await context.admin
+    .from('staff')
+    .update(updatePayload)
+    .eq('staff_id', staffId)
+    .eq('studio_id', context.studioId)
+
+  if (error) return { error: error.message }
+  return { error: null }
+}

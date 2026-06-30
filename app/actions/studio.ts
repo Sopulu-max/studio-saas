@@ -15,6 +15,7 @@ const updateStudioSchema = z.object({
   phone:    z.string().optional().default(''),
   address:  z.string().optional().default(''),
   timezone: z.string().optional().default(''),
+  bio:      z.string().optional().default(''),
 })
 
 export async function updateStudio(form: {
@@ -24,6 +25,7 @@ export async function updateStudio(form: {
   phone?: string
   address?: string
   timezone?: string
+  bio?: string
 }) {
   const result = updateStudioSchema.safeParse(form)
   if (!result.success) return { error: result.error.issues[0].message }
@@ -49,6 +51,7 @@ export async function updateStudio(form: {
       phone:    form.phone    || null,
       address:  form.address  || null,
       timezone: form.timezone || null,
+      bio:      form.bio      || null,
     })
     .eq('owner_id', context.userId)
 
@@ -73,13 +76,51 @@ export async function updateStudioTheme(theme: StudioTheme) {
   return { error: null }
 }
 
-export async function updateStudioLogo(logoUrl: string) {
+export async function updateStudioLogo(logoUrl: string | null) {
   const context = await getStudioContext()
   if ('error' in context) return { error: context.error }
 
   const { error } = await context.admin
     .from('studios')
     .update({ logo_url: logoUrl })
+    .eq('owner_id', context.userId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard', 'layout')
+  return { error: null }
+}
+
+export async function updateStudioCover(coverUrl: string | null) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  const { error } = await context.admin
+    .from('studios')
+    .update({ cover_url: coverUrl })
+    .eq('owner_id', context.userId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/dashboard', 'layout')
+  return { error: null }
+}
+
+export async function updateWhatsAppConfig(form: {
+  wa_phone_number_id: string
+  wa_access_token: string
+  wa_verify_token: string
+}) {
+  const context = await getStudioContext()
+  if ('error' in context) return { error: context.error }
+
+  const { error } = await context.admin
+    .from('studios')
+    .update({
+      wa_phone_number_id: form.wa_phone_number_id || null,
+      wa_access_token: form.wa_access_token || null,
+      wa_verify_token: form.wa_verify_token || null,
+    })
     .eq('owner_id', context.userId)
 
   if (error) return { error: error.message }

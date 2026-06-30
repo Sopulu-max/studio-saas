@@ -35,10 +35,10 @@ export default async function PublicSummaryViewPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ studioSlug: string; id: string }>
   searchParams: Promise<{ sig?: string; exp?: string }>
 }) {
-  const { id } = await params
+  const { id, studioSlug } = await params
   const { sig, exp } = await searchParams
   
   // We can reuse the invoice verifier or create a new one. Since verifySignedPublicLink checks type === 'invoice', we might need to add 'summary' type support.
@@ -93,147 +93,144 @@ export default async function PublicSummaryViewPage({
   const shortId = id.slice(-8).toUpperCase()
   const documentTitle = pkg?.name ? `${pkg.name} - Booking Summary` : 'Booking Summary'
 
+  const statusMap: Record<string, { label: string; color: string }> = {
+    pending: { label: 'Pending', color: 'text-amber-500' },
+    confirmed: { label: 'Confirmed', color: 'text-emerald-500' },
+    completed: { label: 'Completed', color: 'text-blue-500' },
+    cancelled: { label: 'Cancelled', color: 'text-red-500' },
+  }
+  const s = statusMap['confirmed'] 
+
   return (
-    <>
-      <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; color: #111; background: #f0f0f0; }
-        .page { max-width: 760px; margin: 0 auto; background: white; padding: 56px 64px; min-height: 100vh; }
-        .no-print { margin-bottom: 28px; display: flex; gap: 10px; align-items: center; background: #f8f8f8; border: 1px solid #e5e5e5; border-radius: 10px; padding: 12px 16px; }
-        .divider { border: none; border-top: 1px solid #e5e5e5; margin: 20px 0; }
-        .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 13px; }
-        .row.total { font-size: 15px; font-weight: 600; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 4px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; font-size: 11px; color: #888; font-weight: 500; border-bottom: 1px solid #e5e5e5; padding: 6px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
-        th:last-child, td:last-child { text-align: right; }
-        td { padding: 9px 0; border-bottom: 1px solid #f4f4f4; vertical-align: top; }
-        @media (max-width: 600px) {
-          .page { padding: 24px 20px; }
-          .bill-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
-        }
-        @media print {
-          body { background: white; }
-          .no-print { display: none !important; }
-          .page { padding: 0; min-height: auto; }
-          @page { margin: 1.5cm 1.8cm; size: A4; }
-        }
-      `}</style>
-
-      <div className="page">
-        <div className="no-print">
-          <PrintButton />
-          <span style={{ fontSize: '13px', color: '#666', marginLeft: 'auto' }}>
-            Summary from <strong>{studio?.name}</strong>
-          </span>
+    <div className="w-full max-w-4xl mx-auto px-6 py-12 md:py-20 animate-enter">
+      <div className="flex justify-between items-center mb-12">
+        <div className="flex items-center gap-4">
+          {studio?.logo_url ? (
+            <Image src={studio.logo_url} alt={studio.name ?? ''} width={48} height={48} unoptimized className="rounded-xl shadow-lg border border-[var(--line)]" />
+          ) : (
+            <div className="w-12 h-12 rounded-xl bg-[var(--primary)] flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-[var(--primary)]/20">
+              {studio?.name?.charAt(0) ?? 'S'}
+            </div>
+          )}
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-[var(--text)]">{studio?.name}</h1>
+            <p className="text-sm text-[var(--text-4)]">Client Portal</p>
+          </div>
         </div>
+        <PrintButton />
+      </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            {studio?.logo_url && (
-              <Image
-                src={studio.logo_url}
-                alt={studio.name ?? 'Studio logo'}
-                width={52}
-                height={52}
-                unoptimized
-                style={{ width: '52px', height: '52px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
-              />
-            )}
+      <div className="glass-panel p-8 md:p-12 mb-8 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary)]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[var(--primary)]/10 transition-colors duration-700" />
+        
+        <div className="relative z-10">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--primary)] mb-4 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[var(--primary)] animate-pulse" />
+            Active Session
+          </p>
+          
+          <h2 className="text-4xl md:text-5xl font-black tracking-tight text-[var(--text)] mb-6">
+            {pkg?.name ?? 'Studio Session'}
+          </h2>
+
+          <div className="flex flex-col md:flex-row gap-8 md:gap-16 pt-8 border-t border-[var(--line-inner)] mt-8">
             <div>
-              <p style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>{studio?.name}</p>
-              {studio?.email && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.email}</p>}
-              {studio?.phone && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.phone}</p>}
-              {studio?.address && <p style={{ fontSize: '13px', color: '#666', whiteSpace: 'pre-line' }}>{studio.address}</p>}
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-2">Date</p>
+              <p className="text-lg font-medium text-[var(--text)]">
+                {((booking as any).sessions?.[0]?.session_date) 
+                  ? new Date((booking as any).sessions[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+                  : 'To be scheduled'}
+              </p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-2">Location</p>
+              <p className="text-lg font-medium text-[var(--text)]">{booking.location ?? 'TBD'}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-2">Reference</p>
+              <p className="text-lg font-medium text-[var(--text)] font-mono tracking-wider">#{shortId}</p>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '26px', fontWeight: '300', letterSpacing: '-.02em', color: '#111', marginBottom: '6px', textTransform: 'uppercase' }}>
-              {documentTitle}
-            </p>
-            <p style={{ fontSize: '12px', color: '#888' }}>REF: #{shortId}</p>
-            {booking.created_at && (
-              <p style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                Date: {new Date(booking.created_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            )}
-          </div>
         </div>
-
-        <div className="bill-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '36px' }}>
-          <div>
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Prepared For</p>
-            <p style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{client?.full_name}</p>
-            {client?.email && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{client.email}</p>}
-            {client?.phone && <p style={{ fontSize: '13px', color: '#666' }}>{client.phone}</p>}
-          </div>
-          <div>
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Session Details</p>
-            {((booking as any).sessions?.[0]?.session_date) && (
-              <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>
-                {new Date((booking as any).sessions[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            )}
-            {booking.location && <p style={{ fontSize: '13px', color: '#666' }}>{booking.location}</p>}
-          </div>
-        </div>
-
-        <table style={{ marginBottom: '20px' }}>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th style={{ width: '60px' }}>Qty</th>
-              <th style={{ width: '120px' }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pkg && (
-              <tr>
-                <td style={{ paddingBottom: '16px' }}>
-                  <p style={{ fontWeight: '600', marginBottom: '6px', color: '#111' }}>{pkg.name}</p>
-                  {pkg.package_inclusions && pkg.package_inclusions.length > 0 && (
-                    <ul style={{ paddingLeft: '16px', fontSize: '12px', color: '#555', lineHeight: '1.6' }}>
-                      {pkg.package_inclusions.map((inc, i) => (
-                        <li key={i}>{inc.label}</li>
-                      ))}
-                    </ul>
-                  )}
-                </td>
-                <td style={{ textAlign: 'right' }}>1</td>
-                <td style={{ textAlign: 'right' }}>{fmt(pkgBase)}</td>
-              </tr>
-            )}
-            
-            {serviceRows.map((svc, index) => (
-              <tr key={index}>
-                <td style={{ color: '#555' }}>{svc.services?.name}</td>
-                <td style={{ textAlign: 'right', color: '#555' }}>{svc.quantity}</td>
-                <td style={{ textAlign: 'right', color: '#555' }}>
-                  {fmt(Number(svc.price_at_booking ?? 0) * svc.quantity)}
-                </td>
-              </tr>
-            ))}
-
-            {addonRows.map((addon, index) => (
-              <tr key={index}>
-                <td style={{ color: '#555' }}>{addon.package_addons?.name} (Add-on)</td>
-                <td style={{ textAlign: 'right', color: '#555' }}>{addon.quantity}</td>
-                <td style={{ textAlign: 'right', color: '#555' }}>
-                  {fmt(Number(addon.package_addons?.price ?? 0) * addon.quantity)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div style={{ maxWidth: '280px', marginLeft: 'auto', marginBottom: '36px' }}>
-          <div className="row total"><span style={{ color: '#111' }}>Total Amount</span><span>{fmt(subtotal)}</span></div>
-        </div>
-
-        <hr className="divider" style={{ marginTop: '48px' }} />
-        <p style={{ fontSize: '12px', color: '#aaa', textAlign: 'center', marginTop: '16px' }}>
-          This is a summary of your selected items. A formal invoice will be provided. | {studio?.name}
-        </p>
       </div>
-    </>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        <div className="glass-panel p-6 flex flex-col justify-between">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-4">Client Details</p>
+          <div>
+            <p className="text-lg font-medium text-[var(--text)] mb-1">{client?.full_name}</p>
+            {client?.email && <p className="text-sm text-[var(--text-3)]">{client.email}</p>}
+            {client?.phone && <p className="text-sm text-[var(--text-3)] mt-1">{client.phone}</p>}
+          </div>
+        </div>
+
+        <div className="glass-panel p-6 flex flex-col justify-between md:col-span-2">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-4">Financial Summary</p>
+          <div className="flex justify-between items-end">
+            <div>
+              <p className="text-3xl font-black tracking-tight text-[var(--text)]">{fmt(subtotal)}</p>
+              <p className="text-sm text-[var(--text-4)] mt-1">Total Agreed Value</p>
+            </div>
+            <a 
+              href={`/${studioSlug}/portal/invoice/${id}?sig=${sig}&exp=${exp}`}
+              className="px-5 py-2.5 rounded-lg bg-[var(--text)] text-[var(--card)] font-bold text-sm hover:opacity-90 transition-opacity"
+            >
+              View Invoice
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div className="glass-panel overflow-hidden">
+        <div className="p-6 border-b border-[var(--line-inner)]">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] m-0">Inclusions & Add-ons</p>
+        </div>
+        
+        <div className="divide-y divide-[var(--line-inner)]">
+          {pkg && (
+            <div className="p-6">
+              <div className="flex justify-between items-start mb-2">
+                <p className="font-bold text-[var(--text)] text-lg">{pkg.name}</p>
+                <p className="font-medium text-[var(--text)]">{fmt(pkgBase)}</p>
+              </div>
+              {pkg.package_inclusions && pkg.package_inclusions.length > 0 && (
+                <ul className="space-y-2 mt-4">
+                  {pkg.package_inclusions.map((inc, i) => (
+                    <li key={i} className="flex items-center gap-3 text-sm text-[var(--text-3)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[var(--primary)] opacity-50" />
+                      {inc.label}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
+          {addonRows.map((addon, i) => (
+            <div key={`addon-${i}`} className="p-6 flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded bg-[var(--surface-2)] flex items-center justify-center text-xs font-bold text-[var(--text-4)]">
+                  x{addon.quantity}
+                </div>
+                <p className="font-medium text-[var(--text)]">{addon.package_addons?.name}</p>
+              </div>
+              <p className="font-medium text-[var(--text)]">{fmt(Number(addon.package_addons?.price ?? 0) * addon.quantity)}</p>
+            </div>
+          ))}
+
+          {serviceRows.map((svc, i) => (
+            <div key={`svc-${i}`} className="p-6 flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded bg-[var(--surface-2)] flex items-center justify-center text-xs font-bold text-[var(--text-4)]">
+                  x{svc.quantity}
+                </div>
+                <p className="font-medium text-[var(--text)]">{svc.services?.name}</p>
+              </div>
+              <p className="font-medium text-[var(--text)]">{fmt(Number(svc.price_at_booking ?? 0) * svc.quantity)}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   )
 }

@@ -243,21 +243,14 @@ export default function BookingForm({
     }
   }
 
-  const label: React.CSSProperties = { fontSize: '12px', color: 'var(--text-3)', display: 'block', marginBottom: '6px', fontWeight: '600', letterSpacing: '.04em', textTransform: 'uppercase' }
-  const input: React.CSSProperties = { width: '100%', boxSizing: 'border-box' }
-  const req:   React.CSSProperties = { color: 'var(--primary)' }
-  const opt:   React.CSSProperties = { color: 'var(--text-4)', fontSize: '11px', fontWeight: '400', textTransform: 'none', letterSpacing: '0' }
-  const row:   React.CSSProperties = { marginBottom: '20px' }
-  const stepContainerClass = `fade-in`
-
   if (duplicate) {
     return (
-      <div className="fade-in" style={{ textAlign: 'center', padding: '52px 24px' }}>
-        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--primary-dim)', border: '1px solid var(--primary-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '22px', color: 'var(--primary)' }}>✦</div>
-        <h2 style={{ fontFamily: 'var(--heading-font)', fontSize: '22px', fontWeight: '400', marginBottom: '12px', color: 'var(--text-main)' }}>Already received</h2>
-        <div style={{ width: '32px', height: '2px', background: 'var(--primary)', margin: '0 auto 20px', borderRadius: '2px' }} />
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.7', maxWidth: '320px', margin: '0 auto 28px' }}>
-          <strong style={{ color: 'var(--text-main)' }}>{form.full_name.split(' ')[0]}</strong>, we already have a booking request from you for this date.
+      <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-12 px-6">
+        <div className="w-16 h-16 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 flex items-center justify-center mx-auto mb-6 text-2xl text-[var(--primary)] shadow-lg shadow-[var(--primary)]/5">✦</div>
+        <h2 className="text-2xl font-bold mb-3 text-[var(--foreground)] tracking-tight">Already received</h2>
+        <div className="w-8 h-1 bg-[var(--primary)] mx-auto mb-6 rounded-full" />
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed max-w-xs mx-auto mb-8">
+          <strong className="text-[var(--foreground)]">{form.full_name.split(' ')[0]}</strong>, we already have a booking request from you for this date.
           {studioName} will be in touch to confirm — no need to submit again.
         </p>
       </div>
@@ -266,53 +259,57 @@ export default function BookingForm({
 
   if (submitted) {
     return (
-      <div className="fade-in" style={{ textAlign: 'center', padding: '52px 24px' }}>
-        <div style={{ width: '52px', height: '52px', borderRadius: '50%', background: 'var(--primary-dim)', border: '1px solid var(--primary-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', fontSize: '22px', color: 'var(--primary)' }}>✦</div>
-        <h2 style={{ fontFamily: 'var(--heading-font)', fontSize: '24px', fontWeight: '400', marginBottom: '12px', color: 'var(--text-main)' }}>Request received</h2>
-        <div style={{ width: '32px', height: '2px', background: 'var(--primary)', margin: '0 auto 20px', borderRadius: '2px' }} />
-        <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.7', maxWidth: '320px', margin: '0 auto 24px' }}>
-          Thank you, <strong style={{ color: 'var(--text-main)' }}>{form.full_name.split(' ')[0]}</strong>. {studioName} will be in touch to confirm your session.
+      <div className="animate-in fade-in zoom-in-95 duration-500 text-center py-12 px-6">
+        <div className="w-16 h-16 rounded-full bg-[var(--primary)]/10 border border-[var(--primary)]/20 flex items-center justify-center mx-auto mb-6 text-2xl text-[var(--primary)] shadow-lg shadow-[var(--primary)]/5">✦</div>
+        <h2 className="text-2xl font-bold mb-3 text-[var(--foreground)] tracking-tight">Request received</h2>
+        <div className="w-8 h-1 bg-[var(--primary)] mx-auto mb-6 rounded-full" />
+        <p className="text-sm text-[var(--muted-foreground)] leading-relaxed max-w-xs mx-auto mb-6">
+          Thank you, <strong className="text-[var(--foreground)]">{form.full_name.split(' ')[0]}</strong>. {studioName} will be in touch to confirm your session.
         </p>
-        <p style={{ fontSize: '12px', color: 'var(--text-faint)' }}>You can close this page.</p>
+        <p className="text-xs text-[var(--muted-foreground)]/70">You can close this page.</p>
       </div>
     )
   }
 
   return (
-    <div style={{ position: 'relative' }}>
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '32px', justifyContent: 'center' }}>
+    <div className="relative">
+      <div className="flex gap-2 mb-8 justify-center">
         {[1,2,3,4].map(s => (
-          <div key={s} style={{ height: '4px', flex: 1, borderRadius: '2px', background: s <= step ? 'var(--primary)' : 'var(--primary-dim)', transition: 'background 0.3s ease' }} />
+          <div key={s} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${s <= step ? 'bg-[var(--primary)]' : 'bg-[var(--primary)]/20'}`} />
         ))}
       </div>
 
       <form onSubmit={handleSubmit} noValidate>
         {step === 1 && (
-          <div className={stepContainerClass}>
-            <h2 style={{ fontSize: '28px', fontFamily: 'var(--heading-font)', fontWeight: '600', marginBottom: '8px', color: 'var(--text-main)' }}>What are you looking for?</h2>
-            <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '32px' }}>Let's customize your experience.</p>
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 text-[var(--foreground)] tracking-tight">What are you looking for?</h2>
+            <p className="text-sm md:text-base text-[var(--muted-foreground)] mb-8">Let's customize your experience.</p>
             
-            <div style={row}>
-              <label style={label}>Session <span style={req}>*</span></label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                {sessionTypes.map(t => (
-                  <button key={t.value} type="button"
-                    onClick={() => set('session_type', t.value)}
-                    style={{
-                      padding: '14px 24px', borderRadius: '12px', fontSize: '15px', fontWeight: '500', transition: 'all .2s cubic-bezier(0.16, 1, 0.3, 1)',
-                      border: form.session_type === t.value ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                      background: form.session_type === t.value ? 'var(--primary)' : 'var(--bg)',
-                      color: form.session_type === t.value ? 'var(--on-primary)' : 'var(--text-main)',
-                      boxShadow: form.session_type === t.value ? '0 4px 12px var(--primary-dim)' : 'none',
-                    }}>
-                    {t.label}
-                  </button>
-                ))}
+            <div className="mb-8">
+              <label className="block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-4">
+                Session <span className="text-[var(--primary)] ml-1">*</span>
+              </label>
+              <div className="flex flex-wrap gap-3">
+                {sessionTypes.map(t => {
+                  const isSelected = form.session_type === t.value
+                  return (
+                    <button key={t.value} type="button"
+                      onClick={() => set('session_type', t.value)}
+                      className={`px-5 py-3 rounded-xl text-sm font-semibold transition-all duration-300
+                        ${isSelected 
+                          ? 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-lg shadow-[var(--primary)]/25 scale-[1.02]' 
+                          : 'bg-[var(--background)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--primary)]/50 hover:bg-[var(--primary)]/5'
+                        }
+                      `}>
+                      {t.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
 
-            <div style={{ marginTop: '40px' }}>
-              <button type="button" onClick={handleNext} style={{ width: '100%', padding: '16px', background: 'var(--primary)', color: 'var(--on-primary)', borderRadius: '12px', fontSize: '16px', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 16px var(--primary-dim)' }}>
+            <div className="mt-10">
+              <button type="button" onClick={handleNext} className="w-full py-4 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-xl text-base font-bold transition-all shadow-lg shadow-[var(--primary)]/25 hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]">
                 Continue
               </button>
             </div>
@@ -320,97 +317,111 @@ export default function BookingForm({
         )}
 
         {step === 2 && (
-          <div className={stepContainerClass}>
-            <button type="button" onClick={handleBack} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+            <button type="button" onClick={handleBack} className="flex items-center gap-2 text-sm font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mb-6">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
               Back
             </button>
-            <h2 style={{ fontSize: '28px', fontFamily: 'var(--heading-font)', fontWeight: '600', marginBottom: '8px', color: 'var(--text-main)' }}>Select a Package</h2>
-            <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '32px' }}>Choose a base package for your {sessionTypes.find(s=>s.value===form.session_type)?.label.toLowerCase()} session.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 text-[var(--foreground)] tracking-tight">Select a Package</h2>
+            <p className="text-sm md:text-base text-[var(--muted-foreground)] mb-8">Choose a base package for your {sessionTypes.find(s=>s.value===form.session_type)?.label.toLowerCase()} session.</p>
             
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '32px' }}>
+            <div className="flex flex-col gap-4 mb-8">
               <AnimatePresence>
-                {filteredPackages.map((pkg, idx) => (
-                  <motion.div 
-                    key={pkg.package_id} 
-                    className="sf-wizard-card" 
-                    onClick={() => selectPackage(pkg.package_id)}
-                    layout
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    style={{
-                      padding: '24px', borderRadius: '16px', cursor: 'pointer',
-                      border: selectedPackageId === pkg.package_id ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                      background: selectedPackageId === pkg.package_id ? 'var(--primary-dim)' : 'var(--card-bg)',
-                    }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                      <h3 style={{ fontSize: '20px', fontWeight: '600', margin: 0, color: 'var(--text-main)' }}>{pkg.name}</h3>
-                      {pkg.base_price != null && (
-                        <span style={{ fontSize: '20px', fontWeight: '700', color: 'var(--primary)' }}>₦{pkg.base_price.toLocaleString()}</span>
+                {filteredPackages.map((pkg, idx) => {
+                  const isSelected = selectedPackageId === pkg.package_id
+                  return (
+                    <motion.div 
+                      key={pkg.package_id} 
+                      onClick={() => selectPackage(pkg.package_id)}
+                      layout
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      whileHover={{ scale: 1.01 }}
+                      whileTap={{ scale: 0.99 }}
+                      className={`p-6 rounded-2xl cursor-pointer transition-all duration-300 relative overflow-hidden group
+                        ${isSelected 
+                          ? 'bg-[var(--primary)]/5 border-2 border-[var(--primary)] shadow-lg shadow-[var(--primary)]/10' 
+                          : 'bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)]/50 hover:bg-[var(--primary)]/5'
+                        }
+                      `}>
+                      {isSelected && (
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                       )}
-                    </div>
-                    {pkg.tagline && <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: '1.5' }}>{pkg.tagline}</p>}
-                    
-                    <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--text-muted)', flexWrap: 'wrap', fontWeight: '500' }}>
-                      {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0) > 0 && <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0)} mins</span>}
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>📸 {pkg.services.filter(s=>!s.is_addon).length} items included</span>
-                    </div>
-                  </motion.div>
-                ))}
+                      <div className="flex justify-between items-start mb-2 relative z-10">
+                        <h3 className={`text-lg md:text-xl font-bold ${isSelected ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}`}>{pkg.name}</h3>
+                        {pkg.base_price != null && (
+                          <span className="text-lg md:text-xl font-extrabold text-[var(--primary)]">₦{pkg.base_price.toLocaleString()}</span>
+                        )}
+                      </div>
+                      {pkg.tagline && <p className="text-sm text-[var(--muted-foreground)] mb-4 leading-relaxed relative z-10">{pkg.tagline}</p>}
+                      
+                      <div className="flex flex-wrap gap-4 text-xs font-semibold text-[var(--muted-foreground)] relative z-10">
+                        {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0) > 0 && (
+                          <span className="flex items-center gap-1.5">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> 
+                            {pkg.services.reduce((total, s) => total + (s.duration_mins ?? 0), 0)} mins
+                          </span>
+                        )}
+                        <span className="flex items-center gap-1.5">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                          {pkg.services.filter(s=>!s.is_addon).length} items included
+                        </span>
+                      </div>
+                    </motion.div>
+                  )
+                })}
                 
                 <motion.div 
-                  className="sf-wizard-card" 
                   onClick={() => selectPackage(null)}
                   layout
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: filteredPackages.length * 0.05 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  style={{
-                    padding: '24px', borderRadius: '16px', cursor: 'pointer',
-                    border: selectedPackageId === null ? '2px solid var(--primary)' : '1px dashed var(--text-4)',
-                    background: selectedPackageId === null ? 'var(--primary-dim)' : 'var(--bg)',
-                  }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 6px', color: 'var(--text-main)' }}>Build Custom Shoot</h3>
-                  <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>Start from scratch and choose only what you need.</p>
+                  whileHover={{ scale: 1.01 }}
+                  whileTap={{ scale: 0.99 }}
+                  className={`p-6 rounded-2xl cursor-pointer transition-all duration-300
+                    ${selectedPackageId === null 
+                      ? 'bg-[var(--primary)]/5 border-2 border-[var(--primary)] shadow-lg shadow-[var(--primary)]/10' 
+                      : 'bg-[var(--background)] border border-dashed border-[var(--border)] hover:border-[var(--primary)]/50 hover:bg-[var(--primary)]/5'
+                    }
+                  `}>
+                  <h3 className={`text-lg font-bold mb-1 ${selectedPackageId === null ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}`}>Build Custom Shoot</h3>
+                  <p className="text-sm text-[var(--muted-foreground)]">Start from scratch and choose only what you need.</p>
                 </motion.div>
               </AnimatePresence>
             </div>
             
-            <button type="button" onClick={handleNext} disabled={selectedPackageId === undefined} style={{ width: '100%', padding: '16px', background: 'var(--primary)', color: 'var(--on-primary)', borderRadius: '12px', fontSize: '16px', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 16px var(--primary-dim)' }}>
+            <button type="button" onClick={handleNext} disabled={selectedPackageId === undefined} className="w-full py-4 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-xl text-base font-bold transition-all shadow-lg shadow-[var(--primary)]/25 disabled:opacity-50 disabled:shadow-none hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]">
               Continue to Add-ons
             </button>
           </div>
         )}
 
         {step === 3 && (
-          <div className={stepContainerClass}>
-            <button type="button" onClick={handleBack} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+            <button type="button" onClick={handleBack} className="flex items-center gap-2 text-sm font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mb-6">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
               Back
             </button>
-            <h2 style={{ fontSize: '28px', fontFamily: 'var(--heading-font)', fontWeight: '600', marginBottom: '8px', color: 'var(--text-main)' }}>Customize your session</h2>
-            <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '32px' }}>Would you like to add videography, products, or additional coverage?</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 text-[var(--foreground)] tracking-tight">Customize your session</h2>
+            <p className="text-sm md:text-base text-[var(--muted-foreground)] mb-8">Would you like to add videography, products, or additional coverage?</p>
             
-            <div style={{ maxHeight: '45vh', overflowY: 'auto', paddingRight: '8px', marginBottom: '32px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <div className="max-h-[50vh] overflow-y-auto pr-2 mb-8 flex flex-col gap-4 styled-scrollbar">
               
               {pkgIncludedSvcs.length > 0 && (
-                <div style={{ marginBottom: '16px' }}>
-                  <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '12px' }}>Included in {selectedPackage?.name}</p>
+                <div className="mb-4">
+                  <p className="text-xs font-bold text-[var(--primary)] uppercase tracking-wider mb-3">Included in {selectedPackage?.name}</p>
                   {pkgIncludedSvcs.map(svc => (
-                    <div key={svc.service_id} style={{ padding: '16px', borderRadius: '12px', background: 'var(--bg)', border: '1px solid var(--primary-dim)', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '15px', fontWeight: '500', color: 'var(--text-main)' }}>{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</span>
-                      <span style={{ fontSize: '12px', color: 'var(--primary)', fontWeight: '700', letterSpacing: '.04em', textTransform: 'uppercase' }}>Included</span>
+                    <div key={svc.service_id} className="p-4 rounded-xl bg-[var(--background)] border border-[var(--primary)]/20 mb-2 flex justify-between items-center shadow-sm">
+                      <span className="font-semibold text-[var(--foreground)]">{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</span>
+                      <span className="text-xs font-bold text-[var(--primary)] tracking-wider uppercase">Included</span>
                     </div>
                   ))}
                 </div>
               )}
 
-              {pkgAddonSvcs.length > 0 && <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.08em', marginBottom: '4px' }}>Package Upgrades</p>}
+              {pkgAddonSvcs.length > 0 && <p className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mt-2 mb-1">Package Upgrades</p>}
               {pkgAddonSvcs.map((svc, idx) => {
                 const selected = selectedServiceIds.includes(svc.service_id)
                 return (
@@ -418,28 +429,28 @@ export default function BookingForm({
                     key={svc.service_id} 
                     type="button" 
                     onClick={() => toggleService(svc.service_id)} 
-                    className="sf-wizard-card"
                     layout
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', textAlign: 'left',
-                      border: selected ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                      background: selected ? 'var(--primary-dim)' : 'var(--card-bg)', transition: 'border 0.2s, background 0.2s',
-                    }}>
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className={`flex items-center justify-between p-4 rounded-xl text-left transition-all duration-300
+                      ${selected 
+                        ? 'bg-[var(--primary)]/10 border-2 border-[var(--primary)] shadow-md shadow-[var(--primary)]/10' 
+                        : 'bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)]/40 hover:bg-[var(--primary)]/5'
+                      }
+                    `}>
                     <div>
-                      <p style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 4px', color: 'var(--text-main)' }}>{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</p>
-                      {svc.description && <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-muted)' }}>{svc.description}</p>}
+                      <p className={`font-semibold mb-1 ${selected ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}`}>{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</p>
+                      {svc.description && <p className="text-xs text-[var(--muted-foreground)] m-0 leading-relaxed max-w-[280px]">{svc.description}</p>}
                     </div>
-                    {svc.addon_price != null && <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--primary)' }}>+₦{Number(svc.addon_price).toLocaleString()}</span>}
+                    {svc.addon_price != null && <span className="font-bold text-[var(--primary)] text-right shrink-0 ml-4">+₦{Number(svc.addon_price).toLocaleString()}</span>}
                   </motion.button>
                 )
               })}
 
-              {otherCatalogSvcs.length > 0 && <p style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-3)', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '16px', marginBottom: '4px' }}>Additional Services & Products</p>}
+              {otherCatalogSvcs.length > 0 && <p className="text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mt-4 mb-1">Additional Services & Products</p>}
               {otherCatalogSvcs.map((svc, idx) => {
                 const selected = selectedServiceIds.includes(svc.service_id)
                 return (
@@ -447,73 +458,73 @@ export default function BookingForm({
                     key={svc.service_id} 
                     type="button" 
                     onClick={() => toggleService(svc.service_id)} 
-                    className="sf-wizard-card"
                     layout
                     initial={{ opacity: 0, x: -10 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: idx * 0.05 }}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', textAlign: 'left',
-                      border: selected ? '2px solid var(--primary)' : '1px solid var(--card-border)',
-                      background: selected ? 'var(--primary-dim)' : 'var(--card-bg)', transition: 'border 0.2s, background 0.2s',
-                    }}>
+                    whileHover={{ scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
+                    className={`flex items-center justify-between p-4 rounded-xl text-left transition-all duration-300
+                      ${selected 
+                        ? 'bg-[var(--primary)]/10 border-2 border-[var(--primary)] shadow-md shadow-[var(--primary)]/10' 
+                        : 'bg-[var(--card)] border border-[var(--border)] hover:border-[var(--primary)]/40 hover:bg-[var(--primary)]/5'
+                      }
+                    `}>
                     <div>
-                      <p style={{ fontSize: '15px', fontWeight: '600', margin: '0 0 4px', color: 'var(--text-main)' }}>{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</p>
-                      {svc.description && <p style={{ fontSize: '13px', margin: 0, color: 'var(--text-muted)' }}>{svc.description}</p>}
+                      <p className={`font-semibold mb-1 ${selected ? 'text-[var(--primary)]' : 'text-[var(--foreground)]'}`}>{TYPE_ICONS[svc.type] ?? '✦'} {svc.name}</p>
+                      {svc.description && <p className="text-xs text-[var(--muted-foreground)] m-0 leading-relaxed max-w-[280px]">{svc.description}</p>}
                     </div>
-                    {svc.price != null && <span style={{ fontSize: '15px', fontWeight: '700', color: 'var(--primary)' }}>+₦{Number(svc.price).toLocaleString()}</span>}
+                    {svc.price != null && <span className="font-bold text-[var(--primary)] text-right shrink-0 ml-4">+₦{Number(svc.price).toLocaleString()}</span>}
                   </motion.button>
                 )
               })}
             </div>
 
-            <div style={{ padding: '20px', background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: '16px', marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 4px 24px rgba(0,0,0,0.03)' }}>
-              <span style={{ fontSize: '15px', fontWeight: '600', color: 'var(--text-main)' }}>Estimated Total</span>
-              <span style={{ fontSize: '24px', fontWeight: '700', color: 'var(--primary)' }}>₦{estTotal.toLocaleString()}</span>
+            <div className="p-5 bg-[var(--card)] border border-[var(--border)] rounded-2xl mb-8 flex justify-between items-center shadow-sm">
+              <span className="font-semibold text-[var(--foreground)]">Estimated Total</span>
+              <span className="text-2xl font-extrabold text-[var(--primary)]">₦{estTotal.toLocaleString()}</span>
             </div>
 
-            <button type="button" onClick={handleNext} style={{ width: '100%', padding: '16px', background: 'var(--primary)', color: 'var(--on-primary)', borderRadius: '12px', fontSize: '16px', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 16px var(--primary-dim)' }}>
+            <button type="button" onClick={handleNext} className="w-full py-4 bg-[var(--primary)] text-[var(--primary-foreground)] rounded-xl text-base font-bold transition-all shadow-lg shadow-[var(--primary)]/25 hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]">
               Final Details
             </button>
           </div>
         )}
 
         {step === 4 && (
-          <div className={stepContainerClass}>
-            <button type="button" onClick={handleBack} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-muted)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '14px', fontWeight: '500', cursor: 'pointer' }}>
+          <div className="animate-in fade-in slide-in-from-right-4 duration-500">
+            <button type="button" onClick={handleBack} className="flex items-center gap-2 text-sm font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors mb-6">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
               Back
             </button>
-            <h2 style={{ fontSize: '28px', fontFamily: 'var(--heading-font)', fontWeight: '600', marginBottom: '8px', color: 'var(--text-main)' }}>Final Details</h2>
-            <p style={{ fontSize: '15px', color: 'var(--text-muted)', marginBottom: '32px' }}>Let {studioName} know who to contact.</p>
+            <h2 className="text-2xl md:text-3xl font-bold mb-2 text-[var(--foreground)] tracking-tight">Final Details</h2>
+            <p className="text-sm md:text-base text-[var(--muted-foreground)] mb-8">Let {studioName} know who to contact.</p>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div>
-                <label style={label}>Full name <span style={req}>*</span></label>
-                <input type="text" value={form.full_name} onChange={e => set('full_name', e.target.value)} placeholder="Your full name" style={input} />
+                <label className="block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Full name <span className="text-[var(--primary)] ml-1">*</span></label>
+                <input type="text" value={form.full_name} onChange={e => set('full_name', e.target.value)} placeholder="Your full name" className="w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none transition-all" />
               </div>
               <div>
-                <label style={label}>Phone <span style={req}>*</span></label>
-                <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="08012345678" style={input} />
+                <label className="block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Phone <span className="text-[var(--primary)] ml-1">*</span></label>
+                <input type="tel" value={form.phone} onChange={e => set('phone', e.target.value)} placeholder="08012345678" className="w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none transition-all" />
               </div>
             </div>
 
-            <div style={row}>
-              <label style={label}>Email <span style={opt}>(optional)</span></label>
-              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@example.com" style={input} />
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Email <span className="text-[var(--muted-foreground)] ml-1 font-normal lowercase">(optional)</span></label>
+              <input type="email" value={form.email} onChange={e => set('email', e.target.value)} placeholder="you@example.com" className="w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none transition-all" />
             </div>
 
-            <div style={row}>
-              <label style={label}>Preferred date <span style={req}>*</span></label>
-              <input type="date" value={form.preferred_date} min={minDate} onChange={e => set('preferred_date', e.target.value)} style={input} />
+            <div className="mb-6">
+              <label className="block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Preferred date <span className="text-[var(--primary)] ml-1">*</span></label>
+              <input type="date" value={form.preferred_date} min={minDate} onChange={e => set('preferred_date', e.target.value)} className="w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none transition-all" />
             </div>
 
             {isEvent && (
-              <div style={row}>
-                <label style={label}>Event name <span style={req}>*</span></label>
-                <input type="text" value={form.event_name} onChange={e => set('event_name', e.target.value)} placeholder="e.g. Sandra & Emeka's Wedding" style={input} />
+              <div className="mb-6">
+                <label className="block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Event name <span className="text-[var(--primary)] ml-1">*</span></label>
+                <input type="text" value={form.event_name} onChange={e => set('event_name', e.target.value)} placeholder="e.g. Sandra & Emeka's Wedding" className="w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none transition-all" />
               </div>
             )}
 
@@ -521,33 +532,28 @@ export default function BookingForm({
               fields={customFields}
               answers={customAnswers}
               onChange={(id, value) => setCustomAnswers(prev => ({ ...prev, [id]: value }))}
-              inputStyle={input}
-              labelStyle={label}
-              reqStyle={req}
-              optStyle={opt}
-              rowStyle={row}
             />
 
-            <div style={row}>
-              <label style={label}>Notes <span style={opt}>(optional)</span></label>
-              <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Special requests..." rows={3} style={{ ...input, resize: 'vertical' }} />
+            <div className="mb-8">
+              <label className="block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2">Notes <span className="text-[var(--muted-foreground)] ml-1 font-normal lowercase">(optional)</span></label>
+              <textarea value={form.notes} onChange={e => set('notes', e.target.value)} placeholder="Special requests..." rows={3} className="w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none transition-all resize-y" />
             </div>
 
             {error && (
-              <p style={{ fontSize: '13px', color: 'var(--destructive)', marginBottom: '20px', padding: '12px 16px', background: 'var(--destructive)', opacity: 0.9, borderRadius: '8px' }}>
+              <p className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm font-semibold mb-6 border border-destructive/20 shadow-sm animate-in fade-in">
                 {error}
               </p>
             )}
 
             <button type="submit" disabled={loading}
-              style={{
-                width: '100%', padding: '16px', background: loading ? 'var(--primary-dim)' : 'var(--primary)', color: loading ? 'var(--primary)' : 'var(--on-primary)',
-                borderRadius: '12px', fontSize: '16px', fontWeight: '600', cursor: loading ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s', boxShadow: loading ? 'none' : '0 4px 16px var(--primary-dim)'
-              }}>
+              className={`w-full py-4 rounded-xl text-base font-bold transition-all ${
+                loading 
+                  ? 'bg-[var(--primary)]/50 text-[var(--primary-foreground)]/50 cursor-not-allowed' 
+                  : 'bg-[var(--primary)] text-[var(--primary-foreground)] shadow-lg shadow-[var(--primary)]/25 hover:opacity-90 hover:scale-[1.01] active:scale-[0.99]'
+              }`}>
               {loading ? 'Sending request…' : 'Request this session'}
             </button>
-            <p style={{ fontSize: '13px', color: 'var(--text-faint)', textAlign: 'center', marginTop: '16px', fontWeight: '500' }}>
+            <p className="text-xs text-[var(--muted-foreground)] text-center mt-4 font-semibold tracking-wide">
               No payment required now. {studioName} will confirm availability.
             </p>
           </div>

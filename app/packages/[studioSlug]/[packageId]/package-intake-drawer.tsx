@@ -306,11 +306,6 @@ export default function PackageIntakeDrawer({
                         fields={customFields}
                         answers={customAnswers}
                         onChange={(id, value) => setCustomAnswers(prev => ({ ...prev, [id]: value }))}
-                        inputStyle={inputStyle}
-                        labelStyle={labelStyle}
-                        reqStyle={reqStyle}
-                        optStyle={optStyle}
-                        rowStyle={rowStyle}
                       />
 
                       <div style={rowStyle}>

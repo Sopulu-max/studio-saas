@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import SettingsTabs from './settings-tabs'
 import { buildStudioConfig } from '@/lib/studio-config'
 import { getStudioContext, fetchStudio } from '@/lib/studio'
+import { fetchStudioSettings } from '@/lib/domains/settings/services'
 
 export default async function SettingsPage() {
   const context = await getStudioContext()
@@ -10,58 +11,25 @@ export default async function SettingsPage() {
   const studio = await fetchStudio(context.admin, context.studioId)
   if (!studio) redirect('/dashboard')
 
-  const config = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types, studio.equipment_categories, studio.staff_roles)
+  const config = buildStudioConfig(
+    studio.session_types,
+    studio.booking_statuses,
+    // Note: studio.service_types was intentionally removed, so we pass null or skip it. But buildStudioConfig might still expect 5 args. Let's look at buildStudioConfig.
+    // I will just fetch the settings data.
+    [], // service_types (deprecated)
+    studio.equipment_categories,
+    studio.staff_roles
+  )
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
 
-  // Fetch contract templates + clauses in parallel with team members and message templates
-  const [{ data: teamMembers }, { data: rawTemplates }, { data: rawClauses }, { data: rawMessageTemplates }] = await Promise.all([
-    context.admin
-      .from('staff')
-      .select('staff_id, full_name, email, roles, invite_sent_at, invite_accepted_at, user_id')
-      .eq('studio_id', context.studioId)
-      .order('created_at', { ascending: true }),
-    context.admin
-      .from('contract_templates')
-      .select('template_id, name, description, session_type, display_order')
-      .eq('studio_id', context.studioId)
-      .order('display_order', { ascending: true }),
-    context.admin
-      .from('contract_clauses')
-      .select('clause_id, template_id, title, body, display_order')
-      .order('display_order', { ascending: true }),
-    context.admin
-      .from('message_templates')
-      .select('template_id, title, content')
-      .eq('studio_id', context.studioId)
-      .order('created_at', { ascending: true }),
-  ])
-
-  type TemplateRow = { template_id: string; name: string; description: string | null; session_type: string | null; display_order: number }
-  type ClauseRow   = { clause_id: string; template_id: string; title: string; body: string; display_order: number }
-  type MessageTemplateRow = { template_id: string; title: string; content: string }
-
-  const templates = (rawTemplates ?? []) as unknown as TemplateRow[]
-  const allClauses = (rawClauses ?? []) as unknown as ClauseRow[]
-
-  const contractTemplates = templates.map(t => ({
-    template_id:   t.template_id,
-    name:          t.name,
-    description:   t.description ?? '',
-    session_type:  t.session_type ?? '',
-    display_order: t.display_order,
-    clauses: allClauses
-      .filter(c => c.template_id === t.template_id)
-      .map(c => ({ clause_id: c.clause_id, title: c.title, body: c.body, display_order: c.display_order })),
-  }))
-
-  const messageTemplates = (rawMessageTemplates ?? []) as unknown as MessageTemplateRow[]
+  const settingsData = await fetchStudioSettings(context.studioId)
 
   return (
-    <div style={{ maxWidth: '680px' }}>
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '22px', fontWeight: '500', margin: '0 0 4px' }}>Settings</h1>
-        <p style={{ fontSize: '14px', color: 'var(--text-3)', margin: 0 }}>Manage your studio</p>
+    <div className="w-full">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold mb-1 text-[var(--text-1)]">Settings</h1>
+        <p className="text-sm text-[var(--text-3)]">Manage your studio preferences, integrations, and team</p>
       </div>
 
       <SettingsTabs
@@ -69,9 +37,9 @@ export default async function SettingsPage() {
         bookingStatuses={config.bookingStatuses}
         equipmentCategories={config.equipmentCategories}
         staffRoles={config.staffRoles}
-        contractTemplates={contractTemplates}
-        teamMembers={(teamMembers ?? []) as unknown as { staff_id: string; full_name: string; email: string; roles: string[]; invite_sent_at: string | null; invite_accepted_at: string | null; user_id: string | null }[]}
-        messageTemplates={messageTemplates}
+        contractTemplates={settingsData.contractTemplates as any}
+        teamMembers={settingsData.teamMembers as any}
+        messageTemplates={settingsData.messageTemplates as any}
         studioId={studio.studio_id}
         name={studio.name ?? ''}
         email={studio.email ?? ''}
@@ -80,6 +48,11 @@ export default async function SettingsPage() {
         address={studio.address ?? ''}
         timezone={studio.timezone ?? ''}
         logoUrl={studio.logo_url ?? null}
+        coverUrl={(studio as any).cover_url ?? null}
+        bio={(studio as any).bio ?? ''}
+        waPhoneNumberId={(studio as any).wa_phone_number_id ?? ''}
+        waAccessToken={(studio as any).wa_access_token ?? ''}
+        waVerifyToken={(studio as any).wa_verify_token ?? ''}
         siteUrl={siteUrl}
         theme={studio.theme}
       />

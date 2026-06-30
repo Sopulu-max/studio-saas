@@ -42,6 +42,7 @@ const OWNER_NAV_GROUPS: NavGroup[] = [
   {
     title: 'STOREFRONT',
     items: [
+      { label: 'Public Links',    href: '/dashboard/links' },
       { label: 'Public Galleries', href: '/dashboard/galleries' },
       { label: 'Print Orders',    href: '/dashboard/print-orders' },
       { label: 'Website Builder', href: '/dashboard/storefront' },

@@ -6,7 +6,6 @@ import type { StudioRow } from '@/lib/studio'
 import BookingForm, { type PublicPackage } from './booking-form'
 import Link from 'next/link'
 import type { Metadata } from 'next'
-import { buildTheme, themeCssVars } from '@/lib/studio-theme'
 
 export async function generateMetadata(
   { params }: { params: Promise<{ studioSlug: string }> }
@@ -62,126 +61,63 @@ export default async function PublicBookingPage({
 
   const studio = catalog.studio as unknown as StudioRow
   const config   = buildStudioConfig(studio.session_types, studio.booking_statuses, studio.service_types)
-  const theme    = buildTheme(studio.theme)
-  const cssVars  = themeCssVars(theme)
 
   const catalogServices = catalog.services as unknown as PublicServiceDTO[]
   const publicPackages = catalog.packages as unknown as PublicPackage[]
 
   return (
-    <>
-      <style>{`
-        :root { ${cssVars} }
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html { scroll-behavior: smooth; }
-        body {
-          font-family: system-ui, -apple-system, sans-serif;
-          background: var(--bg);
-          color: var(--text-main);
-          -webkit-font-smoothing: antialiased;
-        }
-        a { color: inherit; text-decoration: none; }
-        input, select, textarea, button {
-          font-family: inherit;
-          font-size: 14px;
-          border: 1px solid var(--card-border);
-          border-radius: var(--radius-sm);
-          padding: 10px 13px;
-          outline: none;
-          color: var(--text-main);
-          background: var(--card-bg);
-          transition: border-color .15s, box-shadow .15s;
-        }
-        button { display: block; white-space: normal; text-align: center; }
-        input:focus, select:focus, textarea:focus {
-          border-color: var(--primary);
-          box-shadow: 0 0 0 3px var(--primary-dim);
-        }
-        input::placeholder, textarea::placeholder { color: var(--text-faint); }
-        select option { background: var(--card-bg); }
-      `}</style>
+    <div className="w-full min-h-screen pb-32 animate-enter">
+      {/* Sticky nav */}
+      <header className="sticky top-0 z-50 bg-[var(--background)]/70 backdrop-blur-xl border-b border-[var(--border)] px-6 h-16 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          {studio.logo_url && (
+            <img src={studio.logo_url ?? undefined} alt={studio.name ?? ''}
+              className="w-8 h-8 rounded-full object-cover border border-[var(--border)]" />
+          )}
+          <span className="font-bold text-sm tracking-tight text-[var(--foreground)]">{studio.name}</span>
+        </div>
+        <Link href={`/${studioSlug}#packages`} className="text-xs font-semibold text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors flex items-center gap-2">
+          ← View packages
+        </Link>
+      </header>
 
-      <div style={{ minHeight: '100vh', paddingBottom: '80px' }}>
+      <div className="max-w-xl mx-auto pt-16 px-6">
+        {/* Studio hero */}
+        <div className="text-center mb-12">
+          {studio.logo_url && (
+            <img src={studio.logo_url ?? undefined} alt={studio.name ?? ''}
+              className="w-20 h-20 rounded-full object-cover mb-6 border-4 border-[var(--background)] shadow-2xl mx-auto" />
+          )}
+          <p className="text-[11px] font-bold text-[var(--primary)] uppercase tracking-[0.15em] mb-3">
+            Book a session
+          </p>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--foreground)] mb-6">
+            {studio.name}
+          </h1>
+          {/* Rule */}
+          <div className="w-12 h-1 bg-[var(--primary)]/20 mx-auto rounded-full" />
+        </div>
 
-        {/* Sticky nav */}
-        <header style={{
-          position: 'sticky', top: 0, zIndex: 50,
-          background: 'var(--nav-bg)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          borderBottom: '1px solid var(--primary-border)',
-          padding: '0 1.5rem',
-          height: '56px',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {studio.logo_url && (
-              <img src={studio.logo_url ?? undefined} alt={studio.name ?? ''}
-                style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #e8e3da' }} />
-            )}
-            <span style={{ fontSize: '14px', fontWeight: '600', letterSpacing: '-.01em' }}>{studio.name}</span>
-          </div>
-          <Link href={`/${studioSlug}#packages`} style={{
-            fontSize: '12px', color: '#8a8580', display: 'flex', alignItems: 'center', gap: '4px',
-          }}>
-            ← View packages
-          </Link>
-        </header>
-
-        <div style={{ maxWidth: '540px', margin: '0 auto', padding: '48px 16px 0' }}>
-
-          {/* Studio hero */}
-          <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-            {studio.logo_url && (
-              <img src={studio.logo_url ?? undefined} alt={studio.name ?? ''}
-                style={{
-                  width: '72px', height: '72px', borderRadius: '50%',
-                  objectFit: 'cover', marginBottom: '16px',
-                  border: '3px solid #e8e3da',
-                  boxShadow: '0 4px 16px rgba(0,0,0,.08)',
-                }} />
-            )}
-            <p style={{ fontSize: '11px', color: 'var(--primary)', letterSpacing: '.12em', textTransform: 'uppercase', fontWeight: '600', marginBottom: '10px' }}>
-              Book a session
-            </p>
-            <h1 style={{
-              fontFamily: 'var(--heading-font)',
-              fontSize: '28px', fontWeight: '400', letterSpacing: '-.01em',
-              lineHeight: '1.2', color: 'var(--text-main)', marginBottom: '16px',
-            }}>
-              {studio.name}
-            </h1>
-            {/* Rule */}
-            <div style={{
-              width: '40px', height: '1px', margin: '0 auto',
-              background: 'var(--rule)',
-            }} />
-          </div>
-
-          {/* Form card */}
-          <div style={{
-            background: 'var(--card-bg)',
-            border: '1px solid var(--card-border)',
-            borderRadius: 'var(--radius)',
-            padding: '28px 28px 32px',
-            boxShadow: '0 2px 20px rgba(0,0,0,.04)',
-          }}>
+        {/* Form card */}
+        <div className="glass-panel p-6 md:p-10 relative group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[var(--primary)]/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[var(--primary)]/10 transition-colors duration-700 pointer-events-none" />
+          
+          <div className="relative z-10">
             <BookingForm
               studioId={studio.studio_id}
               studioName={studio.name ?? ''}
               sessionTypes={config.sessionTypes.map(t => ({ value: t.value, label: t.label, is_event: t.is_event }))}
-
               catalogServices={catalogServices}
               publicPackages={publicPackages}
               initialPackageId={initialPackageId}
             />
           </div>
-
-          <p style={{ textAlign: 'center', fontSize: '12px', color: '#c8c4bc', marginTop: '28px', letterSpacing: '.04em' }}>
-            Powered by Weave
-          </p>
         </div>
+
+        <p className="text-center text-xs font-medium text-[var(--muted-foreground)] mt-12 tracking-wide opacity-50">
+          Powered by Weave
+        </p>
       </div>
-    </>
+    </div>
   )
 }

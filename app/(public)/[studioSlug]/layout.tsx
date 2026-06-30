@@ -68,7 +68,7 @@ export default async function StudioStorefrontLayout({
 
   return (
     <div 
-      className="min-h-screen antialiased flex flex-col"
+      className="min-h-screen antialiased flex flex-col relative"
       style={{
         '--background': bgHsl,
         '--foreground': fgHsl,
@@ -85,7 +85,15 @@ export default async function StudioStorefrontLayout({
         fontFamily: theme.serif ? 'Georgia, "Times New Roman", serif' : 'system-ui, -apple-system, sans-serif'
       } as React.CSSProperties}
     >
-      <main className="flex-1 w-full flex flex-col">
+      {/* Cinematic Ambient Glow */}
+      <div 
+        className="fixed inset-0 z-0 pointer-events-none opacity-20"
+        style={{
+          background: `radial-gradient(circle at 50% 0%, hsl(var(--primary) / 0.4) 0%, transparent 70%)`
+        }}
+      />
+      
+      <main className="flex-1 w-full flex flex-col relative z-10">
         {children}
       </main>
     </div>

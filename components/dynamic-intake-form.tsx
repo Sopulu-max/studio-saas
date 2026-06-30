@@ -13,32 +13,32 @@ type DynamicIntakeFormProps = {
   fields: IntakeField[]
   answers: Record<string, any>
   onChange: (id: string, value: any) => void
-  inputStyle?: React.CSSProperties
-  labelStyle?: React.CSSProperties
-  reqStyle?: React.CSSProperties
-  optStyle?: React.CSSProperties
-  rowStyle?: React.CSSProperties
+  inputClassName?: string
+  labelClassName?: string
+  reqClassName?: string
+  optClassName?: string
+  rowClassName?: string
 }
 
 export default function DynamicIntakeForm({
   fields,
   answers,
   onChange,
-  inputStyle = { width: '100%', padding: '12px 16px', borderRadius: '12px', border: '1px solid var(--card-border)', background: 'var(--bg)', fontSize: '15px', color: 'var(--text-main)', transition: 'border-color 0.2s', boxSizing: 'border-box' },
-  labelStyle = { display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--text-main)', marginBottom: '8px' },
-  reqStyle = { color: 'var(--destructive)', marginLeft: '4px' },
-  optStyle = { color: 'var(--text-faint)', marginLeft: '4px', fontWeight: '400' },
-  rowStyle = { marginBottom: '20px' }
+  inputClassName = "w-full p-3 rounded-xl border border-[var(--border)] bg-[var(--background)] text-[var(--foreground)] text-sm focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary)]/20 outline-none transition-all",
+  labelClassName = "block text-xs font-bold text-[var(--muted-foreground)] uppercase tracking-wider mb-2",
+  reqClassName = "text-[var(--primary)] ml-1",
+  optClassName = "text-[var(--muted-foreground)] ml-1 font-normal lowercase",
+  rowClassName = "mb-6"
 }: DynamicIntakeFormProps) {
   if (fields.length === 0) return null
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       {fields.map(field => (
-        <div style={rowStyle} key={field.id}>
-          <label style={labelStyle}>
+        <div className={rowClassName} key={field.id}>
+          <label className={labelClassName}>
             {field.label} 
-            <span style={field.required ? reqStyle : optStyle}>
+            <span className={field.required ? reqClassName : optClassName}>
               {field.required ? '*' : '(optional)'}
             </span>
           </label>
@@ -46,7 +46,7 @@ export default function DynamicIntakeForm({
             <select 
               value={answers[field.id] || ''} 
               onChange={e => onChange(field.id, e.target.value)} 
-              style={inputStyle}
+              className={inputClassName}
             >
               <option value="">-- Select --</option>
               <option value="Yes">Yes</option>
@@ -57,7 +57,7 @@ export default function DynamicIntakeForm({
               type={field.type === 'number' ? 'number' : 'text'} 
               value={answers[field.id] || ''} 
               onChange={e => onChange(field.id, e.target.value)} 
-              style={inputStyle} 
+              className={inputClassName} 
               placeholder={`Enter ${field.label.toLowerCase()}`}
             />
           )}

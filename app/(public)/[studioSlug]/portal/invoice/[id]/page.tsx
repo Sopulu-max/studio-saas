@@ -34,10 +34,10 @@ export default async function PublicInvoiceViewPage({
   params,
   searchParams,
 }: {
-  params: Promise<{ id: string }>
+  params: Promise<{ studioSlug: string; id: string }>
   searchParams: Promise<{ sig?: string; exp?: string }>
 }) {
-  const { id } = await params
+  const { id, studioSlug } = await params
   const { sig, exp } = await searchParams
   if (!verifySignedPublicLink('invoice', id, sig, exp)) notFound()
 
@@ -90,169 +90,174 @@ export default async function PublicInvoiceViewPage({
   const baseAmount = Number(typedInvoice.subtotal) - addonsTotal
 
   return (
-    <>
-      <style>{`
-        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; color: #111; background: #f0f0f0; }
-        .page { max-width: 760px; margin: 0 auto; background: white; padding: 56px 64px; min-height: 100vh; }
-        .no-print { margin-bottom: 28px; display: flex; gap: 10px; align-items: center; background: #f8f8f8; border: 1px solid #e5e5e5; border-radius: 10px; padding: 12px 16px; }
-        .divider { border: none; border-top: 1px solid #e5e5e5; margin: 20px 0; }
-        .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; font-size: 13px; }
-        .row.total { font-size: 15px; font-weight: 600; border-top: 1px solid #e5e5e5; padding-top: 10px; margin-top: 4px; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th { text-align: left; font-size: 11px; color: #888; font-weight: 500; border-bottom: 1px solid #e5e5e5; padding: 6px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
-        th:last-child, td:last-child { text-align: right; }
-        td { padding: 9px 0; border-bottom: 1px solid #f4f4f4; }
-        @media (max-width: 600px) {
-          .page { padding: 24px 20px; }
-          .bill-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
-        }
-        @media print {
-          body { background: white; }
-          .no-print { display: none !important; }
-          .page { padding: 0; min-height: auto; }
-          @page { margin: 1.5cm 1.8cm; size: A4; }
-        }
-      `}</style>
-
-      <div className="page">
-        <div className="no-print">
+    <div className="w-full max-w-4xl mx-auto px-6 py-12 md:py-20 animate-enter">
+      {/* Header Actions */}
+      <div className="flex justify-between items-center mb-12">
+        <a 
+          href={`/${studioSlug}/portal/summary/${booking?.booking_id}?sig=${sig}&exp=${exp}`}
+          className="flex items-center gap-2 text-sm font-bold text-[var(--text-3)] hover:text-[var(--text)] transition-colors"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+          Back to Portal
+        </a>
+        <div className="flex items-center gap-3">
           <PublicInvoicePrintButton />
-          {studio?.phone && balanceDue > 0 && (
-            <a
-              href={`https://wa.me/${studio.phone.replace(/[^\d+]/g, '')}?text=${encodeURIComponent(`Hi ${studio.name}, I am sending the payment receipt for Invoice #${shortId}.`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                background: '#25D366', color: 'white', padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px'
-              }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12.031 0C5.385 0 0 5.385 0 12.031C0 14.673 1.05 17.202 2.87 19.166L1.134 23.366L5.438 21.63C7.355 23.303 9.773 24 12.031 24C18.677 24 24 18.615 24 11.969C24 5.323 18.677 0 12.031 0ZM18.57 16.711C18.293 17.487 16.892 18.172 16.208 18.256C15.655 18.339 14.898 18.423 11.83 17.151C8.077 15.589 5.666 11.758 5.485 11.517C5.304 11.276 4 9.539 4 7.747C4 5.955 4.908 5.086 5.274 4.721C5.551 4.444 5.986 4.316 6.388 4.316C6.516 4.316 6.634 4.321 6.743 4.326C7.02 4.341 7.159 4.356 7.34 4.789C7.568 5.339 8.125 6.702 8.192 6.841C8.258 6.98 8.35 7.16 8.258 7.34C8.167 7.52 8.106 7.595 7.97 7.747C7.835 7.899 7.7 8.084 7.564 8.192C7.429 8.3 7.279 8.423 7.444 8.708C7.61 8.993 8.183 9.932 9.034 10.688C10.13 11.587 11.018 11.874 11.334 12.008C11.56 12.102 11.846 12.078 12.012 11.898C12.223 11.673 12.479 11.282 12.736 10.891C12.932 10.59 13.174 10.545 13.43 10.635C13.702 10.726 15.134 11.433 15.42 11.568C15.706 11.704 15.897 11.779 15.957 11.884C16.017 11.99 16.017 12.516 15.741 13.292" /></svg>
-              Send Payment Receipt
-            </a>
-          )}
-          <span style={{ fontSize: '13px', color: '#666', marginLeft: 'auto' }}>
-            Invoice from <strong>{studio?.name}</strong>
-          </span>
         </div>
+      </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '40px', flexWrap: 'wrap', gap: '20px' }}>
-          <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start' }}>
-            {studio?.logo_url && (
-              <Image
-                src={studio.logo_url}
-                alt={studio.name ?? 'Studio logo'}
-                width={52}
-                height={52}
-                unoptimized
-                style={{ width: '52px', height: '52px', objectFit: 'contain', borderRadius: '6px', flexShrink: 0 }}
-              />
-            )}
-            <div>
-              <p style={{ fontSize: '20px', fontWeight: '700', marginBottom: '4px' }}>{studio?.name}</p>
-              {studio?.email && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.email}</p>}
-              {studio?.phone && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{studio.phone}</p>}
-              {studio?.address && <p style={{ fontSize: '13px', color: '#666', whiteSpace: 'pre-line' }}>{studio.address}</p>}
+      <div className="glass-panel p-8 md:p-12 mb-8 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-[var(--primary)]/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 group-hover:bg-[var(--primary)]/10 transition-colors duration-700" />
+        
+        <div className="relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-[var(--line-inner)] pb-8 mb-8">
+            <div className="flex items-center gap-4">
+              {studio?.logo_url ? (
+                <Image src={studio.logo_url} alt={studio.name ?? ''} width={56} height={56} unoptimized className="rounded-xl shadow-lg border border-[var(--line)]" />
+              ) : (
+                <div className="w-14 h-14 rounded-xl bg-[var(--primary)] flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-[var(--primary)]/20">
+                  {studio?.name?.charAt(0) ?? 'S'}
+                </div>
+              )}
+              <div>
+                <h1 className="text-2xl font-bold tracking-tight text-[var(--text)]">{studio?.name}</h1>
+                <p className="text-sm text-[var(--text-4)]">{studio?.email} • {studio?.phone}</p>
+              </div>
+            </div>
+            <div className="text-left md:text-right">
+              <p className="text-3xl font-black tracking-tight text-[var(--text)] uppercase">Invoice</p>
+              <p className="text-sm text-[var(--text-4)] mt-1 font-mono tracking-wider">#{shortId}</p>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '26px', fontWeight: '300', letterSpacing: '-.02em', color: '#111', marginBottom: '6px' }}>INVOICE</p>
-            <p style={{ fontSize: '12px', color: '#888' }}>#{shortId}</p>
-            {typedInvoice.issued_at && (
-              <p style={{ fontSize: '12px', color: '#888', marginTop: '4px' }}>
-                Issued: {new Date(typedInvoice.issued_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8">
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-2">Billed To</p>
+              <p className="text-base font-medium text-[var(--text)]">{client?.full_name}</p>
+              <p className="text-sm text-[var(--text-3)]">{client?.email}</p>
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-2">Issued</p>
+              <p className="text-base font-medium text-[var(--text)]">
+                {typedInvoice.issued_at ? new Date(typedInvoice.issued_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
               </p>
-            )}
-            {typedInvoice.due_date && (
-              <p style={{ fontSize: '12px', color: '#888', marginTop: '2px' }}>
-                Due: {new Date(typedInvoice.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-2">Due Date</p>
+              <p className="text-base font-medium text-[var(--text)]">
+                {typedInvoice.due_date ? new Date(typedInvoice.due_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
               </p>
-            )}
-          </div>
-        </div>
-
-        <div className="bill-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', marginBottom: '36px' }}>
-          <div>
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Bill To</p>
-            <p style={{ fontSize: '15px', fontWeight: '600', marginBottom: '4px' }}>{client?.full_name}</p>
-            {client?.email && <p style={{ fontSize: '13px', color: '#666', marginBottom: '2px' }}>{client.email}</p>}
-            {client?.phone && <p style={{ fontSize: '13px', color: '#666' }}>{client.phone}</p>}
-          </div>
-          <div>
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '10px', fontWeight: '500' }}>Session</p>
-            {((booking as any).sessions?.[0]?.session_date) && (
-              <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>
-                {new Date((booking as any).sessions[0].session_date).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </p>
-            )}
-            {pkg?.name && <p style={{ fontSize: '13px', color: '#444', marginBottom: '4px' }}>{pkg.name}</p>}
-            {booking?.location && <p style={{ fontSize: '13px', color: '#666' }}>{booking.location}</p>}
-          </div>
-        </div>
-
-        <table style={{ marginBottom: '20px' }}>
-          <thead>
-            <tr>
-              <th>Description</th>
-              <th style={{ width: '60px' }}>Qty</th>
-              <th style={{ width: '120px' }}>Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>{pkg?.name ?? 'Agreed amount'}</td>
-              <td style={{ textAlign: 'right' }}>1</td>
-              <td style={{ textAlign: 'right' }}>{fmt(baseAmount)}</td>
-            </tr>
-            {addonsList.map((addon, index) => (
-              <tr key={index}>
-                <td style={{ color: '#555' }}>{addon.package_addons?.name}</td>
-                <td style={{ textAlign: 'right', color: '#555' }}>{addon.quantity}</td>
-                <td style={{ textAlign: 'right', color: '#555' }}>
-                  {fmt(Number(addon.package_addons?.price ?? 0) * addon.quantity)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <div style={{ maxWidth: '280px', marginLeft: 'auto', marginBottom: '36px' }}>
-          <div className="row"><span style={{ color: '#666' }}>Subtotal</span><span>{fmt(Number(typedInvoice.subtotal))}</span></div>
-          {Number(typedInvoice.discount) > 0 && (
-            <div className="row"><span style={{ color: '#666' }}>Discount</span><span>-{fmt(Number(typedInvoice.discount))}</span></div>
-          )}
-          {Number(typedInvoice.tax) > 0 && (
-            <div className="row"><span style={{ color: '#666' }}>Tax ({typedInvoice.tax}%)</span><span>{fmt(Number(typedInvoice.subtotal) * Number(typedInvoice.tax) / 100)}</span></div>
-          )}
-          <div className="row total"><span>Total</span><span>{fmt(Number(typedInvoice.total))}</span></div>
-        </div>
-
-        {payments && payments.length > 0 && (
-          <>
-            <hr className="divider" />
-            <p style={{ fontSize: '11px', color: '#888', textTransform: 'uppercase', letterSpacing: '.06em', marginBottom: '12px', fontWeight: '500' }}>Payment History</p>
-            {payments.map((payment) => (
-              <div key={payment.payment_id} className="row" style={{ marginBottom: '8px' }}>
-                <span style={{ color: '#555' }}>
-                  {new Date(payment.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  {' | '}{payment.method.replace('_', ' ')}
-                  {payment.reference ? ` | Ref: ${payment.reference}` : ''}
+            </div>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-2">Status</p>
+              {balanceDue <= 0 ? (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> Paid
                 </span>
-                <span>{fmt(Number(payment.amount))}</span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> Pending
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="glass-panel overflow-hidden mb-8">
+        <div className="p-6 border-b border-[var(--line-inner)]">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] m-0">Itemized Breakdown</p>
+        </div>
+        
+        <div className="divide-y divide-[var(--line-inner)]">
+          <div className="p-6 flex justify-between items-center">
+            <div>
+              <p className="font-bold text-[var(--text)] text-base">{pkg?.name ?? 'Studio Session Base'}</p>
+              <p className="text-sm text-[var(--text-4)]">Agreed package base rate</p>
+            </div>
+            <p className="font-medium text-[var(--text)]">{fmt(baseAmount)}</p>
+          </div>
+
+          {addonsList.map((addon, index) => (
+            <div key={`addon-${index}`} className="p-6 flex justify-between items-center">
+              <div className="flex items-center gap-4">
+                <div className="w-8 h-8 rounded bg-[var(--surface-2)] flex items-center justify-center text-xs font-bold text-[var(--text-4)]">
+                  x{addon.quantity}
+                </div>
+                <div>
+                  <p className="font-medium text-[var(--text)]">{addon.package_addons?.name}</p>
+                  <p className="text-xs text-[var(--text-4)] uppercase tracking-wider">Add-on</p>
+                </div>
+              </div>
+              <p className="font-medium text-[var(--text)]">{fmt(Number(addon.package_addons?.price ?? 0) * addon.quantity)}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="bg-[var(--surface-2)] p-6 flex flex-col items-end border-t border-[var(--line-inner)]">
+          <div className="w-full max-w-sm space-y-3">
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-[var(--text-4)] font-medium">Subtotal</span>
+              <span className="text-[var(--text)] font-medium">{fmt(Number(typedInvoice.subtotal))}</span>
+            </div>
+            {Number(typedInvoice.discount) > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-[var(--text-4)] font-medium">Discount</span>
+                <span className="text-emerald-500 font-medium">-{fmt(Number(typedInvoice.discount))}</span>
+              </div>
+            )}
+            {Number(typedInvoice.tax) > 0 && (
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-[var(--text-4)] font-medium">Tax ({typedInvoice.tax}%)</span>
+                <span className="text-[var(--text)] font-medium">{fmt(Number(typedInvoice.subtotal) * Number(typedInvoice.tax) / 100)}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-4 border-t border-[var(--line)]">
+              <span className="text-lg font-bold text-[var(--text)]">Total</span>
+              <span className="text-2xl font-black text-[var(--text)]">{fmt(Number(typedInvoice.total))}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {payments && payments.length > 0 && (
+        <div className="glass-panel p-6 mb-8">
+          <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)] mb-6">Payment History</p>
+          <div className="space-y-4">
+            {payments.map((payment) => (
+              <div key={payment.payment_id} className="flex justify-between items-center p-4 rounded-xl border border-[var(--line-inner)] bg-[var(--surface-2)]">
+                <div>
+                  <p className="text-sm font-bold text-[var(--text)] uppercase">{payment.method.replace('_', ' ')}</p>
+                  <p className="text-xs text-[var(--text-4)] mt-1">
+                    {new Date(payment.paid_at).toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    {payment.reference ? ` • Ref: ${payment.reference}` : ''}
+                  </p>
+                </div>
+                <p className="font-bold text-[var(--text)]">{fmt(Number(payment.amount))}</p>
               </div>
             ))}
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: '600', color: balanceDue > 0 ? '#a32d2d' : '#3b6d11', marginTop: '8px', paddingTop: '8px', borderTop: '1px solid #e5e5e5' }}>
-              <span>Balance Due</span>
-              <span>{fmt(balanceDue)}</span>
-            </div>
-          </>
-        )}
+          </div>
+        </div>
+      )}
 
-        <hr className="divider" style={{ marginTop: '48px' }} />
-        <p style={{ fontSize: '12px', color: '#aaa', textAlign: 'center', marginTop: '16px' }}>
-          Thank you for your business | {studio?.name}
-        </p>
+      {/* Floating Action Bar */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 md:p-8 pointer-events-none z-50 flex justify-center">
+        <div className="glass-panel rounded-2xl shadow-2xl p-4 flex items-center gap-6 pointer-events-auto border-[var(--line)] bg-[var(--card)]/80 backdrop-blur-xl">
+          <div>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-[var(--text-4)]">Balance Due</p>
+            <p className="text-2xl font-black text-[var(--text)] leading-none mt-1">{fmt(balanceDue)}</p>
+          </div>
+          {balanceDue > 0 ? (
+            <button className="px-8 py-3 rounded-xl bg-[var(--text)] text-[var(--card)] font-bold shadow-lg hover:scale-[1.02] active:scale-95 transition-all">
+              Pay Now
+            </button>
+          ) : (
+            <div className="px-8 py-3 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              Fully Paid
+            </div>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   )
 }
